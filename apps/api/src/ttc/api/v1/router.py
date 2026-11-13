@@ -8,6 +8,7 @@ from ttc.api.v1.consents import router as consents_router
 from ttc.api.v1.evidence import router as evidence_router
 from ttc.api.v1.health import router as health_router
 from ttc.api.v1.jobs import router as jobs_router
+from ttc.api.v1.match import router as match_router
 from ttc.api.v1.privacy import router as privacy_router
 from ttc.api.v1.progress import router as progress_router
 from ttc.api.v1.resumes import router as resumes_router
@@ -21,6 +22,7 @@ router.include_router(candidates_router)
 router.include_router(consents_router)
 router.include_router(resumes_router)
 router.include_router(assessments_router)
+router.include_router(match_router)
 router.include_router(evidence_router)
 router.include_router(voice_router)
 router.include_router(privacy_router)

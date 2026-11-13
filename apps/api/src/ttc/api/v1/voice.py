@@ -1,19 +1,22 @@
+import asyncio
 import json
 from datetime import UTC, datetime
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ttc.adapters import qwen_realtime as qwen
 from ttc.adapters.realtime import create_call, enqueue_hangup
 from ttc.api.deps import Principal, current_user, require_roles
 from ttc.api.v1.candidates import require_candidate
 from ttc.api.v1.consents import require_consent
 from ttc.api.v1.jobs import require_job
+from ttc.api.v1.progress import authenticate
 from ttc.core.config import get_settings
 from ttc.core.db import get_session
 from ttc.core.errors import TTCError
@@ -33,7 +36,7 @@ class SessionInput(BaseModel):
     candidate_id: UUID
     job_id: UUID
     scenario: Literal["screen", "verify", "skill", "mock"] = "screen"
-    provider: Literal["openai_realtime"] = "openai_realtime"
+    provider: Literal["openai_realtime", "qwen_realtime"] = "openai_realtime"
     max_seconds: int = Field(default=1200, ge=60, le=7200)
 
 
@@ -162,6 +165,226 @@ async def connect_call(session_id: UUID, request: Request,
     return Response(answer, media_type="application/sdp")
 
 
+CONSENT_ALIVE = (
+    "EXISTS (SELECT 1 FROM consent WHERE candidate_id = s.candidate_id "
+    "AND purpose = 'voice_interview' AND status = 'granted' AND revoked_at IS NULL "
+    "AND (expires_at IS NULL OR expires_at > now()))"
+)
+
+# 中转层只允许浏览器发这些事件；其余（例如改模型/改音色）一律拒绝。
+CLIENT_EVENTS = frozenset({
+    "input_audio_buffer.append", "input_audio_buffer.clear", "input_audio_buffer.commit",
+    "conversation.item.create", "response.create", "response.cancel",
+    "session.update", "conversation.item.truncate",
+})
+MAX_CLIENT_FRAME = 1024 * 1024
+
+
+async def _close(websocket: WebSocket, code: int) -> None:
+    try:
+        await websocket.close(code=code)
+    except Exception:
+        pass
+
+
+async def _send(websocket: WebSocket, payload: dict) -> bool:
+    try:
+        await websocket.send_json(payload)
+        return True
+    except Exception:
+        return False
+
+
+async def _send_text(websocket: WebSocket, payload: str) -> bool:
+    try:
+        await websocket.send_text(payload)
+        return True
+    except Exception:
+        return False
+
+
+async def _finalize(session_id: UUID, status: str, reason: str, error: str | None = None):
+    """落库收尾：只在会话仍处于 created/live 时生效，重复调用是幂等的。"""
+    async for session in get_session():
+        await session.execute(text(
+            "UPDATE voice_session SET status = CAST(:status AS session_status), "
+            "ended_at = now(), end_reason = :reason, error = COALESCE(:error, error) "
+            "WHERE id = :id AND status IN ('created', 'live')"
+        ), {"id": session_id, "status": status, "reason": reason, "error": error})
+        await session.commit()
+
+
+@router.websocket("/voice-sessions/{session_id}/realtime")
+async def realtime_relay(websocket: WebSocket, session_id: UUID):
+    """通义千问实时语音中转。
+
+    浏览器拿不到 DashScope 密钥，也不能自行切断上游；中转层负责
+    逐条转发事件，并每 5 秒复查授权与最长时长，撤回授权即断开。
+
+    权限沿用 ``require_session`` 的口径：candidate 只能连自己的会话，
+    hr/admin 可以连本租户的任意会话（演示用：前端目前只有招聘端）。
+    """
+    user = await authenticate(websocket)
+    if user is None:
+        return
+    if user["role"] not in ("candidate", "hr", "admin"):
+        await _close(websocket, 4403)
+        return
+    settings = get_settings()
+    plan = None
+    max_seconds = 1200
+    async for session in get_session():
+        row = (await session.execute(text(
+            "SELECT s.plan_json, s.candidate_id, s.max_seconds, c.user_id "
+            "FROM voice_session s JOIN candidate c ON c.id = s.candidate_id "
+            "WHERE s.id = :id AND c.tenant_id = :tenant"
+        ), {"id": session_id, "tenant": user["tenant_id"]})).mappings().one_or_none()
+        if row is None:
+            await _close(websocket, 4404)
+            return
+        if user["role"] == "candidate" and row["user_id"] != user["id"]:
+            await _close(websocket, 4403)
+            return
+        claimed = await session.execute(text(
+            "UPDATE voice_session s SET status = 'live', "
+            "started_at = COALESCE(started_at, now()), provider = 'qwen_realtime' "
+            "WHERE s.id = :id AND s.status = 'created' "
+            f"AND {CONSENT_ALIVE} RETURNING s.max_seconds"
+        ), {"id": session_id})
+        max_seconds = claimed.scalar_one_or_none()
+        if max_seconds is None:
+            await session.rollback()
+            await _close(websocket, 4409)
+            return
+        await session.commit()
+        plan = row["plan_json"]
+
+    if isinstance(plan, str):
+        try:
+            plan = json.loads(plan)
+        except ValueError:
+            plan = PLAN
+    plan = plan if isinstance(plan, dict) else PLAN
+    if not plan.get("questions"):
+        plan = PLAN
+    instructions = session_instructions(plan)
+
+    try:
+        upstream, model, voice, initial = await qwen.open_session(
+            instructions, settings.dashscope_realtime_voice)
+    except Exception as exc:
+        await _finalize(session_id, "failed", "error", f"实时语音上游连接失败: {exc}"[:500])
+        await _send(websocket, {"type": "error", "message": "实时语音服务连接失败"})
+        await _close(websocket, 1011)
+        return
+
+    async for session in get_session():
+        await session.execute(text(
+            "UPDATE voice_session SET model = :model WHERE id = :id"
+        ), {"id": session_id, "model": model})
+        await session.commit()
+
+    reason = "candidate_end"
+    status = "ended"
+    error_note: str | None = None
+    tasks: list[asyncio.Task] = []
+    try:
+        for raw in initial:
+            await _send_text(websocket, raw)
+        await _send(websocket, {"type": "relay.ready", "model": model, "voice": voice,
+                                "max_seconds": max_seconds})
+
+        async def client_to_upstream():
+            while True:
+                raw = await websocket.receive_text()
+                if len(raw) > MAX_CLIENT_FRAME:
+                    await _send(websocket, {"type": "error",
+                                            "message": "客户端事件超过 1 MB"})
+                    continue
+                try:
+                    payload = json.loads(raw)
+                except ValueError:
+                    await _send(websocket, {"type": "error", "message": "非 JSON 客户端事件"})
+                    continue
+                if payload.get("type") not in CLIENT_EVENTS:
+                    await _send(websocket, {"type": "error",
+                                            "message": f"不支持的事件 {payload.get('type')}"})
+                    continue
+                await upstream.send(raw)
+
+        async def upstream_to_client():
+            async for message in upstream:
+                if not await _send_text(websocket, message):
+                    return "client_gone"
+            return "upstream_gone"
+
+        async def watch():
+            loop = asyncio.get_running_loop()
+            deadline = loop.time() + max_seconds
+            while True:
+                await asyncio.sleep(5)
+                state = None
+                async for session in get_session():
+                    state = (await session.execute(text(
+                        "SELECT s.status::text AS status, "
+                        f"{CONSENT_ALIVE} AS consented FROM voice_session s WHERE s.id = :id"
+                    ), {"id": session_id})).mappings().one_or_none()
+                if state is None or state["status"] in ("ended", "failed", "revoked"):
+                    return "closed"
+                if not state["consented"]:
+                    return "revoked"
+                if loop.time() >= deadline:
+                    return "timeout"
+
+        tasks = [asyncio.create_task(coro) for coro in
+                 (client_to_upstream(), upstream_to_client(), watch())]
+        done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+        for task in pending:
+            task.cancel()
+        await asyncio.gather(*pending, return_exceptions=True)
+        for task in done:
+            if task.cancelled():
+                continue
+            exc = task.exception()
+            if task is tasks[2]:
+                if exc is None:
+                    reason = task.result()
+                else:
+                    reason = "closed"
+            elif task is tasks[1]:
+                # 上游先断开：正常关闭记为 end，异常记 failed
+                if exc is not None:
+                    status, reason = "failed", "error"
+                    error_note = f"上游连接中断: {type(exc).__name__}: {exc}"[:500]
+                else:
+                    reason = "candidate_end" if task.result() == "client_gone" else "upstream_closed"
+            else:
+                # 浏览器先断开（WebSocketDisconnect）或上游拒收
+                if exc is not None and not type(exc).__name__ == "WebSocketDisconnect":
+                    status, reason = "failed", "error"
+                    error_note = f"上游连接中断: {type(exc).__name__}: {exc}"[:500]
+                else:
+                    reason = "candidate_end"
+    finally:
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+        try:
+            await upstream.close()
+        except Exception:
+            pass
+        await _close(websocket, 1000)
+        # 会话已被 HR / 授权流程置为终态时 reason == "closed"，不覆盖
+        if reason != "closed":
+            final_status = "revoked" if reason == "revoked" else status
+            try:
+                await _finalize(session_id, final_status, reason, error_note)
+            except Exception:
+                pass
+
+
 async def save_turns(session: AsyncSession, session_id: UUID, turns: list[TurnInput]):
     if len({turn.index for turn in turns}) != len(turns):
         raise TTCError("TTC-4000", "轮次序号重复", 422)
@@ -232,8 +455,10 @@ async def finish_session(session_id: UUID, body: FinishInput,
     await require_consent(session, row["candidate_id"], "voice_interview")
     if row["status"] in ("revoked", "failed"):
         raise TTCError("TTC-2002", "会话已失效", 409)
+    # 实时通话结束时中转层已把状态置为 ended；此时仍要落盘轮次，
+    # 否则报告里只剩空 transcript。
+    await save_turns(session, session_id, body.turns)
     if row["status"] != "ended":
-        await save_turns(session, session_id, body.turns)
         await session.execute(text(
             "UPDATE voice_session SET status = 'ended', ended_at = now(), "
             "end_reason = :reason WHERE id = :id"

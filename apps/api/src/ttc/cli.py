@@ -55,7 +55,7 @@ def main() -> None:
     parser.add_argument("--tenant-name", required=True)
     parser.add_argument("--email", required=True)
     parser.add_argument("--name", required=True)
-    parser.add_argument("--role", choices=("admin", "candidate"), default="admin")
+    parser.add_argument("--role", choices=("admin", "hr", "candidate"), default="admin")
     args = parser.parse_args()
     password = os.environ.get("TTC_BOOTSTRAP_PASSWORD") or getpass.getpass("Password: ")
     if len(password) < 12:
