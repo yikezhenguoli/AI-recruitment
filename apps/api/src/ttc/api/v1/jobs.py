@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ttc.adapters.llm import llm_client
 from ttc.api.deps import Principal, require_roles
 from ttc.core.config import get_settings
 from ttc.core.db import get_session
@@ -65,7 +66,7 @@ async def generate_jd_json(prompt: str, *, mode: str) -> dict:
             if mode == "extract" else
             "生成完整招聘JD，需有岗位名称与职责，不补写未提供的公司、薪资、院校、年龄、婚育。")
     try:
-        async with httpx.AsyncClient(timeout=settings.llm_timeout_seconds) as client:
+        async with llm_client(settings.llm_timeout_seconds) as client:
             response = await client.post(
                 settings.llm_base_url.rstrip("/") + "/chat/completions",
                 headers={"Authorization": f"Bearer {settings.llm_api_key}"},

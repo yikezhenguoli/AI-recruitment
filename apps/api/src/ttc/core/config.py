@@ -20,8 +20,19 @@ class Settings(BaseSettings):
     llm_api_key: str | None = None
     llm_model: str | None = None
     llm_timeout_seconds: int = 60
+    # 简历-岗位匹配小模型（通过子进程调用 resume-match/infer_cli.py）
+    resume_match_model_dir: str | None = None
+    resume_match_python: str = "python3"
+    resume_match_timeout_seconds: int = 120
+    resume_match_allow_keyword_fallback: bool = False
+    resume_match_cli_path: str | None = None
     realtime_api_key: str | None = None
     realtime_model: str | None = None
+    realtime_provider: str = "openai_realtime"
+    dashscope_api_key: str | None = None
+    dashscope_realtime_model: str = "qwen3-omni-flash-realtime"
+    dashscope_realtime_voice: str = "Cherry"
+    dashscope_realtime_url: str = "wss://dashscope.aliyuncs.com/api-ws/v1/realtime"
     openats_base_url: str | None = None
     openats_api_key: str | None = None
     vekt_base_url: str | None = None
