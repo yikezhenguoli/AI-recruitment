@@ -1,0 +1,729 @@
+# 简历-岗位匹配：24 类岗位描述（JD）
+#
+# 填写说明
+# --------
+# 1. `code` 必须与数据集目录名逐字一致（全大写 + 连字符），不要修改。
+# 2. 除 ACCOUNTANT 外，其余条目按 ACCOUNTANT 的结构生成，内容按职业调整；
+#    `source` 标为 "AI 生成，待人工核实"，请按实际需要修改或核实。
+# 3. 列表一律用块式 `-`，不要用 `[]`；含英文冒号的字符串用双引号包起来。
+# 4. 中英两栏保持对应；英文是喂给模型的正式文本，中文用于展示。
+# 5. 建议补全方向：summary 1-2 句、responsibilities 3-5 条、
+#    required_skills 4-8 条、experience_years 一个区间、education 一句话。
+
+- code: ACCOUNTANT
+  title_en: Accountant
+  title_zh: 会计
+  summary_en: "Accounting is the measurement, processing, and communication of financial information about economic entities."
+  summary_zh: |
+    会计是以货币为主要计量单位，运用专门方法，对特定单位的经济活动进行连续、系统、全面的核算与监督的一种经济管理活动。它的基本职能包括核算（反映经济活动情况）和监督（审查合法性、合理性），并参与经营决策。中文里“会计”一词至少可指会计工作、会计人员、会计部门或会计学科。从历史看，“会计”一词最早见于《周礼》，中国周代已设“司会”掌管财物赋税。
+  responsibilities_en:
+    - Recording, classifying, and summarizing financial transactions.
+    - Interpreting results to provide useful information for managers, investors, creditors, and regulators.
+    - Helping organizations measure performance and comply with legal and tax requirements.
+    - Supporting informed decision-making.
+  responsibilities_zh:
+    - 核算与监督。
+  required_skills_en:
+    - "Professional/technical skills: accounting standards, financial statement preparation, tax filing, cost accounting and budgeting, basic financial analysis."
+    - "Tool skills: Excel (functions, pivot tables), accounting software (UFIDA, Kingdee, SAP), ERP finance modules."
+    - "Soft skills: attention to detail and accuracy, logical and organized thinking, communication, continuous learning, time management, ability to work under pressure."
+    - "Professional conduct: integrity and confidentiality, compliance awareness, sense of responsibility."
+  required_skills_zh:
+    - "专业硬技能：熟悉会计准则与制度、财务报表编制、税务申报、成本核算与预算管理、基础财务分析。"
+    - "工具技能：熟练使用Excel（函数、数据透视表）、财务软件（用友、金蝶、SAP等）及ERP财务模块。"
+    - "软技能：细致准确、逻辑条理、沟通能力、持续学习能力、时间管理与抗压能力。"
+    - "职业素养：诚信保密、合规意识、责任心。"
+  experience_years: "2"
+  education_en: "Bachelor's degree"
+  education_zh: "学士学历"
+  source: "自己写的"
+
+- code: ADVOCATE
+  title_en: Lawyer
+  title_zh: 律师
+  summary_en: "Provide legal advice, draft legal documents, and represent clients in litigation and arbitration."
+  summary_zh: "为客户提供法律咨询、起草法律文书，并代理诉讼与仲裁。"
+  responsibilities_en:
+    - Advise clients on legal rights, obligations and risk.
+    - Draft and review contracts, pleadings and other legal documents.
+    - Represent clients in court hearings, arbitration and negotiations.
+    - Conduct legal research and keep case files and deadlines in order.
+  responsibilities_zh:
+    - 就客户的法律权利、义务与风险提供咨询。
+    - 起草并审核合同、诉状及其他法律文书。
+    - 在庭审、仲裁与谈判中代理客户。
+    - 开展法律检索，维护案卷与期限管理。
+  required_skills_en:
+    - "Legal knowledge: civil law, criminal law, procedural law and relevant regulations"
+    - "Research tools: legal databases (Westlaw, LexisNexis), legal drafting"
+    - "Soft skills: oral and written communication, negotiation, logical analysis, resilience"
+    - "Professional conduct: confidentiality, professional ethics, conflict-of-interest awareness"
+  required_skills_zh:
+    - "法律知识：民法、刑法、诉讼法及相关法规"
+    - "研究工具：法律数据库（Westlaw、LexisNexis）、法律文书起草"
+    - "软技能：口头与书面表达、谈判、逻辑分析、抗压能力"
+    - "职业素养：保密、职业道德、利益冲突识别"
+  experience_years: "2-5"
+  education_en: "Bachelor of Laws (LL.B.) and bar qualification"
+  education_zh: "法学本科及以上，并取得律师执业资格"
+  source: "AI 生成，待人工核实"
+
+- code: AGRICULTURE
+  title_en: Agricultural Specialist
+  title_zh: 农业技术员
+  summary_en: "Support crop production and field management, and help improve yield, quality and sustainability."
+  summary_zh: "参与农作物种植与田间管理，协助提升产量、品质与可持续性。"
+  responsibilities_en:
+    - Plan and supervise planting, irrigation, fertilization and harvesting.
+    - Monitor crop health, pests and soil conditions and take corrective action.
+    - Operate and maintain agricultural machinery and irrigation equipment.
+    - Record field data and support yield and quality improvement.
+  responsibilities_zh:
+    - 制定并监督播种、灌溉、施肥与采收计划。
+    - 监测作物长势、病虫害与土壤状况并采取应对措施。
+    - 操作与维护农业机械及灌溉设备。
+    - 记录田间数据，支持产量与品质改进。
+  required_skills_en:
+    - "Agronomy knowledge: crop cultivation, soil science, pest and disease control"
+    - "Tools: agricultural machinery, irrigation systems, field data recording"
+    - "Soft skills: observation, physical stamina, teamwork, problem solving"
+    - "Professional conduct: safety awareness, environmental compliance, responsibility"
+  required_skills_zh:
+    - "农艺知识：作物栽培、土壤学、病虫害防治"
+    - "工具：农业机械、灌溉系统、田间数据记录"
+    - "软技能：观察力、体力、团队协作、问题解决"
+    - "职业素养：安全意识、环保合规、责任心"
+  experience_years: "1-3"
+  education_en: "Associate or bachelor's degree in agronomy, horticulture or a related field"
+  education_zh: "农学、园艺或相关专业专科及以上"
+  source: "AI 生成，待人工核实"
+
+- code: APPAREL
+  title_en: Apparel Designer
+  title_zh: 服装设计师
+  summary_en: "Design apparel products and follow samples, production and quality control through to delivery."
+  summary_zh: "负责服装产品设计，并跟进打样、生产与质量把控直至交付。"
+  responsibilities_en:
+    - Develop garment designs and translate them into technical specifications.
+    - Coordinate sampling, fitting and pattern adjustments with factories.
+    - Follow up production schedules, materials and quality inspection.
+    - Track costs and ensure delivery deadlines are met.
+  responsibilities_zh:
+    - 完成服装设计并转化为技术规格。
+    - 与工厂协调打样、试身与版型调整。
+    - 跟进生产排期、物料与质量检验。
+    - 跟踪成本并确保交付节点。
+  required_skills_en:
+    - "Apparel knowledge: pattern making, fabrics, garment construction, sizing standards"
+    - "Tools: CAD (Adobe Illustrator, CLO 3D), Excel, ERP"
+    - "Soft skills: aesthetic judgment, coordination, attention to detail, time management"
+    - "Professional conduct: quality focus, cost awareness, supplier management"
+  required_skills_zh:
+    - "服装知识：版型、面料、工艺、尺码标准"
+    - "工具：CAD（Adobe Illustrator、CLO 3D）、Excel、ERP"
+    - "软技能：审美、沟通协调、细节把控、时间管理"
+    - "职业素养：质量意识、成本意识、供应商管理"
+  experience_years: "2-5"
+  education_en: "Bachelor's degree in fashion design, textile engineering or a related field"
+  education_zh: "服装设计、纺织工程或相关专业本科"
+  source: "AI 生成，待人工核实"
+
+- code: ARTS
+  title_en: Artist
+  title_zh: 艺术工作者
+  summary_en: "Create original artworks and contribute to exhibition planning and production."
+  summary_zh: "从事艺术创作，并参与展览策划与执行。"
+  responsibilities_en:
+    - Create original artworks in the assigned medium or discipline.
+    - Develop concepts and proposals for exhibitions and projects.
+    - Coordinate with curators, galleries and production teams.
+    - Document works and maintain portfolios and archives.
+  responsibilities_zh:
+    - 在指定媒介或领域内创作原创作品。
+    - 为展览与项目构思并撰写方案。
+    - 与策展人、画廊及制作团队协作。
+    - 记录作品并维护作品集与档案。
+  required_skills_en:
+    - "Art knowledge: composition, color, art history and movements"
+    - "Tools: painting and design software, photography, digital archiving"
+    - "Soft skills: creativity, aesthetic judgment, presentation"
+    - "Professional conduct: copyright awareness, project collaboration, sustained practice"
+  required_skills_zh:
+    - "艺术知识：构图、色彩、艺术史与流派"
+    - "工具：绘画与设计软件、摄影、作品数字化归档"
+    - "软技能：创造力、审美判断、表达与展示"
+    - "职业素养：版权意识、项目协作、持续创作"
+  experience_years: "1-3"
+  education_en: "Bachelor's degree in fine arts, art design or a related field"
+  education_zh: "美术、艺术设计或相关专业本科"
+  source: "AI 生成，待人工核实"
+
+- code: AUTOMOBILE
+  title_en: Automotive Technician
+  title_zh: 汽车技师
+  summary_en: "Diagnose, repair and maintain vehicles, and support sales or after-sales service."
+  summary_zh: "负责汽车诊断、维修与保养，并支持销售或售后服务。"
+  responsibilities_en:
+    - Inspect, diagnose and repair mechanical and electrical faults.
+    - Perform routine maintenance and quality checks.
+    - Explain service options and costs to customers.
+    - Maintain service records and ensure workshop safety.
+  responsibilities_zh:
+    - 检查、诊断并维修机械与电气故障。
+    - 执行常规保养与质量检查。
+    - 向客户说明服务项目与费用。
+    - 维护维修记录并确保车间安全。
+  required_skills_en:
+    - "Automotive knowledge: engine, chassis, electrical systems, fault diagnosis"
+    - "Tools: diagnostic scanners, repair tools, service management systems"
+    - "Soft skills: hands-on ability, customer communication, troubleshooting"
+    - "Professional conduct: safety rules, honest service, environmental disposal"
+  required_skills_zh:
+    - "汽车知识：发动机、底盘、电气系统、故障诊断"
+    - "工具：诊断仪、维修工具、维修管理系统"
+    - "软技能：动手能力、客户沟通、问题排查"
+    - "职业素养：安全规范、诚信服务、环保处置"
+  experience_years: "1-5"
+  education_en: "Associate or bachelor's degree in automotive engineering or a related field"
+  education_zh: "汽车工程、汽修或相关专业专科及以上"
+  source: "AI 生成，待人工核实"
+
+- code: AVIATION
+  title_en: Aviation Specialist
+  title_zh: 航空专员
+  summary_en: "Support flight operations, aircraft maintenance or ground service while strictly following aviation safety rules."
+  summary_zh: "参与航班运行保障、机务维修或地面服务，严格遵守航空安全规范。"
+  responsibilities_en:
+    - Carry out pre-flight checks, maintenance or ground handling tasks.
+    - Follow aviation safety and regulatory procedures strictly.
+    - Coordinate with flight crew, operations and ground teams.
+    - Record and report incidents and maintenance findings.
+  responsibilities_zh:
+    - 执行航前检查、维修或地面保障任务。
+    - 严格遵守航空安全与监管程序。
+    - 与机组、运行及地勤团队协作。
+    - 记录并上报事件与维修发现。
+  required_skills_en:
+    - "Aviation knowledge: airworthiness regulations, aircraft systems, operating procedures"
+    - "Tools: maintenance manuals, inspection equipment, operations systems"
+    - "Soft skills: rigor, emergency judgment, teamwork, English"
+    - "Professional conduct: safety first, compliance, responsibility"
+  required_skills_zh:
+    - "航空知识：适航法规、飞机系统、运行程序"
+    - "工具：维修手册、检测设备、运行管理系统"
+    - "软技能：严谨细致、应急判断、团队协作、英语"
+    - "职业素养：安全第一、合规、责任意识"
+  experience_years: "2-5"
+  education_en: "Bachelor's degree in aviation engineering, flight technology or a related field"
+  education_zh: "航空工程、飞行技术或相关专业本科"
+  source: "AI 生成，待人工核实"
+
+- code: BANKING
+  title_en: Banking Officer
+  title_zh: 银行专员
+  summary_en: "Handle account services, credit business and branch operations in compliance with banking regulations."
+  summary_zh: "负责账户服务、信贷业务或网点运营，并确保符合银行监管要求。"
+  responsibilities_en:
+    - Open and manage customer accounts and handle daily transactions.
+    - Assess loan applications and prepare credit documentation.
+    - Identify customer needs and recommend suitable banking products.
+    - Ensure compliance with banking regulations and internal controls.
+  responsibilities_zh:
+    - 开立与管理客户账户，处理日常交易。
+    - 评估贷款申请并准备信贷资料。
+    - 识别客户需求并推荐合适的银行产品。
+    - 确保符合银行监管与内部控制要求。
+  required_skills_en:
+    - "Banking knowledge: deposit and loan products, credit risk, anti-money laundering"
+    - "Tools: core banking systems, Excel, CRM"
+    - "Soft skills: customer communication, numerical sensitivity, risk awareness"
+    - "Professional conduct: compliance, confidentiality, integrity"
+  required_skills_zh:
+    - "金融知识：存贷款业务、信贷风控、反洗钱"
+    - "工具：核心银行系统、Excel、CRM"
+    - "软技能：客户沟通、数字敏感、风险意识"
+    - "职业素养：合规、保密、诚信"
+  experience_years: "1-3"
+  education_en: "Bachelor's degree in finance, economics, accounting or a related field"
+  education_zh: "金融、经济、会计或相关专业本科"
+  source: "AI 生成，待人工核实"
+
+- code: BPO
+  title_en: BPO Associate
+  title_zh: 业务流程外包专员
+  summary_en: "Deliver outsourced back-office and customer support processes according to client procedures and SLAs."
+  summary_zh: "按客户流程与服务水平协议，承接后台业务与客户支持工作。"
+  responsibilities_en:
+    - Process transactions, data entry and back-office tasks per client procedures.
+    - Handle customer inquiries through phone, email or chat.
+    - Meet service level targets for quality, volume and turnaround time.
+    - Escalate exceptions and document process issues.
+  responsibilities_zh:
+    - 按客户流程处理交易、数据录入与后台任务。
+    - 通过电话、邮件或在线聊天处理客户咨询。
+    - 达成质量、数量与时效方面的服务水平目标。
+    - 上报异常并记录流程问题。
+  required_skills_en:
+    - "Process knowledge: client workflows, SLAs, quality standards"
+    - "Tools: CRM and ticketing systems, Excel, office software"
+    - "Soft skills: communication, patience, multitasking, English"
+    - "Professional conduct: confidentiality, compliance, on-time delivery"
+  required_skills_zh:
+    - "业务知识：客户流程、服务水平协议、质量规范"
+    - "工具：CRM 与工单系统、Excel、办公软件"
+    - "软技能：沟通、耐心、多任务处理、英语"
+    - "职业素养：保密、合规、按时交付"
+  experience_years: "0-2"
+  education_en: "Associate degree or above, any major"
+  education_zh: "大专及以上，专业不限"
+  source: "AI 生成，待人工核实"
+
+- code: BUSINESS-DEVELOPMENT
+  title_en: Business Development Manager
+  title_zh: 商务拓展经理
+  summary_en: "Open new customers and channels, and drive business growth through partnerships and deals."
+  summary_zh: "开拓新客户与合作渠道，通过合作与交易推动业务增长。"
+  responsibilities_en:
+    - Identify and qualify new business opportunities and partners.
+    - Build and maintain relationships with clients and channel partners.
+    - Prepare proposals, pricing and negotiation materials.
+    - Track pipeline, contracts and revenue targets.
+  responsibilities_zh:
+    - 识别并筛选新的业务机会与合作伙伴。
+    - 建立并维护客户与渠道伙伴关系。
+    - 准备方案、报价与谈判材料。
+    - 跟踪销售管道、合同与营收目标。
+  required_skills_en:
+    - "Business knowledge: market analysis, channel management, contracts and pricing"
+    - "Tools: CRM, Excel, PowerPoint"
+    - "Soft skills: negotiation, communication, target orientation, resilience"
+    - "Professional conduct: integrity, customer focus, ownership of results"
+  required_skills_zh:
+    - "商务知识：市场分析、渠道管理、合同与报价"
+    - "工具：CRM、Excel、PPT"
+    - "软技能：谈判、沟通、目标导向、抗压"
+    - "职业素养：诚信、客户导向、结果负责"
+  experience_years: "2-5"
+  education_en: "Bachelor's degree in marketing, business administration or a related field"
+  education_zh: "市场营销、工商管理或相关专业本科"
+  source: "AI 生成，待人工核实"
+
+- code: CHEF
+  title_en: Chef
+  title_zh: 厨师
+  summary_en: "Prepare dishes to menu standards while controlling cost, hygiene and food safety."
+  summary_zh: "按菜单标准制作菜品，并控制成本、卫生与食品安全。"
+  responsibilities_en:
+    - Prepare and cook dishes according to menu and standards.
+    - Control portion size, presentation and food cost.
+    - Maintain kitchen hygiene and comply with food safety rules.
+    - Coordinate with the kitchen team during service peaks.
+  responsibilities_zh:
+    - 按菜单与出品标准备料与烹饪。
+    - 控制份量、摆盘与食材成本。
+    - 保持厨房卫生并遵守食品安全规定。
+    - 在出餐高峰与厨房团队协作。
+  required_skills_en:
+    - "Culinary knowledge: knife skills, heat control, recipes, food safety"
+    - "Tools: kitchen equipment, inventory management"
+    - "Soft skills: physical stamina, teamwork, time management, resilience"
+    - "Professional conduct: hygiene standards, responsibility, waste reduction"
+  required_skills_zh:
+    - "烹饪知识：刀工、火候、菜品配方、食品安全"
+    - "工具：厨房设备、库存管理"
+    - "软技能：体力、团队协作、时间管理、抗压"
+    - "职业素养：卫生规范、责任心、节约意识"
+  experience_years: "1-5"
+  education_en: "Vocational certificate or associate degree in culinary arts or catering management"
+  education_zh: "烹饪、餐饮管理或相关专业中专及以上"
+  source: "AI 生成，待人工核实"
+
+- code: CONSTRUCTION
+  title_en: Construction Engineer
+  title_zh: 建筑工程师
+  summary_en: "Supervise construction site work and control progress, quality and safety."
+  summary_zh: "参与施工现场管理，控制工程进度、质量与安全。"
+  responsibilities_en:
+    - Supervise construction activities and daily site operations.
+    - Check work quality against drawings and specifications.
+    - Coordinate subcontractors, materials and equipment.
+    - Enforce safety rules and report progress and issues.
+  responsibilities_zh:
+    - 监督施工活动与现场日常作业。
+    - 按图纸与规范检查施工质量。
+    - 协调分包商、材料与设备。
+    - 落实安全规定并上报进度与问题。
+  required_skills_en:
+    - "Engineering knowledge: construction methods, drawing interpretation, quality acceptance standards"
+    - "Tools: CAD, surveying instruments, project management software"
+    - "Soft skills: site coordination, problem solving, resilience"
+    - "Professional conduct: safety first, quality responsibility, compliance"
+  required_skills_zh:
+    - "工程知识：施工工艺、图纸识读、质量验收规范"
+    - "工具：CAD、测量仪器、项目管理软件"
+    - "软技能：现场协调、问题解决、抗压"
+    - "职业素养：安全第一、质量责任、合规"
+  experience_years: "2-5"
+  education_en: "Associate or bachelor's degree in civil engineering or construction engineering"
+  education_zh: "土木工程、建筑工程或相关专业专科及以上"
+  source: "AI 生成，待人工核实"
+
+- code: CONSULTANT
+  title_en: Consultant
+  title_zh: 咨询顾问
+  summary_en: "Diagnose client business problems, design solutions and support implementation."
+  summary_zh: "为客户诊断业务问题、设计解决方案并支持落地。"
+  responsibilities_en:
+    - Conduct interviews, research and data analysis to diagnose client problems.
+    - Develop recommendations and implementation roadmaps.
+    - Prepare reports and present findings to client stakeholders.
+    - Support change management and track project outcomes.
+  responsibilities_zh:
+    - 通过访谈、调研与数据分析诊断客户问题。
+    - 提出建议并设计实施路线图。
+    - 撰写报告并向客户相关方汇报。
+    - 支持变革管理并跟踪项目成效。
+  required_skills_en:
+    - "Consulting knowledge: industry research, business models, process improvement"
+    - "Tools: Excel, PowerPoint, data analysis"
+    - "Soft skills: structured thinking, communication, project management"
+    - "Professional conduct: confidentiality, objectivity, client focus"
+  required_skills_zh:
+    - "咨询知识：行业研究、商业模式、流程优化"
+    - "工具：Excel、PPT、数据分析"
+    - "软技能：结构化思维、沟通表达、项目管理"
+    - "职业素养：保密、客观、客户导向"
+  experience_years: "2-5"
+  education_en: "Bachelor's degree or above in business administration, economics, engineering or a related field"
+  education_zh: "工商管理、经济、工程或相关专业本科及以上"
+  source: "AI 生成，待人工核实"
+
+- code: DESIGNER
+  title_en: Designer
+  title_zh: 设计师
+  summary_en: "Produce visual, product or interaction designs that meet user and business needs."
+  summary_zh: "负责视觉、产品或交互设计，输出满足用户与业务需求的方案。"
+  responsibilities_en:
+    - Translate requirements into design concepts and prototypes.
+    - Produce visual assets, layouts or product interfaces.
+    - Iterate based on feedback and usability testing.
+    - Maintain design systems and documentation.
+  responsibilities_zh:
+    - 将需求转化为设计概念与原型。
+    - 产出视觉素材、版式或产品界面。
+    - 根据反馈与可用性测试迭代设计。
+    - 维护设计系统与文档。
+  required_skills_en:
+    - "Design knowledge: composition, color, typography, user experience principles"
+    - "Tools: Figma, Adobe Creative Suite, prototyping tools"
+    - "Soft skills: aesthetic judgment, communication, feedback handling, time management"
+    - "Professional conduct: copyright awareness, attention to detail, collaboration"
+  required_skills_zh:
+    - "设计知识：构图、色彩、排版、用户体验原则"
+    - "工具：Figma、Adobe Creative Suite、原型工具"
+    - "软技能：审美、沟通、接受反馈、时间管理"
+    - "职业素养：版权意识、细节把控、协作"
+  experience_years: "1-3"
+  education_en: "Bachelor's degree in design, visual communication or a related field"
+  education_zh: "设计、视觉传达或相关专业本科"
+  source: "AI 生成，待人工核实"
+
+- code: DIGITAL-MEDIA
+  title_en: Digital Media Specialist
+  title_zh: 数字媒体专员
+  summary_en: "Plan and produce digital content and operate it across social, video and web platforms."
+  summary_zh: "负责数字内容策划与制作，并在社交、视频与网页平台运营。"
+  responsibilities_en:
+    - Plan and produce content for social media, video or web.
+    - Manage publishing schedules and platform accounts.
+    - Track engagement metrics and optimize content performance.
+    - Coordinate with design, marketing and external creators.
+  responsibilities_zh:
+    - 为社交媒体、视频或网页策划并制作内容。
+    - 管理发布排期与平台账号。
+    - 跟踪互动数据并优化内容表现。
+    - 与设计、市场及外部创作者协作。
+  required_skills_en:
+    - "Media knowledge: content planning, platform rules, analytics"
+    - "Tools: video editing, design tools, social media backends"
+    - "Soft skills: creativity, writing, trend sensitivity, collaboration"
+    - "Professional conduct: copyright compliance, brand consistency, timeliness"
+  required_skills_zh:
+    - "媒体知识：内容策划、平台规则、数据分析"
+    - "工具：剪辑软件、设计工具、社交媒体后台"
+    - "软技能：创意、文字表达、趋势敏感、协作"
+    - "职业素养：版权合规、品牌一致、时效"
+  experience_years: "1-3"
+  education_en: "Bachelor's degree in journalism, digital media or a related field"
+  education_zh: "新闻传播、数字媒体或相关专业本科"
+  source: "AI 生成，待人工核实"
+
+- code: ENGINEERING
+  title_en: Engineer
+  title_zh: 工程师
+  summary_en: "Design, develop, test and improve products, equipment or manufacturing processes."
+  summary_zh: "负责产品、设备或工艺的设计、开发、测试与改进。"
+  responsibilities_en:
+    - Design components and systems based on technical requirements.
+    - Build prototypes and run tests to validate performance.
+    - Analyze failures and improve design or manufacturing processes.
+    - Prepare technical documentation and support production.
+  responsibilities_zh:
+    - 依据技术要求设计零部件与系统。
+    - 制作原型并测试验证性能。
+    - 分析失效原因并改进设计或制造工艺。
+    - 编写技术文档并支持生产。
+  required_skills_en:
+    - "Engineering knowledge: mechanics, materials, electrical and mechanical principles"
+    - "Tools: CAD/CAE, simulation software, measurement equipment"
+    - "Soft skills: analysis, problem solving, teamwork"
+    - "Professional conduct: safety standards, quality focus, continuous improvement"
+  required_skills_zh:
+    - "工程知识：力学、材料、电气与机械原理"
+    - "工具：CAD/CAE、仿真软件、测量设备"
+    - "软技能：分析能力、问题解决、团队协作"
+    - "职业素养：安全规范、质量意识、持续改进"
+  experience_years: "2-5"
+  education_en: "Bachelor's degree or above in mechanical, electrical, materials or a related engineering field"
+  education_zh: "机械、电气、材料或相关工程专业本科及以上"
+  source: "AI 生成，待人工核实"
+
+- code: FINANCE
+  title_en: Financial Analyst
+  title_zh: 金融分析师
+  summary_en: "Analyze financial performance, build models and support investment or credit decisions."
+  summary_zh: "分析财务表现、搭建模型，并支持投资或信贷决策。"
+  responsibilities_en:
+    - Build financial models and analyze performance and risk.
+    - Prepare investment or credit reports and recommendations.
+    - Monitor markets, portfolios and regulatory changes.
+    - Support budgeting, forecasting and reporting.
+  responsibilities_zh:
+    - 搭建财务模型并分析业绩与风险。
+    - 撰写投资或信贷报告并提出建议。
+    - 跟踪市场、投资组合与监管变化。
+    - 支持预算、预测与报告工作。
+  required_skills_en:
+    - "Finance knowledge: financial modeling, valuation, risk management, portfolio analysis"
+    - "Tools: Excel, Bloomberg/Wind, Python (plus)"
+    - "Soft skills: numerical sensitivity, logical analysis, communication"
+    - "Professional conduct: compliance, confidentiality, objectivity"
+  required_skills_zh:
+    - "金融知识：财务建模、估值、风险管理、投资组合分析"
+    - "工具：Excel、Bloomberg/Wind、Python（加分）"
+    - "软技能：数字敏感、逻辑分析、沟通"
+    - "职业素养：合规、保密、客观"
+  experience_years: "2-5"
+  education_en: "Bachelor's degree or above in finance, economics, mathematics or a related field"
+  education_zh: "金融、经济、数学或相关专业本科及以上"
+  source: "AI 生成，待人工核实"
+
+- code: FITNESS
+  title_en: Fitness Trainer
+  title_zh: 健身教练
+  summary_en: "Assess members' fitness levels, design training plans and lead safe training sessions."
+  summary_zh: "评估会员体能、制定训练计划并带领安全训练。"
+  responsibilities_en:
+    - Assess members' fitness levels and set training plans.
+    - Lead individual and group training sessions.
+    - Teach correct exercise technique and prevent injury.
+    - Track progress and adjust plans accordingly.
+  responsibilities_zh:
+    - 评估会员体能水平并制定训练计划。
+    - 带领一对一与团体训练课程。
+    - 教授正确的动作技术并预防运动损伤。
+    - 跟踪训练进展并相应调整计划。
+  required_skills_en:
+    - "Fitness knowledge: exercise anatomy, training principles, basic nutrition"
+    - "Tools: body composition testing, class management systems"
+    - "Soft skills: motivation, demonstration, patience"
+    - "Professional conduct: safety first, professional boundaries, service mindset"
+  required_skills_zh:
+    - "健身知识：运动解剖、训练原理、营养基础"
+    - "工具：体测设备、课程管理系统"
+    - "软技能：激励沟通、示范能力、耐心"
+    - "职业素养：安全第一、专业边界、服务意识"
+  experience_years: "1-3"
+  education_en: "Associate degree or above in sports science or a related field; certification preferred"
+  education_zh: "体育、运动科学或相关专业专科及以上；持证优先"
+  source: "AI 生成，待人工核实"
+
+- code: HEALTHCARE
+  title_en: Healthcare Professional
+  title_zh: 医疗健康从业者
+  summary_en: "Provide clinical care, health assessment or medical support under professional standards."
+  summary_zh: "按专业规范提供临床护理、健康评估或医疗辅助服务。"
+  responsibilities_en:
+    - Assess patients' conditions and record medical information.
+    - Carry out nursing or clinical procedures per protocol.
+    - Communicate with doctors, patients and families.
+    - Maintain hygiene, safety and confidentiality standards.
+  responsibilities_zh:
+    - 评估患者状况并记录医疗信息。
+    - 按规程执行护理或临床操作。
+    - 与医生、患者及家属沟通。
+    - 维护卫生、安全与保密标准。
+  required_skills_en:
+    - "Medical knowledge: basic medicine, nursing procedures, infection control"
+    - "Tools: medical equipment, electronic medical records"
+    - "Soft skills: empathy, communication, emergency response, physical stamina"
+    - "Professional conduct: patient safety, privacy protection, professional ethics"
+  required_skills_zh:
+    - "医学知识：基础医学、护理操作、感染控制"
+    - "工具：医疗设备、电子病历系统"
+    - "软技能：同理心、沟通、应急处理、体力"
+    - "职业素养：医疗安全、隐私保护、职业道德"
+  experience_years: "1-5"
+  education_en: "Associate degree or above in nursing or clinical medicine; practicing license required"
+  education_zh: "护理、临床医学或相关专业专科及以上；需执业资格"
+  source: "AI 生成，待人工核实"
+
+- code: HR
+  title_en: HR Specialist
+  title_zh: 人力资源专员
+  summary_en: "Handle recruitment, employee relations, compensation and HR operations."
+  summary_zh: "负责招聘、员工关系、薪酬绩效与人事运营。"
+  responsibilities_en:
+    - Manage recruitment, screening and onboarding.
+    - Handle employee relations, attendance and HR records.
+    - Support performance reviews, training and compensation.
+    - Ensure compliance with labor laws and company policies.
+  responsibilities_zh:
+    - 负责招聘、筛选与入职办理。
+    - 处理员工关系、考勤与人事档案。
+    - 支持绩效评估、培训与薪酬工作。
+    - 确保符合劳动法与公司制度。
+  required_skills_en:
+    - "HR knowledge: recruitment, labor law, compensation and performance, employee relations"
+    - "Tools: HRIS, Excel, recruitment platforms"
+    - "Soft skills: communication, listening, confidentiality, coordination"
+    - "Professional conduct: fairness, confidentiality, compliance"
+  required_skills_zh:
+    - "人力资源知识：招聘、劳动法、薪酬绩效、员工关系"
+    - "工具：HRIS、Excel、招聘平台"
+    - "软技能：沟通、倾听、保密、协调"
+    - "职业素养：公平、保密、合规"
+  experience_years: "1-3"
+  education_en: "Bachelor's degree in human resources, psychology, management or a related field"
+  education_zh: "人力资源、心理学、管理或相关专业本科"
+  source: "AI 生成，待人工核实"
+
+- code: INFORMATION-TECHNOLOGY
+  title_en: IT Specialist
+  title_zh: 信息技术专员
+  summary_en: "Operate, maintain and support IT systems, networks and infrastructure."
+  summary_zh: "负责 IT 系统、网络与基础设施的运维与技术支持。"
+  responsibilities_en:
+    - Install, configure and maintain servers, networks and endpoints.
+    - Monitor system performance and resolve incidents.
+    - Implement security policies, backups and disaster recovery.
+    - Support internal users and collaborate on technical projects.
+  responsibilities_zh:
+    - 安装、配置并维护服务器、网络与终端设备。
+    - 监控系统性能并处理故障。
+    - 落实安全策略、备份与灾难恢复。
+    - 支持内部用户并参与技术项目。
+  required_skills_en:
+    - "IT knowledge: operating systems, network protocols, databases, security"
+    - "Tools: Linux/Windows Server, cloud platforms, scripting (Python/Bash)"
+    - "Soft skills: troubleshooting, documentation, communication"
+    - "Professional conduct: security compliance, change management, responsibility"
+  required_skills_zh:
+    - "IT 知识：操作系统、网络协议、数据库、安全"
+    - "工具：Linux/Windows Server、云平台、脚本（Python/Bash）"
+    - "软技能：排障、文档、沟通"
+    - "职业素养：安全合规、变更管理、责任心"
+  experience_years: "2-5"
+  education_en: "Bachelor's degree in computer science, information systems or a related field"
+  education_zh: "计算机、信息系统或相关专业本科"
+  source: "AI 生成，待人工核实"
+
+- code: PUBLIC-RELATIONS
+  title_en: PR Specialist
+  title_zh: 公共关系专员
+  summary_en: "Manage brand communication, media relations and public opinion."
+  summary_zh: "负责品牌传播、媒体关系与舆情管理。"
+  responsibilities_en:
+    - Develop PR plans and communication materials.
+    - Build and maintain relationships with media and partners.
+    - Monitor public opinion and respond to issues.
+    - Organize events, interviews and press releases.
+  responsibilities_zh:
+    - 制定公关计划与传播材料。
+    - 建立并维护媒体与合作伙伴关系。
+    - 监测舆情并回应相关问题。
+    - 组织活动、采访与新闻发布。
+  required_skills_en:
+    - "PR knowledge: communication strategy, media operations, crisis communication"
+    - "Tools: opinion monitoring, social media, PowerPoint"
+    - "Soft skills: writing, interpersonal communication, adaptability"
+    - "Professional conduct: brand consistency, confidentiality, compliance"
+  required_skills_zh:
+    - "公关知识：传播策略、媒体运作、危机公关"
+    - "工具：舆情监测工具、社交媒体、PPT"
+    - "软技能：文字表达、人际沟通、应变能力"
+    - "职业素养：品牌一致、保密、合规"
+  experience_years: "2-5"
+  education_en: "Bachelor's degree in journalism, public relations, marketing or a related field"
+  education_zh: "新闻传播、公共关系、市场营销或相关专业本科"
+  source: "AI 生成，待人工核实"
+
+- code: SALES
+  title_en: Sales Representative
+  title_zh: 销售代表
+  summary_en: "Develop customers, sell products and achieve sales targets."
+  summary_zh: "负责客户开发、产品销售与业绩目标达成。"
+  responsibilities_en:
+    - Prospect and develop new customers.
+    - Present products and negotiate terms to close deals.
+    - Maintain customer relationships and follow up on orders.
+    - Track sales data and report against targets.
+  responsibilities_zh:
+    - 开拓并开发新客户。
+    - 介绍产品、洽谈条款并促成成交。
+    - 维护客户关系并跟进订单。
+    - 跟踪销售数据并对标目标汇报。
+  required_skills_en:
+    - "Sales knowledge: customer development, product knowledge, negotiation"
+    - "Tools: CRM, Excel"
+    - "Soft skills: communication, persuasion, resilience, target orientation"
+    - "Professional conduct: integrity, customer focus, ownership of results"
+  required_skills_zh:
+    - "销售知识：客户开发、产品知识、谈判"
+    - "工具：CRM、Excel"
+    - "软技能：沟通、说服、抗压、目标导向"
+    - "职业素养：诚信、客户导向、结果负责"
+  experience_years: "1-3"
+  education_en: "Associate degree or above, any major"
+  education_zh: "大专及以上，专业不限"
+  source: "AI 生成，待人工核实"
+
+- code: TEACHER
+  title_en: Teacher
+  title_zh: 教师
+  summary_en: "Deliver lessons, manage students and contribute to teaching research."
+  summary_zh: "负责课程教学、学生管理与教学研究。"
+  responsibilities_en:
+    - Plan and deliver lessons according to the curriculum.
+    - Assess student progress and provide feedback.
+    - Manage classroom order and communicate with parents.
+    - Participate in teaching research and school activities.
+  responsibilities_zh:
+    - 按课程大纲备课与授课。
+    - 评估学生学习进展并给予反馈。
+    - 管理课堂秩序并与家长沟通。
+    - 参与教学研究与学校活动。
+  required_skills_en:
+    - "Teaching knowledge: subject expertise, pedagogy, curriculum design"
+    - "Tools: courseware authoring, online teaching platforms"
+    - "Soft skills: presentation, patience, classroom management"
+    - "Professional conduct: teaching ethics, fairness, responsibility"
+  required_skills_zh:
+    - "教学知识：学科知识、教学法、课程设计"
+    - "工具：课件制作、在线教学平台"
+    - "软技能：表达、耐心、课堂管理"
+    - "职业素养：师德、公平、责任心"
+  experience_years: "1-3"
+  education_en: "Bachelor's degree in education or a related field; teaching certificate required"
+  education_zh: "师范类或相关专业本科；需教师资格证"
+  source: "AI 生成，待人工核实"

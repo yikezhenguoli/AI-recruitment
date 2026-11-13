@@ -23,3 +23,20 @@ Thumbs.db
 
 # Local dataset (unpacked archive, not for version control)
 ANN/
+
+# resume-match：只收录源码、JD 与数据划分；模型权重和生成数据不进仓库
+resume-match/*
+!resume-match/*.py
+!resume-match/*.md
+!resume-match/*.txt
+!resume-match/*.sh
+!resume-match/jd/
+!resume-match/scripts/
+!resume-match/splits/
+resume-match/data/
+resume-match/runs/
+resume-match/synth/
+resume-match/synth_hard/
+resume-match/gbdt/
+resume-match/gbdt_hard/
+resume-match/**/__pycache__/
