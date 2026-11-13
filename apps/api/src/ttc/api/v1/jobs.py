@@ -168,8 +168,8 @@ async def list_jobs(status: Literal["draft", "published", "locked", "archived"] 
     rows = (await session.execute(
         text("SELECT id, title, department, status, headcount, current_version_id, "
              "created_at, updated_at FROM job WHERE tenant_id = :tenant "
-             "AND (:status IS NULL OR status::text = :status) "
-             "AND (:department IS NULL OR department = :department) "
+             "AND (CAST(:status AS text) IS NULL OR status::text = CAST(:status AS text)) "
+             "AND (CAST(:department AS text) IS NULL OR department = CAST(:department AS text)) "
              "ORDER BY created_at DESC, id DESC LIMIT :limit"),
         {"tenant": user.tenant_id, "status": status, "department": department,
          "limit": limit},

@@ -20,3 +20,6 @@ __pycache__/
 # OS
 .DS_Store
 Thumbs.db
+
+# Local dataset (unpacked archive, not for version control)
+ANN/
