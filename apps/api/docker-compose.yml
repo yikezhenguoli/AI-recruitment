@@ -1,0 +1,65 @@
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ttc}
+      POSTGRES_USER: ${POSTGRES_USER:-ttc}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in apps/api/.env}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - ttc_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:?Set S3_ACCESS_KEY in apps/api/.env}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:?Set S3_SECRET_KEY in apps/api/.env}
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - ttc_minio:/data
+
+  api:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ttc}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ttc}
+      S3_ENDPOINT: http://minio:9000
+      DEMO_MODE: "false"
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_started
+
+  worker:
+    build: .
+    command: ["python", "-m", "ttc.tasks.runner"]
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ttc}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ttc}
+      S3_ENDPOINT: http://minio:9000
+      DEMO_MODE: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_started
+
+volumes:
+  ttc_pgdata:
+  ttc_minio:

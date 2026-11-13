@@ -1,0 +1,260 @@
+import json
+from datetime import UTC, datetime
+from typing import Literal
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, Request
+from fastapi.responses import Response
+from pydantic import BaseModel, Field
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from ttc.adapters.realtime import create_call, enqueue_hangup
+from ttc.api.deps import Principal, current_user, require_roles
+from ttc.api.v1.candidates import require_candidate
+from ttc.api.v1.consents import require_consent
+from ttc.api.v1.jobs import require_job
+from ttc.core.config import get_settings
+from ttc.core.db import get_session
+from ttc.core.errors import TTCError
+from ttc.core.security import uuid7
+
+router = APIRouter(tags=["voice"])
+hr = require_roles("hr", "admin")
+PLAN = {"sections_order": ["intro", "experience", "wrap"],
+        "questions": [
+            {"id": "q1", "section": "intro", "text": "请介绍你最相关的一段经历。"},
+            {"id": "q2", "section": "experience", "text": "这段经历中你亲自负责什么？"},
+            {"id": "q3", "section": "wrap", "text": "你目前的求职意愿和到岗时间？"},
+        ], "language_mode": {"primary": "zh", "mixed": False}}
+
+
+class SessionInput(BaseModel):
+    candidate_id: UUID
+    job_id: UUID
+    scenario: Literal["screen", "verify", "skill", "mock"] = "screen"
+    provider: Literal["openai_realtime"] = "openai_realtime"
+    max_seconds: int = Field(default=1200, ge=60, le=7200)
+
+
+class TurnInput(BaseModel):
+    index: int = Field(ge=0)
+    role: Literal["interviewer", "candidate", "system"]
+    text: str = Field(min_length=1, max_length=20000)
+    question_id: str | None = Field(default=None, max_length=80)
+
+
+class FinishInput(BaseModel):
+    reason: Literal["completed", "timeout", "candidate_end"] = "completed"
+    turns: list[TurnInput] = Field(default_factory=list, max_length=200)
+
+
+class MintInput(BaseModel):
+    session_id: UUID
+    connection_ephemeral: bool = True
+
+
+def session_instructions(plan):
+    return ("你是招聘初筛沟通助手。只依次询问指定问题，不做录用决定。"
+            "不要要求身份证、住址等敏感信息。对不确定信息标记待核实。问题：" +
+            "；".join(question["text"] for question in plan["questions"]))
+
+
+async def require_session(session: AsyncSession, user: Principal, session_id: UUID):
+    row = (await session.execute(text(
+        "SELECT v.* FROM voice_session v JOIN candidate c ON c.id = v.candidate_id "
+        "WHERE v.id = :id AND c.tenant_id = :tenant"
+    ), {"id": session_id, "tenant": user.tenant_id})).mappings().one_or_none()
+    if row is None:
+        raise TTCError("TTC-2001", "语音会话不存在", 404)
+    if user.role == "candidate":
+        await require_candidate(session, user, row["candidate_id"])
+    elif user.role not in ("hr", "admin"):
+        raise TTCError("TTC-1002", "无权访问语音会话", 403)
+    return dict(row)
+
+
+@router.post("/voice-sessions", status_code=201)
+async def create_session(body: SessionInput, user: Principal = Depends(hr),
+                         session: AsyncSession = Depends(get_session)):
+    candidate = await require_candidate(session, user, body.candidate_id)
+    job = await require_job(session, user, body.job_id)
+    if job["status"] == "archived" or (candidate["job_id"] and
+                                      candidate["job_id"] != body.job_id):
+        raise TTCError("TTC-2002", "岗位已归档或与候选人不匹配", 409)
+    consent_id = await require_consent(session, body.candidate_id, "voice_interview")
+    parsed = (await session.execute(text(
+        "SELECT 1 FROM resume_version v JOIN resume r ON r.id = v.resume_id "
+        "WHERE r.candidate_id = :candidate AND v.status = 'done' LIMIT 1"
+    ), {"candidate": body.candidate_id})).scalar_one_or_none()
+    if parsed is None:
+        raise TTCError("TTC-2002", "简历未解析完成", 409)
+    session_id = uuid7()
+    await session.execute(text(
+        "INSERT INTO voice_session (id, candidate_id, job_id, consent_id, scenario, "
+        "status, provider, model, plan_json, max_seconds) VALUES "
+        "(:id, :candidate, :job, :consent, CAST(:scenario AS voice_scenario), "
+        "'created', :provider, 'unconfigured', CAST(:plan AS jsonb), :max_seconds)"
+    ), {"id": session_id, "candidate": body.candidate_id, "job": body.job_id,
+        "consent": consent_id, "scenario": body.scenario, "provider": body.provider,
+        "plan": json.dumps(PLAN, ensure_ascii=False), "max_seconds": body.max_seconds})
+    await session.commit()
+    return {"id": session_id, "status": "created", "consent_checked": True, "plan": PLAN}
+
+
+@router.get("/voice-sessions/{session_id}")
+async def get_voice_session(session_id: UUID, user: Principal = Depends(current_user),
+                            session: AsyncSession = Depends(get_session)):
+    row = await require_session(session, user, session_id)
+    return {key: row[key] for key in ("id", "candidate_id", "job_id", "scenario", "status",
+                                     "provider", "max_seconds", "plan_json", "created_at",
+                                     "started_at", "ended_at", "end_reason")}
+
+
+@router.post("/realtime/mint")
+async def mint(body: MintInput, user: Principal = Depends(require_roles("candidate")),
+               session: AsyncSession = Depends(get_session)):
+    row = await require_session(session, user, body.session_id)
+    await require_consent(session, row["candidate_id"], "voice_interview")
+    if row["status"] != "created":
+        raise TTCError("TTC-2002", "会话不可建立实时连接", 409)
+    settings = get_settings()
+    if not settings.realtime_api_key or not settings.realtime_model:
+        raise TTCError("TTC-5004", "未配置可用的实时语音凭证服务", 503)
+    raise TTCError("TTC-2002", "直连凭证无法在撤回授权后切断通话，请使用会话 connect 接口", 410)
+
+
+@router.post("/voice-sessions/{session_id}/connect")
+async def connect_call(session_id: UUID, request: Request,
+                       user: Principal = Depends(require_roles("candidate")),
+                       session: AsyncSession = Depends(get_session)):
+    row = await require_session(session, user, session_id)
+    await require_consent(session, row["candidate_id"], "voice_interview")
+    if row["status"] != "created":
+        raise TTCError("TTC-2002", "会话不可再次建立连接", 409)
+    if request.headers.get("content-type", "").split(";", 1)[0] != "application/sdp":
+        raise TTCError("TTC-4000", "需要 application/sdp", 415)
+    offer = bytearray()
+    async for chunk in request.stream():
+        if len(offer) + len(chunk) > 65536:
+            raise TTCError("TTC-4000", "SDP 内容超过 64 KB", 413)
+        offer.extend(chunk)
+    if len(offer) < 30 or not offer.startswith(b"v=0"):
+        raise TTCError("TTC-4000", "SDP 内容无效", 422)
+    answer, call_id = await create_call(bytes(offer), session_instructions(row["plan_json"]))
+    result = await session.execute(text(
+        "UPDATE voice_session SET status = 'live', started_at = now(), "
+        "provider_call_id = :call, model = :model WHERE id = :id "
+        "AND status = 'created' AND EXISTS (SELECT 1 FROM consent "
+        "WHERE id = consent_id AND status = 'granted' AND revoked_at IS NULL "
+        "AND (expires_at IS NULL OR expires_at > now())) RETURNING id"
+    ), {"id": session_id, "call": call_id, "model": get_settings().realtime_model})
+    if result.scalar_one_or_none() is None:
+        await session.rollback()
+        from ttc.adapters.realtime import hangup_call
+        try:
+            await hangup_call(call_id)
+        except Exception:
+            await enqueue_hangup(session, user.tenant_id, session_id, call_id)
+            await session.commit()
+        raise TTCError("TTC-4001", "授权已撤回或会话已连接", 403)
+    await session.commit()
+    return Response(answer, media_type="application/sdp")
+
+
+async def save_turns(session: AsyncSession, session_id: UUID, turns: list[TurnInput]):
+    if len({turn.index for turn in turns}) != len(turns):
+        raise TTCError("TTC-4000", "轮次序号重复", 422)
+    for turn in turns:
+        await session.execute(text(
+            "INSERT INTO voice_turn (id, session_id, turn_index, role, text, question_id, "
+            "started_at) VALUES (:id, :session, :index, CAST(:role AS turn_role), "
+            ":content, :question, now()) ON CONFLICT (session_id, turn_index) "
+            "DO NOTHING"
+        ), {"id": uuid7(), "session": session_id, "index": turn.index,
+            "role": turn.role, "content": turn.text, "question": turn.question_id})
+
+
+@router.post("/voice-sessions/{session_id}/turns")
+async def add_turns(session_id: UUID, turns: list[TurnInput],
+                    user: Principal = Depends(require_roles("candidate")),
+                    session: AsyncSession = Depends(get_session)):
+    row = await require_session(session, user, session_id)
+    await require_consent(session, row["candidate_id"], "voice_interview")
+    if row["status"] in ("ended", "failed", "revoked"):
+        raise TTCError("TTC-2002", "会话已结束", 409)
+    await save_turns(session, session_id, turns)
+    await session.execute(text(
+        "UPDATE voice_session SET status = 'live', started_at = COALESCE(started_at, now()) "
+        "WHERE id = :id AND status IN ('created', 'connecting')"
+    ), {"id": session_id})
+    await session.commit()
+    return {"session_id": session_id, "submitted": len(turns)}
+
+
+async def create_transcript_report(session: AsyncSession, session_id: UUID) -> UUID:
+    existing = (await session.execute(text(
+        "SELECT id FROM call_report WHERE session_id = :id"
+    ), {"id": session_id})).scalar_one_or_none()
+    if existing is not None:
+        return existing
+    turns = (await session.execute(text(
+        "SELECT id, turn_index, role, text, question_id FROM voice_turn "
+        "WHERE session_id = :id ORDER BY turn_index"
+    ), {"id": session_id})).mappings().all()
+    quote_rows = [{"turn_id": str(turn["id"]), "question_id": turn["question_id"],
+                   "text": turn["text"][:1000]} for turn in turns if turn["role"] == "candidate"]
+    report_id = uuid7()
+    inserted = await session.execute(text(
+        "INSERT INTO call_report (id, session_id, status, summary, dimensions, quotes, "
+        "crosscheck, followups, model_version) VALUES "
+        "(:id, :session, 'ready', CAST(:summary AS jsonb), '[]'::jsonb, "
+        "CAST(:quotes AS jsonb), CAST(:crosscheck AS jsonb), '[]'::jsonb, 'transcript-v1') "
+        "ON CONFLICT (session_id) DO NOTHING RETURNING id"
+    ), {"id": report_id, "session": session_id,
+        "summary": json.dumps({"status": "unassessed", "turn_count": len(turns),
+                                "limitations": ["未接入自动转写与通话评估模型；"
+                                                "报告仅包含调用方提交的文字轮次"]},
+                               ensure_ascii=False),
+        "quotes": json.dumps(quote_rows, ensure_ascii=False),
+        "crosscheck": json.dumps({"consistent": [], "supplemented": [],
+                                  "inconsistent": [], "unverified": []})})
+    return inserted.scalar_one_or_none() or (await session.execute(text(
+        "SELECT id FROM call_report WHERE session_id = :id"
+    ), {"id": session_id})).scalar_one()
+
+
+@router.post("/voice-sessions/{session_id}/finish", status_code=202)
+async def finish_session(session_id: UUID, body: FinishInput,
+                         user: Principal = Depends(current_user),
+                         session: AsyncSession = Depends(get_session)):
+    row = await require_session(session, user, session_id)
+    await require_consent(session, row["candidate_id"], "voice_interview")
+    if row["status"] in ("revoked", "failed"):
+        raise TTCError("TTC-2002", "会话已失效", 409)
+    if row["status"] != "ended":
+        await save_turns(session, session_id, body.turns)
+        await session.execute(text(
+            "UPDATE voice_session SET status = 'ended', ended_at = now(), "
+            "end_reason = :reason WHERE id = :id"
+        ), {"id": session_id, "reason": body.reason})
+        if row["provider_call_id"]:
+            await enqueue_hangup(session, user.tenant_id, session_id, row["provider_call_id"])
+    report_id = await create_transcript_report(session, session_id)
+    await session.commit()
+    return {"report_id": report_id, "status": "ready", "completed_at": datetime.now(UTC)}
+
+
+@router.get("/voice-sessions/{session_id}/report")
+async def report(session_id: UUID, user: Principal = Depends(current_user),
+                 session: AsyncSession = Depends(get_session)):
+    row = await require_session(session, user, session_id)
+    result = (await session.execute(text(
+        "SELECT status, summary, dimensions, quotes, crosscheck, followups, model_version "
+        "FROM call_report WHERE session_id = :id"
+    ), {"id": session_id})).mappings().one_or_none()
+    if result is None:
+        raise TTCError("TTC-2001", "报告尚未生成", 404)
+    return {"session": {"id": session_id, "scenario": row["scenario"],
+                        "status": row["status"], "provider": row["provider"]},
+            **dict(result)}
