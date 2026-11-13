@@ -110,3 +110,72 @@ class LLMAdapter:
         return {"summary": summary.strip(), "strengths": texts("strengths"),
                 "gaps": texts("gaps"), "suggestions": texts("suggestions"),
                 "risk_notes": texts("risk_notes")}
+
+    async def summarize_interview(self, plan: dict, turns: list[dict]) -> dict:
+        """把一场面试的转写整理成纪要；只允许复述转写里出现的内容。"""
+        settings = get_settings()
+        if not all((settings.llm_base_url, settings.llm_api_key, settings.llm_model)):
+            raise TTCError("TTC-5004", "尚未配置面试纪要模型", 503)
+        prompt = (
+            "你是面试记录整理助手，只依据给出的【问题清单】和【通话转写】写纪要。"
+            "硬性规则：1) 不得编造转写中没有的经历、数字、公司、结论；"
+            "2) 候选人没有回答或回答含糊的，在对应条目里写“未回答”或“回答不完整”；"
+            "3) 不评价外貌、口音、性别、年龄、婚育等敏感属性，不做录用判断；"
+            "4) 只输出 JSON 对象，字段为 overview(三两句话的整体纪要，字符串)、"
+            "qa(数组，元素为 {question, answer_summary})、"
+            "followups(建议下一轮进一步确认的问题，字符串数组)、"
+            "limitations(本次纪要的局限，字符串数组)。"
+            "所有文本用简洁中文，不要 Markdown。"
+        )
+        questions = [item.get("text", "") for item in plan.get("questions", [])
+                     if isinstance(item, dict) and item.get("text")]
+        lines = []
+        for turn in turns:
+            role = turn.get("role")
+            speaker = "AI 面试官" if role == "interviewer" else (
+                "候选人" if role == "candidate" else "系统")
+            lines.append(f"{speaker}：{turn.get('text', '')}")
+        payload = (
+            "【问题清单】\n" + "\n".join(f"- {text}" for text in questions) +
+            "\n\n【通话转写】\n" + "\n".join(lines)
+        )
+        try:
+            async with llm_client(settings.llm_timeout_seconds) as client:
+                response = await client.post(
+                    f"{settings.llm_base_url.rstrip('/')}/chat/completions",
+                    headers={"Authorization": f"Bearer {settings.llm_api_key}"},
+                    json={"model": settings.llm_model, "temperature": 0.2,
+                          "response_format": {"type": "json_object"},
+                          "messages": [{"role": "system", "content": prompt},
+                                       {"role": "user", "content": payload[:60000]}]},
+                )
+                response.raise_for_status()
+        except httpx.TimeoutException as exc:
+            raise TTCError("TTC-5001", "面试纪要模型超时", 504) from exc
+        except httpx.HTTPError as exc:
+            raise TTCError("TTC-5004", "面试纪要模型不可用", 503) from exc
+        try:
+            data = json.loads(response.json()["choices"][0]["message"]["content"])
+            overview = data.get("overview")
+            if not isinstance(overview, str) or not overview.strip():
+                raise ValueError("overview is missing")
+        except (KeyError, IndexError, ValueError, TypeError) as exc:
+            raise TTCError("TTC-5002", "纪要模型输出不符合契约", 502) from exc
+
+        def texts(key: str, limit: int = 10) -> list[str]:
+            value = data.get(key)
+            if not isinstance(value, list):
+                return []
+            return [item.strip() for item in value
+                    if isinstance(item, str) and item.strip()][:limit]
+
+        qa = []
+        for item in data.get("qa", []) if isinstance(data.get("qa"), list) else []:
+            if not isinstance(item, dict):
+                continue
+            question = item.get("question")
+            answer = item.get("answer_summary")
+            if isinstance(question, str) and isinstance(answer, str):
+                qa.append({"question": question.strip(), "answer_summary": answer.strip()})
+        return {"overview": overview.strip(), "qa": qa[:20],
+                "followups": texts("followups"), "limitations": texts("limitations")}

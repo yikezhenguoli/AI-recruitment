@@ -358,6 +358,19 @@ async def weight_templates(user: Principal = Depends(hr)):
                        "dimensions": DEFAULT_DIMENSIONS}]}
 
 
+@router.get("/jobs/{job_id}/weight-plan")
+async def get_weight_plan(job_id: UUID, user: Principal = Depends(hr),
+                          session: AsyncSession = Depends(get_session)):
+    await require_job(session, user, job_id)
+    row = (await session.execute(
+        text("SELECT id, name, mode::text AS mode, dimensions, created_at FROM weight_plan "
+             "WHERE job_id = :job AND tenant_id = :tenant AND is_active "
+             "ORDER BY created_at DESC LIMIT 1"),
+        {"job": job_id, "tenant": user.tenant_id},
+    )).mappings().one_or_none()
+    return {"job_id": job_id, "plan": dict(row) if row else None}
+
+
 @router.put("/jobs/{job_id}/weight-plan")
 async def set_weight_plan(job_id: UUID, body: WeightInput, user: Principal = Depends(hr),
                           session: AsyncSession = Depends(get_session)):

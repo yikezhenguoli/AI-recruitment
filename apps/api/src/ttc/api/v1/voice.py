@@ -4,13 +4,14 @@ from datetime import UTC, datetime
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ttc.adapters import qwen_realtime as qwen
+from ttc.adapters.llm import LLMAdapter
 from ttc.adapters.realtime import create_call, enqueue_hangup
 from ttc.api.deps import Principal, current_user, require_roles
 from ttc.api.v1.candidates import require_candidate
@@ -103,6 +104,28 @@ async def create_session(body: SessionInput, user: Principal = Depends(hr),
         "plan": json.dumps(PLAN, ensure_ascii=False), "max_seconds": body.max_seconds})
     await session.commit()
     return {"id": session_id, "status": "created", "consent_checked": True, "plan": PLAN}
+
+
+@router.get("/voice-sessions")
+async def list_voice_sessions(candidate_id: UUID | None = None,
+                              status: str | None = None,
+                              limit: int = Query(20, ge=1, le=100),
+                              user: Principal = Depends(hr),
+                              session: AsyncSession = Depends(get_session)):
+    rows = (await session.execute(text(
+        "SELECT s.id, s.candidate_id, c.display_name AS candidate_name, s.job_id, "
+        "j.title AS job_title, s.scenario::text AS scenario, s.status::text AS status, "
+        "s.provider, s.model, s.max_seconds, s.created_at, s.started_at, s.ended_at, "
+        "s.end_reason, EXISTS (SELECT 1 FROM call_report r WHERE r.session_id = s.id) "
+        "AS has_report FROM voice_session s JOIN candidate c ON c.id = s.candidate_id "
+        "LEFT JOIN job j ON j.id = s.job_id "
+        "WHERE c.tenant_id = :tenant "
+        "AND (CAST(:candidate AS uuid) IS NULL OR s.candidate_id = CAST(:candidate AS uuid)) "
+        "AND (CAST(:status AS text) IS NULL OR s.status::text = CAST(:status AS text)) "
+        "ORDER BY s.created_at DESC, s.id DESC LIMIT :limit"
+    ), {"tenant": user.tenant_id, "candidate": candidate_id, "status": status,
+        "limit": limit})).mappings().all()
+    return {"items": [dict(row) for row in rows], "next_cursor": None}
 
 
 @router.get("/voice-sessions/{session_id}")
@@ -310,6 +333,16 @@ async def realtime_relay(websocket: WebSocket, session_id: UUID):
                     await _send(websocket, {"type": "error",
                                             "message": f"不支持的事件 {payload.get('type')}"})
                     continue
+                # 上游只认 response.create 里自带的 instructions：握手时
+                # session.update 的 instructions 不会让开场响应生效，缺了它
+                # 直接回 "Cannot create response without input, history, or
+                # instructions"。面试计划不下发浏览器，因此在这里补。
+                if payload.get("type") == "response.create":
+                    response = payload.get("response")
+                    response = dict(response) if isinstance(response, dict) else {}
+                    response.setdefault("instructions", instructions)
+                    payload["response"] = response
+                    raw = json.dumps(payload, ensure_ascii=False)
                 await upstream.send(raw)
 
         async def upstream_to_client():
@@ -415,6 +448,33 @@ async def add_turns(session_id: UUID, turns: list[TurnInput],
     return {"session_id": session_id, "submitted": len(turns)}
 
 
+FALLBACK_LIMIT = ("通话评估模型未能生成纪要；报告仅包含通话中提交的转写文字轮次，"
+                  "服务端不校验转写来源")
+
+
+async def summarize_turns(session: AsyncSession, session_id: UUID,
+                          turns: list) -> tuple[dict, list[str], str]:
+    """用大模型把转写整理成纪要；失败时退回只有元信息的占位摘要。"""
+    if not turns:
+        return ({"status": "unassessed", "turn_count": 0,
+                 "limitations": ["本次通话没有产生转写内容"]}, [], "transcript-v1")
+    plan = (await session.execute(text(
+        "SELECT plan_json FROM voice_session WHERE id = :id"), {"id": session_id}
+    )).scalar_one_or_none()
+    if not isinstance(plan, dict) or not plan.get("questions"):
+        plan = PLAN
+    try:
+        result = await LLMAdapter().summarize_interview(plan, [dict(turn) for turn in turns])
+    except TTCError as exc:
+        return ({"status": "unassessed", "turn_count": len(turns),
+                 "limitations": [f"纪要生成失败：{exc.message}", FALLBACK_LIMIT]},
+                [], "transcript-v1")
+    return ({"status": "assessed", "turn_count": len(turns),
+             "overview": result["overview"], "qa": result["qa"],
+             "limitations": result["limitations"]},
+            result["followups"], "llm-interview-v1")
+
+
 async def create_transcript_report(session: AsyncSession, session_id: UUID) -> UUID:
     existing = (await session.execute(text(
         "SELECT id FROM call_report WHERE session_id = :id"
@@ -427,19 +487,20 @@ async def create_transcript_report(session: AsyncSession, session_id: UUID) -> U
     ), {"id": session_id})).mappings().all()
     quote_rows = [{"turn_id": str(turn["id"]), "question_id": turn["question_id"],
                    "text": turn["text"][:1000]} for turn in turns if turn["role"] == "candidate"]
+    summary, followups, model_version = await summarize_turns(session, session_id, list(turns))
     report_id = uuid7()
     inserted = await session.execute(text(
         "INSERT INTO call_report (id, session_id, status, summary, dimensions, quotes, "
         "crosscheck, followups, model_version) VALUES "
         "(:id, :session, 'ready', CAST(:summary AS jsonb), '[]'::jsonb, "
-        "CAST(:quotes AS jsonb), CAST(:crosscheck AS jsonb), '[]'::jsonb, 'transcript-v1') "
+        "CAST(:quotes AS jsonb), CAST(:crosscheck AS jsonb), CAST(:followups AS jsonb), "
+        ":model_version) "
         "ON CONFLICT (session_id) DO NOTHING RETURNING id"
     ), {"id": report_id, "session": session_id,
-        "summary": json.dumps({"status": "unassessed", "turn_count": len(turns),
-                                "limitations": ["未接入自动转写与通话评估模型；"
-                                                "报告仅包含调用方提交的文字轮次"]},
-                               ensure_ascii=False),
+        "summary": json.dumps(summary, ensure_ascii=False),
         "quotes": json.dumps(quote_rows, ensure_ascii=False),
+        "followups": json.dumps(followups, ensure_ascii=False),
+        "model_version": model_version,
         "crosscheck": json.dumps({"consistent": [], "supplemented": [],
                                   "inconsistent": [], "unverified": []})})
     return inserted.scalar_one_or_none() or (await session.execute(text(
@@ -470,9 +531,21 @@ async def finish_session(session_id: UUID, body: FinishInput,
     return {"report_id": report_id, "status": "ready", "completed_at": datetime.now(UTC)}
 
 
+@router.get("/voice-sessions/{session_id}/turns")
+async def list_turns(session_id: UUID, user: Principal = Depends(current_user),
+                     session: AsyncSession = Depends(get_session)):
+    await require_session(session, user, session_id)
+    rows = (await session.execute(text(
+        "SELECT id, turn_index, role::text AS role, text, question_id, started_at "
+        "FROM voice_turn WHERE session_id = :id ORDER BY turn_index"
+    ), {"id": session_id})).mappings().all()
+    return {"items": [dict(row) for row in rows]}
+
+
 @router.get("/voice-sessions/{session_id}/report")
-async def report(session_id: UUID, user: Principal = Depends(current_user),
+async def report(session_id: UUID, user: Principal = Depends(hr),
                  session: AsyncSession = Depends(get_session)):
+    """通话报告只对招聘方开放；候选人门户不返回纪要内容。"""
     row = await require_session(session, user, session_id)
     result = (await session.execute(text(
         "SELECT status, summary, dimensions, quotes, crosscheck, followups, model_version "
@@ -483,3 +556,63 @@ async def report(session_id: UUID, user: Principal = Depends(current_user),
     return {"session": {"id": session_id, "scenario": row["scenario"],
                         "status": row["status"], "provider": row["provider"]},
             **dict(result)}
+
+
+@router.get("/voice-sessions/{session_id}/summary")
+async def call_summary(session_id: UUID, user: Principal = Depends(hr),
+                       session: AsyncSession = Depends(get_session)):
+    """HR 端沟通纪要：只返回模型整理后的字段，不含逐句转写。"""
+    row = await require_session(session, user, session_id)
+    result = (await session.execute(text(
+        "SELECT status, summary, followups, model_version, updated_at "
+        "FROM call_report WHERE session_id = :id"
+    ), {"id": session_id})).mappings().one_or_none()
+    if result is None:
+        raise TTCError("TTC-2001", "该会话还没有生成沟通纪要", 404)
+    summary = result["summary"] or {}
+    return {"session_id": session_id,
+            "candidate_id": row["candidate_id"],
+            "scenario": row["scenario"],
+            "session_status": row["status"],
+            "report_status": result["status"],
+            "model_version": result["model_version"],
+            "generated_at": result["updated_at"],
+            "turn_count": summary.get("turn_count", 0),
+            "overview": summary.get("overview"),
+            "qa": summary.get("qa", []),
+            "followups": result["followups"] or [],
+            "limitations": summary.get("limitations", [])}
+
+
+@router.post("/voice-sessions/{session_id}/report/regenerate", status_code=202)
+async def regenerate_report(session_id: UUID, user: Principal = Depends(hr),
+                            session: AsyncSession = Depends(get_session)):
+    """按现有转写重新生成纪要；供已结束但只有占位摘要的历史会话补纪要。"""
+    await require_session(session, user, session_id)
+    turns = (await session.execute(text(
+        "SELECT id, turn_index, role, text, question_id FROM voice_turn "
+        "WHERE session_id = :id ORDER BY turn_index"
+    ), {"id": session_id})).mappings().all()
+    if not turns:
+        raise TTCError("TTC-2002", "该会话没有转写内容，无法生成纪要", 409)
+    quote_rows = [{"turn_id": str(turn["id"]), "question_id": turn["question_id"],
+                   "text": turn["text"][:1000]} for turn in turns if turn["role"] == "candidate"]
+    summary, followups, model_version = await summarize_turns(session, session_id, list(turns))
+    await session.execute(text(
+        "INSERT INTO call_report (id, session_id, status, summary, dimensions, quotes, "
+        "crosscheck, followups, model_version) VALUES "
+        "(:id, :session, 'ready', CAST(:summary AS jsonb), '[]'::jsonb, "
+        "CAST(:quotes AS jsonb), CAST(:crosscheck AS jsonb), CAST(:followups AS jsonb), "
+        ":model_version) ON CONFLICT (session_id) DO UPDATE SET status = 'ready', "
+        "summary = EXCLUDED.summary, quotes = EXCLUDED.quotes, "
+        "followups = EXCLUDED.followups, model_version = EXCLUDED.model_version, "
+        "updated_at = now()"
+    ), {"id": uuid7(), "session": session_id,
+        "summary": json.dumps(summary, ensure_ascii=False),
+        "quotes": json.dumps(quote_rows, ensure_ascii=False),
+        "followups": json.dumps(followups, ensure_ascii=False),
+        "model_version": model_version,
+        "crosscheck": json.dumps({"consistent": [], "supplemented": [],
+                                  "inconsistent": [], "unverified": []})})
+    await session.commit()
+    return {"session_id": session_id, "status": "ready", "model_version": model_version}
