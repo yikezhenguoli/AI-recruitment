@@ -1,0 +1,120 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>简历 HTML 信息抽取报告</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#1f2328;--sub:#6b7280;--line:#e5e7eb;--brand:#2563eb;--green:#0f766e;--amber:#b45309}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+.wrap{max-width:1120px;margin:0 auto;padding:32px 22px 70px}
+h1{font-size:26px;margin:0 0 6px}h2{font-size:19px;margin:36px 0 12px}h3{font-size:15px;margin:22px 0 8px}
+.lead{color:var(--sub);margin:0 0 22px}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
+.metric{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.metric b{display:block;font-size:23px;color:var(--brand)}.metric span{color:var(--sub);font-size:12px}
+.notice,.panel,.ok,.sample{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:14px}
+.notice{border-left:4px solid var(--amber);background:#fffbeb}.notice h3{margin-top:0;color:var(--amber)}
+.notice p,.panel p,.sample p{margin:6px 0;color:#374151}
+.ok{border-left:4px solid var(--green);background:#ecfdf5;color:#065f46}
+table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:13px;margin-bottom:12px}
+th,td{text-align:left;padding:9px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:#fafbfc;color:var(--sub);font-weight:600;font-size:12px}
+tr:last-child td{border-bottom:none}
+.mono,code,.mono td{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
+code{background:#f3f4f6;padding:1px 5px;border-radius:4px}
+.num{text-align:right;white-space:nowrap;color:#374151}
+.bar{height:7px;background:#eef2f7;border-radius:4px;overflow:hidden;margin-top:5px}.bar i{display:block;height:100%;background:var(--brand);border-radius:4px}
+.tag{font-size:11px;background:#eef2ff;color:#3730a3;padding:2px 8px;border-radius:20px;font-weight:400;margin-left:6px}
+.sample h3{margin-top:0}.sample p{font-size:13px}
+.hint{color:var(--sub);font-size:12px;margin:6px 0 18px}
+.footer{color:var(--sub);font-size:12px;margin-top:30px;border-top:1px solid var(--line);padding-top:14px}
+</style></head><body><div class="wrap">
+<h1>简历 HTML 信息抽取报告</h1>
+<p class="lead">源目录 <span class="mono">resume_html/</span> · 2484 份 HTML · 全部解析成功（0 失败）· 原始文件未改动</p>
+<div class="metrics">
+  <div class="metric"><b>2,484</b><span>简历主表行数</span></div>
+  <div class="metric"><b>11,942</b><span>工作经历记录</span></div>
+  <div class="metric"><b>5,520</b><span>教育经历记录</span></div>
+  <div class="metric"><b>18,707</b><span>板块记录</span></div>
+  <div class="metric"><b>159,725</b><span>逐条文本条目</span></div>
+  <div class="metric"><b>5</b><span>CSV 文件</span></div>
+</div>
+
+<div class="notice">
+<h3>先看这里：源数据是匿名化的</h3>
+<p>这批简历来自公开简历数据集，个人信息已被替换：<code>first_name</code> 仅 0.8% 非空，<code>last_name</code> 里填的多半是职位名称（如 HR SPECIALIST、SALES）；
+公司名普遍为 <code>Company Name</code>，地点为 <code>City</code> / <code>State</code>；邮箱仅 19 份、电话仅 56 份含真实格式文本。
+<b>这些不是抽取错误</b>，CSV 如实保留了源值。逐条条目表中已过滤掉这类无信息量占位符，结构化表中仍完整保留。</p>
+</div>
+
+<h2>一、交付的 5 张 CSV</h2>
+<table><thead><tr><th>文件</th><th>内容</th><th>行数</th><th>列数</th><th>大小</th><th>用途</th></tr></thead>
+<tbody><tr><td class="mono">resumes.csv</td><td>主表（宽表）</td><td class="num">2,484</td><td class="num">37</td><td class="num">5.5 MB</td><td>直接浏览、筛选、导入数据库</td></tr><tr><td class="mono">resume_experiences.csv</td><td>工作经历明细</td><td class="num">11,942</td><td class="num">17</td><td class="num">10.0 MB</td><td>按 resume_id 关联主表</td></tr><tr><td class="mono">resume_education.csv</td><td>教育经历明细</td><td class="num">5,520</td><td class="num">14</td><td class="num">979 KB</td><td>按 resume_id 关联主表</td></tr><tr><td class="mono">resume_sections.csv</td><td>板块明细</td><td class="num">18,707</td><td class="num">7</td><td class="num">13.9 MB</td><td>保留所有板块原文，便于全文检索</td></tr><tr><td class="mono">resume_items.csv</td><td>逐条条目</td><td class="num">159,725</td><td class="num">7</td><td class="num">19.7 MB</td><td>做词频、技能抽取、打标签</td></tr></tbody></table>
+<p class="hint">全部为 UTF-8 BOM 编码，Excel / WPS 双击即可打开；长文本已压成单行，换行转空格，多条内容用 <span class="mono">" | "</span> 分隔，多个板块用 <span class="mono">" || "</span> 分隔。表间统一用 <span class="mono">resume_id</span> 关联。</p>
+
+<h2>二、字段字典 · 主表 resumes.csv</h2>
+<table><thead><tr><th style="width:38%">字段</th><th>含义与来源</th></tr></thead><tbody><tr><td class="mono">resume_id / file</td><td>简历编号与文件名，主键</td></tr><tr><td class="mono">structure_family / layout_group</td><td>上一轮结构分组结果（相似家族 / 精确版式组），可与 structure_groups.csv 关联</td></tr><tr><td class="mono">section_sequence</td><td>板块顺序，如 NAME-SUMM-HILT-EXPR-EDUC-SKLL</td></tr><tr><td class="mono">name / first_name / last_name</td><td>姓名区；本数据集已匿名化，first_name 多为空，last_name 常填职位名称</td></tr><tr><td class="mono">header_text</td><td>姓名板块的完整文本</td></tr><tr><td class="mono">email / phone / urls</td><td>从全文正则提取的联系方式（本数据集绝大多数已移除）</td></tr><tr><td class="mono">objective</td><td>求职目标（OBJC）</td></tr><tr><td class="mono">summary</td><td>职业概述（SUMM / PRFL 板块）</td></tr><tr><td class="mono">highlights / technical_skills / skills</td><td>亮点 / 技术技能 / 技能（HILT / TSKL / SKLL）</td></tr><tr><td class="mono">accomplishments</td><td>工作成就（ACCM）</td></tr><tr><td class="mono">affiliations / certifications / languages</td><td>专业 affiliation / 证书 / 语言（AFIL / CERT / LANG）</td></tr><tr><td class="mono">interests / additional_info / personal_info</td><td>兴趣 / 补充信息 / 个人信息（INTR / ADDI / PRIN 等）</td></tr><tr><td class="mono">publications / presentations / awards</td><td>出版物 / 演讲 / 奖项（PUBL / PRES / AWAR）</td></tr><tr><td class="mono">military_experience / links</td><td>服役经历 / 链接（MILI / ALNK / PORT）</td></tr><tr><td class="mono">experience_text / education_text</td><td>结构化经历 / 教育记录的可读摘要；明细见对应 CSV</td></tr><tr><td class="mono">other_sections_json</td><td>未归入固定列的板块，JSON：{板块代码#序号: {title, text}}</td></tr><tr><td class="mono">n_experiences / n_education / n_sections / n_items / text_chars</td><td>记录数与正文字符数</td></tr></tbody></table>
+<h2>三、字段字典 · 明细表</h2>
+<h3>resume_experiences.csv</h3>
+<table><thead><tr><th style="width:38%">字段</th><th>含义</th></tr></thead><tbody><tr><td class="mono">resume_id / file / exp_index</td><td>简历编号、文件名、该简历内经历序号</td></tr><tr><td class="mono">section_code / section_title</td><td>来源板块代码与原文标题（EXPR / WRKH / MILI 等）</td></tr><tr><td class="mono">job_title / company / city / state / country</td><td>职位、公司、地点；源数据多为 Company Name / City / State 占位符</td></tr><tr><td class="mono">start_date / end_date</td><td>原始日期文本（Dec 2013、09/2015、Current 等，未改写）</td></tr><tr><td class="mono">start_year / end_year</td><td>从日期中提取的 4 位年份；无法提取时为空</td></tr><tr><td class="mono">is_current</td><td>结束日期为 Current / Present / Now 时标记 yes</td></tr><tr><td class="mono">description / description_items</td><td>职责描述，多条用 &quot; | &quot; 连接；条目数</td></tr></tbody></table>
+<h3>resume_education.csv</h3>
+<table><thead><tr><th style="width:38%">字段</th><th>含义</th></tr></thead><tbody><tr><td class="mono">resume_id / file / edu_index</td><td>简历编号、文件名、该简历内教育序号</td></tr><tr><td class="mono">degree / major / school</td><td>学位、专业、学校</td></tr><tr><td class="mono">city / state / country</td><td>学校地点</td></tr><tr><td class="mono">graduation_year / grad_year</td><td>原始毕业时间与提取出的 4 位年份</td></tr><tr><td class="mono">details</td><td>教育板块的补充说明（课程、荣誉、GPA 等）</td></tr></tbody></table>
+<h3>板块表与条目表</h3>
+<table><thead><tr><th style="width:38%">文件</th><th>字段</th></tr></thead><tbody><tr><td class="mono">resume_sections.csv</td><td>resume_id, file, section_index, section_code, section_title, item_count, section_text；板块文本用 &quot; | &quot; 连接条目</td></tr><tr><td class="mono">resume_items.csv</td><td>resume_id, file, section_index, section_code, section_title, item_index, item_text；每行一条内容</td></tr></tbody></table>
+
+<h2>四、抽取方法</h2>
+<div class="panel">
+<p>1. <b>按 id 编码定位字段</b>：这批 HTML 的字段 id 统一为 <code>&lt;板块前缀&gt;&lt;字段代码&gt;&lt;序号&gt;</code>（如 <code>500375983JTIT1</code>、UUID 版式同样成立）。<code>JTIT/COMP/JSTD/EDDT/JDES</code> = 职位/公司/起止/描述，<code>DGRE/STUY/SCHO/GRYR</code> = 学位/专业/学校/毕业年，<code>FRFM/SKC</code> = 自由文本与双栏技能。按「前缀 + 序号」把字段聚成一条记录，跨 267 种版式都不会错位。</p>
+<p>2. <b>板块归一化</b>：<code>SECTION_</code> 后的代码取前 4 位大写字母，消除 <code>EXPRc</code>、<code>SUMMa</code> 这类副本后缀；共识别 35 类板块，主流为 EXPR(2492), SUMM(2484), NAME(2481), EDUC(2474), SKLL(2401), HILT(2252)。</p>
+<p>3. <b>文本清洗</b>：合并空白与 <code>&amp;nbsp;</code>，按 <code>li / p / br</code> 分条，去除编辑器 UI 残留（"Examples"、"View Tips" 等）与匿名化占位符；HTML 实体解码，CSV 特殊字符正确转义。</p>
+<p>4. <b>兜底召回</b>：除结构化字段外，额外输出板块文本与逐条条目，保证自定义板块、无 id 的段落、破损标签里的内容也不丢失。</p>
+</div>
+
+<h2>五、质量校验</h2>
+<div class="ok"><b>✓ 抽样复核 20 份简历、210 个字段值，100% 命中原始 HTML 文本</b>；2484 份文件全部解析成功，无异常中断。</div>
+<table><thead><tr><th>检查项</th><th>结果</th><th>说明</th></tr></thead><tbody>
+<tr><td>主表关键列非空率</td><td class="mono">summary 90.3% · skills 95.2% · 经历 100.0%</td><td>缺失均因源 HTML 板块为空</td></tr>
+<tr><td>空板块</td><td class="mono">1,645 个板块无内容</td><td>抽查确认原始 HTML 就是空 <code>&lt;div class="section"&gt;</code>，非漏抽</td></tr>
+<tr><td>无概述 / 无教育</td><td class="mono">240 份 / 19 份</td><td>源数据中该板块为空或不存在</td></tr>
+<tr><td>HTML 破损文件</td><td class="mono">5 份</td><td>resume1657 / 1831 / 1933 / 2035 / 2170，已容错解析并剔除 UI 噪声</td></tr>
+<tr><td>内容重复</td><td class="mono">12 对</td><td>上一轮结构分析发现；本轮按文件逐份抽取，均保留</td></tr>
+</tbody></table>
+
+<h3>主表字段覆盖率</h3>
+<table><thead><tr><th>列</th><th>非空行数</th><th>覆盖率</th><th style="width:32%"></th></tr></thead><tbody><tr><td class="mono">name</td><td class="num">2,475</td><td class="num">99.6%</td><td><div class="bar"><i style="width:99.6%"></i></div></td></tr><tr><td class="mono">summary</td><td class="num">2,244</td><td class="num">90.3%</td><td><div class="bar"><i style="width:90.3%"></i></div></td></tr><tr><td class="mono">highlights</td><td class="num">1,905</td><td class="num">76.7%</td><td><div class="bar"><i style="width:76.7%"></i></div></td></tr><tr><td class="mono">skills</td><td class="num">2,364</td><td class="num">95.2%</td><td><div class="bar"><i style="width:95.2%"></i></div></td></tr><tr><td class="mono">accomplishments</td><td class="num">919</td><td class="num">37.0%</td><td><div class="bar"><i style="width:37.0%"></i></div></td></tr><tr><td class="mono">affiliations</td><td class="num">447</td><td class="num">18.0%</td><td><div class="bar"><i style="width:18.0%"></i></div></td></tr><tr><td class="mono">certifications</td><td class="num">299</td><td class="num">12.0%</td><td><div class="bar"><i style="width:12.0%"></i></div></td></tr><tr><td class="mono">languages</td><td class="num">238</td><td class="num">9.6%</td><td><div class="bar"><i style="width:9.6%"></i></div></td></tr><tr><td class="mono">interests</td><td class="num">243</td><td class="num">9.8%</td><td><div class="bar"><i style="width:9.8%"></i></div></td></tr><tr><td class="mono">additional_info</td><td class="num">507</td><td class="num">20.4%</td><td><div class="bar"><i style="width:20.4%"></i></div></td></tr><tr><td class="mono">experience_text</td><td class="num">2,483</td><td class="num">100.0%</td><td><div class="bar"><i style="width:100.0%"></i></div></td></tr><tr><td class="mono">education_text</td><td class="num">2,465</td><td class="num">99.2%</td><td><div class="bar"><i style="width:99.2%"></i></div></td></tr><tr><td class="mono">email</td><td class="num">19</td><td class="num">0.8%</td><td><div class="bar"><i style="width:0.8%"></i></div></td></tr><tr><td class="mono">phone</td><td class="num">56</td><td class="num">2.3%</td><td><div class="bar"><i style="width:2.3%"></i></div></td></tr><tr><td class="mono">urls</td><td class="num">98</td><td class="num">3.9%</td><td><div class="bar"><i style="width:3.9%"></i></div></td></tr><tr><td class="mono">other_sections_json</td><td class="num">49</td><td class="num">2.0%</td><td><div class="bar"><i style="width:2.0%"></i></div></td></tr></tbody></table>
+<h3>工作经历字段覆盖率（11,942 条）</h3>
+<table><thead><tr><th>列</th><th>非空行数</th><th>覆盖率</th><th style="width:32%"></th></tr></thead><tbody><tr><td class="mono">job_title</td><td class="num">11,597</td><td class="num">97.1%</td><td><div class="bar"><i style="width:97.1%"></i></div></td></tr><tr><td class="mono">company</td><td class="num">11,559</td><td class="num">96.8%</td><td><div class="bar"><i style="width:96.8%"></i></div></td></tr><tr><td class="mono">city</td><td class="num">10,760</td><td class="num">90.1%</td><td><div class="bar"><i style="width:90.1%"></i></div></td></tr><tr><td class="mono">state</td><td class="num">10,637</td><td class="num">89.1%</td><td><div class="bar"><i style="width:89.1%"></i></div></td></tr><tr><td class="mono">start_date</td><td class="num">11,590</td><td class="num">97.1%</td><td><div class="bar"><i style="width:97.1%"></i></div></td></tr><tr><td class="mono">end_date</td><td class="num">11,357</td><td class="num">95.1%</td><td><div class="bar"><i style="width:95.1%"></i></div></td></tr><tr><td class="mono">start_year</td><td class="num">11,580</td><td class="num">97.0%</td><td><div class="bar"><i style="width:97.0%"></i></div></td></tr><tr><td class="mono">end_year</td><td class="num">9,508</td><td class="num">79.6%</td><td><div class="bar"><i style="width:79.6%"></i></div></td></tr><tr><td class="mono">description</td><td class="num">11,481</td><td class="num">96.1%</td><td><div class="bar"><i style="width:96.1%"></i></div></td></tr></tbody></table>
+<h3>教育经历字段覆盖率（5,520 条）</h3>
+<table><thead><tr><th>列</th><th>非空行数</th><th>覆盖率</th><th style="width:32%"></th></tr></thead><tbody><tr><td class="mono">degree</td><td class="num">4,860</td><td class="num">88.0%</td><td><div class="bar"><i style="width:88.0%"></i></div></td></tr><tr><td class="mono">major</td><td class="num">3,899</td><td class="num">70.6%</td><td><div class="bar"><i style="width:70.6%"></i></div></td></tr><tr><td class="mono">school</td><td class="num">4,822</td><td class="num">87.4%</td><td><div class="bar"><i style="width:87.4%"></i></div></td></tr><tr><td class="mono">city</td><td class="num">3,879</td><td class="num">70.3%</td><td><div class="bar"><i style="width:70.3%"></i></div></td></tr><tr><td class="mono">state</td><td class="num">3,656</td><td class="num">66.2%</td><td><div class="bar"><i style="width:66.2%"></i></div></td></tr><tr><td class="mono">graduation_year</td><td class="num">3,893</td><td class="num">70.5%</td><td><div class="bar"><i style="width:70.5%"></i></div></td></tr><tr><td class="mono">grad_year</td><td class="num">3,792</td><td class="num">68.7%</td><td><div class="bar"><i style="width:68.7%"></i></div></td></tr><tr><td class="mono">details</td><td class="num">3,357</td><td class="num">60.8%</td><td><div class="bar"><i style="width:60.8%"></i></div></td></tr></tbody></table>
+
+<h2>六、抽样结果预览</h2>
+<div class="sample">
+      <h3>resume974.html · CUSTOMER SERVICES <span class="tag">3 段经历 / 2 段教育</span></h3>
+      <p><b>概述</b>：Professional in Economics with 7+ years of experience in the financial sector, as administrative assistant, manager, analyst and customer services. Optimizing work methods through the planning and execution of daily activities that correspond to my position. I</p>
+      <p><b>技能</b>：Attention to detail, Billing, Customer Services, data Analysis, Documentation, e-mail, English, organize files, financial, financial reports, investments, Leadership, meetings, Microsoft office, offic</p>
+      <p><b>首段经历</b>：Customer Services | Company Name | 07/2016 - 11/2016</p>
+      <p><b>描述</b>：Support english and spanish incoming call flow | Provide information to new and existing customers to support their needs and finding a solutions to keep customers satisfied and retain business. | Navigate computer syste</p>
+      <p><b>首段教育</b>：Bachelor of Science | Economics |  | 2014</p>
+    </div><div class="sample">
+      <h3>resume2427.html · ENTREPRENEUR GENERAL MANAGER <span class="tag">2 段经历 / 1 段教育</span></h3>
+      <p><b>概述</b>：Airport Operations Safety and Training Coordinator with management experience and exceptional people skills. Versed in accident investigation and analysis to develop action plans and initiatives to address accident trends . Desires a challenging role as a Safe</p>
+      <p><b>技能</b>：agency, balance, budgets, contracts, delivery, government, inventory, loss prevention, managing, meetings, access, personnel, policies, program development, progress, safety, sales, training programs,</p>
+      <p><b>首段经历</b>：Entrepreneur General Manager | Company Name | 12/2011 - 12/2015</p>
+      <p><b>描述</b>：Conducted analysis to address loss of revenue which led to complete turnaround . | Increased sales by 17% over a two-year period. Provided onsite training. | Monitored multiple databases to keep track of all company inve</p>
+      <p><b>首段教育</b>：Bachelor | Public 2 | Barry University | December 2007</p>
+    </div><div class="sample">
+      <h3>resume2229.html · MARKETING &amp; SALES ANALYST <span class="tag">5 段经历 / 4 段教育</span></h3>
+      <p><b>概述</b>：A result oriented Marketing &amp; Sales Analyst with 10 years of industry experience in the Staffing, Internet / ecommerce / Dotcom, Media / Publishing domain with expertise in Business process improvement, Business Process Flow Documentation &amp; Data Analysis. | Ex</p>
+      <p><b>技能</b>：Articulate, Business Analysis, Business Development, Business operations, Excel, Negotiation, Relationship Management, Sales Planning</p>
+      <p><b>首段经历</b>：Marketing &amp; Sales Analyst | Company Name | 07/2015 - Current</p>
+      <p><b>描述</b>：A Healthcare referral services company (national provider of staffing solutions in behavioral, social service, education, psychiatry, mental health and addictions treatment fields). | Primary duties include: Reports and </p>
+      <p><b>首段教育</b>：Master of Science |  |  | 2004</p>
+    </div>
+
+<h2>七、使用建议</h2>
+<div class="panel">
+<p>· 想<b>一张表看全部</b>：直接用 <span class="mono">resumes.csv</span>，每份简历一行，各板块文本已合并。</p>
+<p>· 想做<b>结构化分析</b>（任职年限、职位序列、学历分布）：用 <span class="mono">resume_experiences.csv</span> 与 <span class="mono">resume_education.csv</span>，按 <span class="mono">resume_id</span> 关联主表；<span class="mono">start_year / end_year / grad_year</span> 已提取为数值年份。</p>
+<p>· 想做<b>技能词表 / 全文检索</b>：用 <span class="mono">resume_items.csv</span>，每行一个技能点或一条职责。</p>
+<p>· 想结合<b>版式模板</b>：主表的 <span class="mono">structure_family / layout_group</span> 与上一轮的 <span class="mono">structure_groups.csv</span>、<span class="mono">structure_report.html</span> 对应。</p>
+</div>
+<div class="footer">生成时间：2026-11-13 · 本报告与 5 张 CSV 位于同一目录 · 原始 resume*.html 未做任何改动</div>
+</div></body></html>
