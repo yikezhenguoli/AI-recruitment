@@ -1,0 +1,3 @@
+# 只依赖两个包；不依赖 pandas / sklearn / jieba / transformers
+torch>=2.0
+numpy>=1.24

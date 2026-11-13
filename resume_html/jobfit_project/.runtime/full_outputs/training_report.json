@@ -1,0 +1,444 @@
+{
+  "history": [
+    {
+      "epoch": 1,
+      "train_loss": 3.6329772649706276,
+      "accuracy": 0.051771117166212535,
+      "top3_accuracy": 0.17166212534059946,
+      "macro_f1": 0.028648146058350477,
+      "mrr": 0.18746226911675445,
+      "mean_rank": 10.61307901907357,
+      "selection": 0.040209631612281506
+    },
+    {
+      "epoch": 2,
+      "train_loss": 3.3595301638087305,
+      "accuracy": 0.09809264305177112,
+      "top3_accuracy": 0.2016348773841962,
+      "macro_f1": 0.04894292371054437,
+      "mrr": 0.22518545694060002,
+      "mean_rank": 10.217983651226158,
+      "selection": 0.07351778338115775
+    },
+    {
+      "epoch": 3,
+      "train_loss": 3.2249391077563625,
+      "accuracy": 0.1307901907356948,
+      "top3_accuracy": 0.28610354223433243,
+      "macro_f1": 0.07683169536446954,
+      "mrr": 0.27740705745057936,
+      "mean_rank": 9.098092643051771,
+      "selection": 0.10381094305008218
+    },
+    {
+      "epoch": 4,
+      "train_loss": 2.5477050758253204,
+      "accuracy": 0.5994550408719346,
+      "top3_accuracy": 0.7275204359673024,
+      "macro_f1": 0.5077322563856809,
+      "mrr": 0.6919522243568355,
+      "mean_rank": 3.482288828337875,
+      "selection": 0.5535936486288078
+    },
+    {
+      "epoch": 5,
+      "train_loss": 1.4725576024080418,
+      "accuracy": 0.7220708446866485,
+      "top3_accuracy": 0.8119891008174387,
+      "macro_f1": 0.6455634980714781,
+      "mrr": 0.7925646409297636,
+      "mean_rank": 2.302452316076294,
+      "selection": 0.6838171713790633
+    },
+    {
+      "epoch": 6,
+      "train_loss": 1.0359213110459953,
+      "accuracy": 0.8283378746594006,
+      "top3_accuracy": 0.8910081743869209,
+      "macro_f1": 0.7500030839340964,
+      "mrr": 0.8731943314027782,
+      "mean_rank": 1.8228882833787465,
+      "selection": 0.7891704792967484
+    },
+    {
+      "epoch": 7,
+      "train_loss": 0.7777680523308261,
+      "accuracy": 0.8283378746594006,
+      "top3_accuracy": 0.9209809264305178,
+      "macro_f1": 0.7614727310430621,
+      "mrr": 0.8798174865990009,
+      "mean_rank": 1.7738419618528611,
+      "selection": 0.7949053028512314
+    },
+    {
+      "epoch": 8,
+      "train_loss": 0.6051073602505163,
+      "accuracy": 0.8392370572207084,
+      "top3_accuracy": 0.9046321525885559,
+      "macro_f1": 0.7728544170250538,
+      "mrr": 0.8819315582891054,
+      "mean_rank": 1.893732970027248,
+      "selection": 0.8060457371228811
+    },
+    {
+      "epoch": 9,
+      "train_loss": 0.5053595795595389,
+      "accuracy": 0.8446866485013624,
+      "top3_accuracy": 0.9073569482288828,
+      "macro_f1": 0.7755427045269312,
+      "mrr": 0.8864456739677128,
+      "mean_rank": 1.8446866485013624,
+      "selection": 0.8101146765141468
+    },
+    {
+      "epoch": 10,
+      "train_loss": 0.45639084550546116,
+      "accuracy": 0.8446866485013624,
+      "top3_accuracy": 0.9182561307901907,
+      "macro_f1": 0.7733675789248657,
+      "mrr": 0.886647374445478,
+      "mean_rank": 1.893732970027248,
+      "selection": 0.8090271137131141
+    },
+    {
+      "epoch": 11,
+      "train_loss": 0.4197181032744346,
+      "accuracy": 0.8583106267029973,
+      "top3_accuracy": 0.9182561307901907,
+      "macro_f1": 0.7889115147682458,
+      "mrr": 0.8931351519275098,
+      "mean_rank": 1.9509536784741144,
+      "selection": 0.8236110707356216
+    },
+    {
+      "epoch": 12,
+      "train_loss": 0.404684830584684,
+      "accuracy": 0.8446866485013624,
+      "top3_accuracy": 0.9073569482288828,
+      "macro_f1": 0.7792748350544336,
+      "mrr": 0.8862232880015756,
+      "mean_rank": 1.901907356948229,
+      "selection": 0.811980741777898
+    },
+    {
+      "epoch": 13,
+      "train_loss": 0.3954497803130308,
+      "accuracy": 0.8555858310626703,
+      "top3_accuracy": 0.9100817438692098,
+      "macro_f1": 0.785400341226361,
+      "mrr": 0.8928367472035907,
+      "mean_rank": 1.8991825613079019,
+      "selection": 0.8204930861445157
+    },
+    {
+      "epoch": 14,
+      "train_loss": 0.3897591387893072,
+      "accuracy": 0.8446866485013624,
+      "top3_accuracy": 0.9128065395095368,
+      "macro_f1": 0.7796168517405908,
+      "mrr": 0.8866742217270727,
+      "mean_rank": 1.9155313351498637,
+      "selection": 0.8121517501209766
+    },
+    {
+      "epoch": 15,
+      "train_loss": 0.3867588863685892,
+      "accuracy": 0.8583106267029973,
+      "top3_accuracy": 0.9046321525885559,
+      "macro_f1": 0.7882221073397543,
+      "mrr": 0.8927981165599373,
+      "mean_rank": 1.9264305177111716,
+      "selection": 0.8232663670213758
+    },
+    {
+      "epoch": 16,
+      "train_loss": 0.38486694712960257,
+      "accuracy": 0.8501362397820164,
+      "top3_accuracy": 0.9155313351498637,
+      "macro_f1": 0.7807083186263689,
+      "mrr": 0.8909666249584507,
+      "mean_rank": 1.8637602179836512,
+      "selection": 0.8154222792041926
+    },
+    {
+      "epoch": 17,
+      "train_loss": 0.38364053099810697,
+      "accuracy": 0.8419618528610354,
+      "top3_accuracy": 0.9073569482288828,
+      "macro_f1": 0.7729156865324156,
+      "mrr": 0.8855339216728304,
+      "mean_rank": 1.901907356948229,
+      "selection": 0.8074387696967256
+    }
+  ],
+  "test": {
+    "classification": {
+      "accuracy": 0.8358585858585859,
+      "top3_accuracy": 0.9065656565656566,
+      "macro_f1": 0.7774392710396402,
+      "mrr": 0.8798630064740658,
+      "mean_rank": 1.9873737373737375,
+      "ece": 0.05676980812924064
+    },
+    "candidate_ranking": {
+      "macro_ap": 0.8199072425610062,
+      "n_eval_jobs": 24,
+      "per_job": {
+        "ACCOUNTANT": {
+          "support": 17,
+          "precision@10": 1.0
+        },
+        "ADVOCATE": {
+          "support": 20,
+          "precision@10": 1.0
+        },
+        "AGRICULTURE": {
+          "support": 11,
+          "precision@10": 0.4
+        },
+        "APPAREL": {
+          "support": 14,
+          "precision@10": 0.7
+        },
+        "ARTS": {
+          "support": 16,
+          "precision@10": 0.8
+        },
+        "AUTOMOBILE": {
+          "support": 6,
+          "precision@10": 0.1
+        },
+        "AVIATION": {
+          "support": 20,
+          "precision@10": 1.0
+        },
+        "BANKING": {
+          "support": 18,
+          "precision@10": 0.9
+        },
+        "BPO": {
+          "support": 4,
+          "precision@10": 0.2
+        },
+        "BUSINESS-DEVELOPMENT": {
+          "support": 18,
+          "precision@10": 1.0
+        },
+        "CHEF": {
+          "support": 21,
+          "precision@10": 1.0
+        },
+        "CONSTRUCTION": {
+          "support": 17,
+          "precision@10": 1.0
+        },
+        "CONSULTANT": {
+          "support": 18,
+          "precision@10": 1.0
+        },
+        "DESIGNER": {
+          "support": 16,
+          "precision@10": 1.0
+        },
+        "DIGITAL-MEDIA": {
+          "support": 15,
+          "precision@10": 1.0
+        },
+        "ENGINEERING": {
+          "support": 20,
+          "precision@10": 1.0
+        },
+        "FINANCE": {
+          "support": 21,
+          "precision@10": 1.0
+        },
+        "FITNESS": {
+          "support": 17,
+          "precision@10": 1.0
+        },
+        "HEALTHCARE": {
+          "support": 19,
+          "precision@10": 1.0
+        },
+        "HR": {
+          "support": 18,
+          "precision@10": 1.0
+        },
+        "INFORMATION-TECHNOLOGY": {
+          "support": 19,
+          "precision@10": 1.0
+        },
+        "PUBLIC-RELATIONS": {
+          "support": 16,
+          "precision@10": 1.0
+        },
+        "SALES": {
+          "support": 19,
+          "precision@10": 0.9
+        },
+        "TEACHER": {
+          "support": 16,
+          "precision@10": 1.0
+        }
+      },
+      "precision@1": 0.9166666666666666,
+      "ndcg@1": 0.9166666666666666,
+      "precision@5": 0.8833333333333333,
+      "ndcg@5": 0.8927871942033708,
+      "precision@10": 0.875,
+      "ndcg@10": 0.8899226261147258
+    },
+    "n_test": 396
+  },
+  "corpus": {
+    "n_resumes": 2484,
+    "n_jobs": 24,
+    "n_vocab": 30002,
+    "splits": {
+      "train": 1721,
+      "val": 367,
+      "test": 396
+    },
+    "labels": [
+      {
+        "label": "ACCOUNTANT",
+        "n_train": 83,
+        "title": "Accountant"
+      },
+      {
+        "label": "ADVOCATE",
+        "n_train": 81,
+        "title": "Advocate"
+      },
+      {
+        "label": "AGRICULTURE",
+        "n_train": 43,
+        "title": "Agriculture"
+      },
+      {
+        "label": "APPAREL",
+        "n_train": 68,
+        "title": "Apparel"
+      },
+      {
+        "label": "ARTS",
+        "n_train": 72,
+        "title": "Arts"
+      },
+      {
+        "label": "AUTOMOBILE",
+        "n_train": 25,
+        "title": "Automobile"
+      },
+      {
+        "label": "AVIATION",
+        "n_train": 80,
+        "title": "Aviation"
+      },
+      {
+        "label": "BANKING",
+        "n_train": 80,
+        "title": "Banking"
+      },
+      {
+        "label": "BPO",
+        "n_train": 15,
+        "title": "Bpo"
+      },
+      {
+        "label": "BUSINESS-DEVELOPMENT",
+        "n_train": 84,
+        "title": "Business Development"
+      },
+      {
+        "label": "CHEF",
+        "n_train": 80,
+        "title": "Chef"
+      },
+      {
+        "label": "CONSTRUCTION",
+        "n_train": 78,
+        "title": "Construction"
+      },
+      {
+        "label": "CONSULTANT",
+        "n_train": 80,
+        "title": "Consultant"
+      },
+      {
+        "label": "DESIGNER",
+        "n_train": 75,
+        "title": "Designer"
+      },
+      {
+        "label": "DIGITAL-MEDIA",
+        "n_train": 67,
+        "title": "Digital Media"
+      },
+      {
+        "label": "ENGINEERING",
+        "n_train": 81,
+        "title": "Engineering"
+      },
+      {
+        "label": "FINANCE",
+        "n_train": 80,
+        "title": "Finance"
+      },
+      {
+        "label": "FITNESS",
+        "n_train": 82,
+        "title": "Fitness"
+      },
+      {
+        "label": "HEALTHCARE",
+        "n_train": 79,
+        "title": "Healthcare"
+      },
+      {
+        "label": "HR",
+        "n_train": 76,
+        "title": "Hr"
+      },
+      {
+        "label": "INFORMATION-TECHNOLOGY",
+        "n_train": 83,
+        "title": "Information Technology"
+      },
+      {
+        "label": "PUBLIC-RELATIONS",
+        "n_train": 78,
+        "title": "Public Relations"
+      },
+      {
+        "label": "SALES",
+        "n_train": 80,
+        "title": "Sales"
+      },
+      {
+        "label": "TEACHER",
+        "n_train": 71,
+        "title": "Teacher"
+      }
+    ]
+  },
+  "calibrator": {
+    "T": 1.1783646881428584,
+    "a": 1.189377784729004,
+    "b": -3.0538413524627686,
+    "z_lo": -2.3653104305267334,
+    "z_hi": 7.455377101898193,
+    "n_jobs": 24,
+    "fitted": true,
+    "val_nll": 0.6588737964630127,
+    "history": {
+      "T": 1.1783646881428584,
+      "a": 1.189377784729004,
+      "b": -3.0538413524627686,
+      "z_lo": -2.3653104305267334,
+      "z_hi": 7.455377101898193,
+      "val_nll": 0.6588737964630127
+    }
+  },
+  "best_epoch": 11
+}
