@@ -40,3 +40,7 @@ resume-match/synth_hard/
 resume-match/gbdt/
 resume-match/gbdt_hard/
 resume-match/**/__pycache__/
+
+# Local backend runtime data
+apps/api/cache/
+apps/api/uploads/
