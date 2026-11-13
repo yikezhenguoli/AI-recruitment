@@ -5,6 +5,7 @@ import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import App from './App.vue'
 import router from './router'
 import './style.css'
+import './api-pages.css'
 
 const app = createApp(App)
 for (const [name, component] of Object.entries(ElementPlusIconsVue)) {
