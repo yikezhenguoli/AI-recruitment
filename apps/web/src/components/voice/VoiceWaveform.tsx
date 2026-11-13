@@ -299,7 +299,9 @@ export function VoiceWaveform({
     ) => {
       const mid = height / 2
       const center = width / 2
-      const halfWidth = width * 0.46
+      // The active sound field spans 75% of the canvas: 12.5% → 87.5%.
+      const halfWidth = width * 0.47
+      const maxBarHeight = height * 0.5
 
       // Soft central halo: the voice feels like it radiates from the middle.
       const glowRadius = Math.max(36, height * (0.16 + level * 0.28))
@@ -320,13 +322,13 @@ export function VoiceWaveform({
       ctx.stroke()
       ctx.restore()
 
-      const bars = Math.min(160, Math.max(72, Math.floor(width / 8)))
+      const bars = Math.min(220, Math.max(110, Math.floor(width / 5)))
       const gradient = ctx.createLinearGradient(0, 0, width, 0)
-      gradient.addColorStop(0, 'rgba(143, 210, 255, 0.16)')
-      gradient.addColorStop(0.24, 'rgba(98, 179, 238, 0.48)')
-      gradient.addColorStop(0.5, 'rgba(47, 137, 216, 0.84)')
-      gradient.addColorStop(0.76, 'rgba(98, 179, 238, 0.48)')
-      gradient.addColorStop(1, 'rgba(143, 210, 255, 0.16)')
+      gradient.addColorStop(0, 'rgba(143, 210, 255, 0.34)')
+      gradient.addColorStop(0.24, 'rgba(98, 179, 238, 0.68)')
+      gradient.addColorStop(0.5, 'rgba(47, 137, 216, 0.90)')
+      gradient.addColorStop(0.76, 'rgba(98, 179, 238, 0.68)')
+      gradient.addColorStop(1, 'rgba(143, 210, 255, 0.34)')
 
       ctx.save()
       ctx.strokeStyle = gradient
@@ -340,12 +342,12 @@ export function VoiceWaveform({
         const absU = Math.abs(u)
 
         // Non-linear spacing: many stripes near the center, few and thin at the sides.
-        const offset = u * halfWidth * (0.18 + 0.82 * Math.pow(absU, 2.2))
+        const offset = u * halfWidth * (0.22 + 0.78 * Math.pow(absU, 1.3))
         const shimmer = animate ? Math.sin(phase * 0.001 + i * 0.37) * 0.45 * level : 0
         const x = center + offset + shimmer
 
-        const centerEnvelope = Math.exp(-Math.pow(u / 0.46, 2))
-        const sideTaper = Math.pow(1 - absU, 0.72)
+        const centerEnvelope = Math.exp(-Math.pow(u / 1.05, 2))
+        const sideTaper = Math.pow(1 - absU, 0.45)
 
         let spectral = 0.34
         if (frequencyData && frequencyData.length > 0) {
@@ -363,8 +365,9 @@ export function VoiceWaveform({
           ? 0.84 + 0.26 * Math.sin(i * 1.37 + phase * 0.002)
           : 0.88 + 0.18 * Math.sin(i * 1.37)
         const baseHeight = height * 0.032
-        const dynamicHeight = height * 0.34 * level * centerEnvelope * variation * stripeVariation
-        const barHeight = Math.max(2, baseHeight + dynamicHeight * sideTaper)
+        const dynamicHeight = height * 0.7 * level * centerEnvelope * variation * stripeVariation
+        // Hard vertical cap: no bar may exceed 50% of the canvas height.
+        const barHeight = Math.min(maxBarHeight, Math.max(2, baseHeight + dynamicHeight * sideTaper))
         const lineWidth = Math.max(1, 2.6 - absU * 1.65)
 
         ctx.lineWidth = lineWidth
@@ -401,9 +404,23 @@ export function VoiceWaveform({
         sumSquares += data[i] * data[i]
       }
       const rms = Math.sqrt(sumSquares / Math.max(1, data.length))
-      const target = Math.min(1, rms * 5.5)
-      smoothedLevel += (target - smoothedLevel) * 0.16
-      const level = Math.max(smoothedLevel, rms > 0.002 ? 0.08 : 0.03)
+
+      // Combine time-domain loudness with voice-band spectral energy so quiet
+      // speech still produces a visible response. Faster attack, slower release.
+      let spectralLevel = 0
+      if (frequencyData && frequencyData.length > 0) {
+        const usableBins = Math.max(1, Math.floor(frequencyData.length * 0.55))
+        let spectralSum = 0
+        for (let i = 0; i < usableBins; i += 1) {
+          spectralSum += frequencyData[i]
+        }
+        spectralLevel = spectralSum / (usableBins * 255)
+      }
+      const rmsTarget = rms > 0.0025 ? Math.min(1, rms * 12) : 0
+      const spectralTarget = spectralLevel > 0.018 ? Math.min(1, spectralLevel * 2.4) : 0
+      const target = Math.max(rmsTarget, spectralTarget)
+      smoothedLevel += (target - smoothedLevel) * (target > smoothedLevel ? 0.28 : 0.12)
+      const level = Math.max(smoothedLevel, rms > 0.0025 ? 0.07 : 0.03)
 
       drawSoundField(width, height, level, performance.now(), frequencyData, true)
     }

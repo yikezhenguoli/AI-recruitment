@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { getHealth } from '../../api/client'
 import { CursorTrail } from '../visual/CursorTrail'
+import { PageTransition } from './PageTransition'
 
 const NAV_GROUPS = [
   {
@@ -53,8 +54,34 @@ function resolvePageTitle(pathname: string): string {
 
 export function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+  const scrolledRef = useRef(false)
   const location = useLocation()
   const title = resolvePageTitle(location.pathname)
+  const isSessions = location.pathname === '/sessions' || location.pathname.startsWith('/sessions/')
+
+  // Passive scroll listener with rAF coalescing; only a boolean re-render.
+  // Never intercepts or hijacks scrolling.
+  useEffect(() => {
+    let frame = 0
+    const sync = () => {
+      frame = 0
+      const next = window.scrollY > 8
+      if (next !== scrolledRef.current) {
+        scrolledRef.current = next
+        setScrolled(next)
+      }
+    }
+    const onScroll = () => {
+      if (!frame) frame = window.requestAnimationFrame(sync)
+    }
+    sync()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      if (frame) window.cancelAnimationFrame(frame)
+    }
+  }, [])
 
   const healthQuery = useQuery({
     queryKey: ['health'],
@@ -151,7 +178,7 @@ export function AppLayout() {
       </aside>
 
       <div className="ttc-main">
-        <header className="ttc-topbar">
+        <header className={`ttc-topbar ${scrolled ? 'is-scrolled' : ''}`}>
           <div className="ttc-topbar-inner">
             <div className="ttc-topbar-left">
               <button
@@ -188,7 +215,11 @@ export function AppLayout() {
         </header>
 
         <main className="ttc-content">
-          <Outlet />
+          {isSessions ? <Outlet /> : (
+            <PageTransition>
+              <Outlet />
+            </PageTransition>
+          )}
         </main>
 
         <footer className="ttc-footer">
