@@ -1,239 +1,378 @@
-import { Link, useLocation, useParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   AlertCircle,
   ArrowLeft,
-  ArrowRight,
-  Briefcase,
-  CalendarClock,
-  GraduationCap,
-  Pencil,
-  Users,
+  CheckCircle2,
+  FileText,
+  Rocket,
+  Sparkles,
+  Wand2,
 } from 'lucide-react'
-import { getSavedJob } from '../api/jobs'
+import {
+  createVersion,
+  generateJD,
+  getJob,
+  getJobStats,
+  getWeightPlan,
+  listVersions,
+  publishJob,
+  selectVersion,
+  setWeightPlan,
+} from '../api/jobs'
 import { getApiErrorMessage } from '../lib/apiError'
 import { formatDateTime } from '../lib/format'
+import type { JDVersion, JobStatus, WeightDimension } from '../types'
 
-function DetailRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="ttc-detail-row">
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  )
+const STATUS_LABEL: Record<JobStatus, string> = {
+  draft: '草稿',
+  published: '已发布',
+  locked: '已锁定',
+  archived: '已归档',
 }
 
 export default function JobDetailPage() {
-  const { id } = useParams<{ id: string }>()
-  const location = useLocation()
-  const jobName = id ? decodeURIComponent(id) : ''
-  const justCreated = Boolean((location.state as { created?: boolean } | null)?.created)
+  const { id = '' } = useParams()
+  const queryClient = useQueryClient()
+  const [jdDraft, setJdDraft] = useState('')
+  const [prompt, setPrompt] = useState('')
+  const [message, setMessage] = useState('')
+  const [error, setError] = useState('')
 
-  const jobQuery = useQuery({
-    queryKey: ['savedJob', jobName],
-    queryFn: () => getSavedJob(jobName),
-    enabled: Boolean(jobName),
+  const jobQuery = useQuery({ queryKey: ['job', id], queryFn: () => getJob(id), enabled: Boolean(id) })
+  const versionsQuery = useQuery({
+    queryKey: ['jobVersions', id],
+    queryFn: () => listVersions(id),
+    enabled: Boolean(id),
+  })
+  const statsQuery = useQuery({
+    queryKey: ['jobStats', id],
+    queryFn: () => getJobStats(id),
+    enabled: Boolean(id),
+  })
+  const planQuery = useQuery({
+    queryKey: ['jobWeightPlan', id],
+    queryFn: () => getWeightPlan(id),
+    enabled: Boolean(id),
   })
 
-  if (jobQuery.isLoading) {
-    return (
-      <div className="ttc-page">
-        <div className="ttc-card ttc-card-pad ttc-skeleton-block" />
-        <div className="ttc-card ttc-card-pad ttc-skeleton-block" />
-      </div>
-    )
+  const job = jobQuery.data
+  const versions = versionsQuery.data ?? []
+  const plan = planQuery.data
+
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ['job', id] })
+    void queryClient.invalidateQueries({ queryKey: ['jobVersions', id] })
+    void queryClient.invalidateQueries({ queryKey: ['jobWeightPlan', id] })
+    void queryClient.invalidateQueries({ queryKey: ['jobStats', id] })
+    void queryClient.invalidateQueries({ queryKey: ['jobs'] })
   }
 
-  if (jobQuery.isError || !jobQuery.data) {
+  const saveVersion = useMutation({
+    mutationFn: async () => {
+      const version = await createVersion(id, {
+        jd_text: jdDraft.trim(),
+        structured: {},
+      })
+      await selectVersion(id, version.id)
+      return version
+    },
+    onSuccess: () => {
+      setMessage('已保存并设为当前 JD 版本。')
+      setError('')
+      setJdDraft('')
+      invalidate()
+    },
+    onError: (err) => setError(getApiErrorMessage(err, '保存 JD 失败。')),
+  })
+
+  const useVersion = useMutation({
+    mutationFn: (version: JDVersion) => selectVersion(id, version.id),
+    onSuccess: () => {
+      setMessage('已切换当前 JD 版本。')
+      invalidate()
+    },
+    onError: (err) => setError(getApiErrorMessage(err, '切换版本失败。')),
+  })
+
+  const publish = useMutation({
+    mutationFn: () => publishJob(id),
+    onSuccess: () => {
+      setMessage('岗位已发布。')
+      invalidate()
+    },
+    onError: (err) => setError(getApiErrorMessage(err, '发布失败：需要草稿岗位与已选定的 JD 版本。')),
+  })
+
+  const generate = useMutation({
+    mutationFn: () => generateJD(id, { prompt: prompt.trim(), variants: 1 }),
+    onSuccess: (result) => {
+      if (result.suggestions?.length) {
+        setMessage(`建议：${result.suggestions.join('；')}`)
+      } else {
+        setMessage(`模型生成 ${result.versions.length} 个 JD 版本，请在下方选择。`)
+      }
+      setError('')
+      invalidate()
+    },
+    onError: (err) => setError(getApiErrorMessage(err, 'JD 生成失败：请确认已配置岗位模型。')),
+  })
+
+  const savePlan = useMutation({
+    mutationFn: (dimensions: WeightDimension[]) =>
+      setWeightPlan(id, { name: '自定义岗位权重', mode: 'custom', dimensions }),
+    onSuccess: () => {
+      setMessage('权重方案已更新。')
+      invalidate()
+    },
+    onError: (err) => setError(getApiErrorMessage(err, '保存权重失败：权重合计必须为 100。')),
+  })
+
+  const [dims, setDims] = useState<WeightDimension[] | null>(null)
+  const editableDims = dims ?? plan?.dimensions ?? []
+  const weightSum = editableDims.reduce((sum, dim) => sum + Number(dim.weight_pct || 0), 0)
+
+  if (jobQuery.isError) {
     return (
       <div className="ttc-page">
-        <section className="ttc-page-head">
-          <div>
-            <h1>岗位详情</h1>
-            <p>无法读取该岗位。</p>
-          </div>
-          <Link to="/jobs" className="ttc-btn ttc-btn-secondary">
-            <ArrowLeft size={16} />
-            返回岗位列表
-          </Link>
-        </section>
         <div className="ttc-error-panel">
           <AlertCircle size={18} />
           <div>
-            <strong>岗位读取失败</strong>
-            <span>{getApiErrorMessage(jobQuery.error, '该岗位可能已被删除或后端会话已失效。')}</span>
+            <strong>无法读取岗位</strong>
+            <span>{getApiErrorMessage(jobQuery.error)}</span>
           </div>
+          <Link to="/jobs" className="ttc-btn ttc-btn-secondary ttc-btn-sm">
+            返回列表
+          </Link>
         </div>
       </div>
     )
   }
 
-  const job = jobQuery.data
-  const structured = job.structured
-  const schema = job.scoring_schema
-  const totalPoints = schema.dimensions.reduce((sum, dim) => sum + dim.max_points, 0)
+  const canEdit = job && job.status !== 'locked' && job.status !== 'archived'
 
   return (
     <div className="ttc-page">
-      {justCreated && (
-        <div className="ttc-notice">
-          <span className="ttc-dot ttc-dot-green" />
-          <span>岗位档案已保存。下一步可进入候选人筛选，上传简历并开始 AI 评分。</span>
-        </div>
-      )}
-
       <section className="ttc-page-head">
         <div>
           <div className="hero-eyebrow">
             <span className="hero-eyebrow-dot" />
-            JOB PROFILE
+            POSITION
             <span className="hero-eyebrow-line" />
-            <span>{job.name}</span>
+            <span>{job ? STATUS_LABEL[job.status] : '加载中'}</span>
           </div>
-          <h1>{structured.role_title}</h1>
-          <p>岗位画像与评分维度来自已保存的真实岗位数据。</p>
+          <h1>{job?.title ?? '岗位详情'}</h1>
+          <p>
+            {job?.department ?? '未设置部门'} · 在招 {job?.headcount ?? '—'} 人 · 更新于{' '}
+            {formatDateTime(job?.updated_at)}
+          </p>
         </div>
         <div className="ttc-heading-actions">
           <Link to="/jobs" className="ttc-btn ttc-btn-secondary">
-            <ArrowLeft size={16} />
+            <ArrowLeft size={15} />
             返回列表
           </Link>
-          <Link to={`/jobs/${encodeURIComponent(job.name)}/edit`} className="ttc-btn ttc-btn-secondary">
-            <Pencil size={15} />
-            编辑岗位
-          </Link>
-          <Link to={`/candidates?job=${encodeURIComponent(job.name)}`} className="ttc-btn ttc-btn-primary">
-            <Users size={16} />
-            开始候选人筛选
-          </Link>
+          {job?.status === 'draft' && (
+            <button
+              type="button"
+              className="ttc-btn ttc-btn-primary"
+              disabled={publish.isPending || !job.current_version_id}
+              title={job.current_version_id ? undefined : '先选定一个 JD 版本'}
+              onClick={() => publish.mutate()}
+            >
+              <Rocket size={16} />
+              {publish.isPending ? '发布中…' : '发布岗位'}
+            </button>
+          )}
         </div>
       </section>
 
-      <section className="ttc-detail-grid">
-        <article className="ttc-card ttc-card-pad">
+      {(message || error) && (
+        <div className={error ? 'ttc-inline-error' : 'ttc-inline-ok'}>
+          {error ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />}
+          <span>{error || message}</span>
+        </div>
+      )}
+
+      <div className="ttc-kpi-grid">
+        <article className="ttc-card ttc-kpi-card">
+          <div className="ttc-kpi-top">
+            <span className="ttc-kpi-icon ttc-kpi-icon-blue">
+              <FileText size={16} />
+            </span>
+            <span>候选人</span>
+          </div>
+          <strong className="ttc-kpi-value">{statsQuery.data?.candidates ?? '—'}</strong>
+        </article>
+        <article className="ttc-card ttc-kpi-card">
+          <div className="ttc-kpi-top">
+            <span className="ttc-kpi-icon ttc-kpi-icon-green">
+              <CheckCircle2 size={16} />
+            </span>
+            <span>评估</span>
+          </div>
+          <strong className="ttc-kpi-value">{statsQuery.data?.assessments ?? '—'}</strong>
+        </article>
+        <article className="ttc-card ttc-kpi-card">
+          <div className="ttc-kpi-top">
+            <span className="ttc-kpi-icon ttc-kpi-icon-violet">
+              <Sparkles size={16} />
+            </span>
+            <span>语音会话</span>
+          </div>
+          <strong className="ttc-kpi-value">{statsQuery.data?.voice_sessions ?? '—'}</strong>
+        </article>
+      </div>
+
+      <div className="ttc-detail-grid">
+        <article className="ttc-card">
           <div className="ttc-card-header">
             <div>
-              <h2 className="ttc-card-title">岗位结构化信息</h2>
-              <p className="ttc-card-sub">由 AI 从岗位描述中提取</p>
+              <h2 className="ttc-card-title">当前 JD</h2>
+              <p className="ttc-card-sub">评估时的必备技能从这里抽取。</p>
             </div>
-            <span className="ttc-job-icon">
-              <Briefcase size={18} />
-            </span>
+            <FileText size={18} className="ttc-accent-icon" />
           </div>
-
-          <div className="ttc-detail-rows">
-            <DetailRow label="岗位名称" value={job.name} />
-            <DetailRow label="资历要求" value={structured.seniority_level || '未明确'} />
-            <DetailRow
-              label="经验年限"
-              value={
-                structured.min_years_experience != null
-                  ? `${structured.min_years_experience} 年以上`
-                  : '未明确'
-              }
-            />
-            <DetailRow
-              label="学历要求"
-              value={
-                structured.education_requirements?.level ||
-                structured.education_requirements?.field ||
-                '未明确'
-              }
-            />
-            <DetailRow label="最近更新" value={formatDateTime(job.updated_at)} />
-          </div>
-
-          <div className="ttc-skill-groups">
-            <div>
-              <h3>必备技能</h3>
-              <div className="ttc-chip-list">
-                {structured.required_skills.length > 0 ? (
-                  structured.required_skills.map((skill) => (
-                    <span key={skill} className="ttc-chip ttc-chip-blue">
-                      {skill}
-                    </span>
-                  ))
-                ) : (
-                  <span className="ttc-muted">未提取到必备技能</span>
-                )}
-              </div>
-            </div>
-            <div>
-              <h3>优先技能</h3>
-              <div className="ttc-chip-list">
-                {structured.preferred_skills.length > 0 ? (
-                  structured.preferred_skills.map((skill) => (
-                    <span key={skill} className="ttc-chip">
-                      {skill}
-                    </span>
-                  ))
-                ) : (
-                  <span className="ttc-muted">未提取到优先技能</span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="ttc-responsibility-block">
-            <h3>岗位职责</h3>
-            {structured.responsibilities.length > 0 ? (
-              <ul>
-                {structured.responsibilities.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            ) : (
-              <p className="ttc-muted">未提取到岗位职责。</p>
-            )}
-          </div>
+          <pre className="ttc-jd-text">{job?.current_version?.jd_text ?? '尚未选定 JD 版本'}</pre>
         </article>
 
-        <article className="ttc-card ttc-card-pad">
+        <article className="ttc-card">
           <div className="ttc-card-header">
             <div>
-              <h2 className="ttc-card-title">评分维度</h2>
+              <h2 className="ttc-card-title">权重方案</h2>
               <p className="ttc-card-sub">
-                {schema.dimensions.length} 个维度 · 合计 {totalPoints} 分
+                {plan ? `${plan.name} · 合计 ${weightSum}%` : '加载中'}
               </p>
             </div>
-            <CalendarClock size={18} className="ttc-accent-icon" />
+            <Wand2 size={18} className="ttc-accent-icon" />
           </div>
-
-          <div className="ttc-dimension-list">
-            {schema.dimensions.map((dimension) => (
-              <div key={dimension.name} className="ttc-dimension-row">
-                <div className="ttc-dimension-head">
-                  <strong>{dimension.label}</strong>
-                  <span>{dimension.max_points} 分</span>
-                </div>
-                <p>{dimension.description}</p>
-                <div className="ttc-progress-track">
-                  <i style={{ width: `${Math.min(100, (dimension.max_points / 100) * 100)}%` }} />
-                </div>
-              </div>
+          <div className="ttc-weight-list">
+            {editableDims.map((dim) => (
+              <label key={dim.key} className="ttc-weight-row">
+                <span>{dim.label}</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={dim.weight_pct}
+                  disabled={!canEdit}
+                  onChange={(event) => {
+                    const next = editableDims.map((item) =>
+                      item.key === dim.key
+                        ? { ...item, weight_pct: Number(event.target.value) }
+                        : item,
+                    )
+                    setDims(next)
+                  }}
+                />
+                <span className="ttc-muted">%</span>
+              </label>
             ))}
           </div>
-
-          {schema.dimensions.length === 0 && (
-            <div className="ttc-empty-state ttc-empty-compact">
-              <GraduationCap size={20} />
-              <strong>该岗位没有评分维度</strong>
-              <span>请编辑岗位或重新解析 JD。</span>
-            </div>
-          )}
+          <div className="ttc-form-actions">
+            <span className={weightSum === 100 ? 'ttc-muted' : 'ttc-inline-hint'}>
+              合计 {weightSum}%
+            </span>
+            <button
+              type="button"
+              className="ttc-btn ttc-btn-secondary ttc-btn-sm"
+              disabled={!canEdit || weightSum !== 100 || savePlan.isPending}
+              onClick={() => savePlan.mutate(editableDims)}
+            >
+              保存权重
+            </button>
+          </div>
         </article>
-      </section>
+      </div>
 
-      <section className="ttc-card ttc-card-pad">
+      <article className="ttc-card">
         <div className="ttc-card-header">
           <div>
-            <h2 className="ttc-card-title">原始岗位描述</h2>
-            <p className="ttc-card-sub">保存时的 JD 原文</p>
+            <h2 className="ttc-card-title">JD 版本</h2>
+            <p className="ttc-card-sub">可粘贴新版本，或让模型生成候选版本后择一启用。</p>
           </div>
-          <ArrowRight size={16} className="ttc-muted-icon" />
+          <FileText size={18} className="ttc-accent-icon" />
         </div>
-        <pre className="ttc-jd-text">{job.jd_text}</pre>
-      </section>
+
+        {canEdit && (
+          <>
+            <label className="ttc-login-field ttc-field-block">
+              <span>粘贴新 JD（至少 20 字）</span>
+              <textarea
+                rows={6}
+                value={jdDraft}
+                onChange={(event) => setJdDraft(event.target.value)}
+                placeholder="粘贴岗位描述…"
+              />
+            </label>
+            <div className="ttc-form-actions">
+              <button
+                type="button"
+                className="ttc-btn ttc-btn-primary ttc-btn-sm"
+                disabled={jdDraft.trim().length < 20 || saveVersion.isPending}
+                onClick={() => saveVersion.mutate()}
+              >
+                保存为新版本并启用
+              </button>
+            </div>
+
+            <label className="ttc-login-field ttc-field-block">
+              <span>AI 生成 JD</span>
+              <textarea
+                rows={3}
+                value={prompt}
+                onChange={(event) => setPrompt(event.target.value)}
+                placeholder="例如：为技术部生成一名后端工程师 JD，要求 3 年以上 Python 经验"
+              />
+            </label>
+            <div className="ttc-form-actions">
+              <button
+                type="button"
+                className="ttc-btn ttc-btn-secondary ttc-btn-sm"
+                disabled={prompt.trim().length < 10 || generate.isPending}
+                onClick={() => generate.mutate()}
+              >
+                <Sparkles size={15} />
+                {generate.isPending ? '生成中…' : '生成 JD 版本'}
+              </button>
+            </div>
+          </>
+        )}
+
+        <div className="ttc-version-list">
+          {versions.map((version) => (
+            <div
+              key={version.id}
+              className={`ttc-version-row ${
+                version.id === job?.current_version_id ? 'is-current' : ''
+              }`}
+            >
+              <div className="ttc-version-head">
+                <strong>v{version.version_no}</strong>
+                <span className="ttc-badge ttc-badge-blue">{version.source}</span>
+                {version.id === job?.current_version_id && (
+                  <span className="ttc-badge ttc-badge-green">当前</span>
+                )}
+                {version.created_at && (
+                  <span className="ttc-muted">{formatDateTime(version.created_at)}</span>
+                )}
+              </div>
+              <p>{version.jd_text.slice(0, 220)}</p>
+              {canEdit && version.id !== job?.current_version_id && (
+                <button
+                  type="button"
+                  className="ttc-btn ttc-btn-secondary ttc-btn-sm"
+                  onClick={() => useVersion.mutate(version)}
+                >
+                  设为当前
+                </button>
+              )}
+            </div>
+          ))}
+          {versions.length === 0 && <p className="ttc-muted">还没有 JD 版本。</p>}
+        </div>
+      </article>
     </div>
   )
 }
