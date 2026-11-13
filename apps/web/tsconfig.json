@@ -18,5 +18,18 @@
     "types": ["vite/client"]
   },
   "include": ["src"],
+  "exclude": [
+    "src/components/ExportButton.tsx",
+    "src/components/Header.tsx",
+    "src/components/JobDescriptionForm.tsx",
+    "src/components/ProgressDashboard.tsx",
+    "src/components/ResultsTable.tsx",
+    "src/components/ResumeUpload.tsx",
+    "src/components/candidates",
+    "src/components/voice",
+    "src/api/reports.ts",
+    "src/api/websocket.ts",
+    "src/pages/PlaceholderPage.tsx"
+  ],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

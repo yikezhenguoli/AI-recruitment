@@ -1,38 +1,31 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Info, Sparkles } from 'lucide-react'
-import { JobDescriptionForm } from '../components/JobDescriptionForm'
-import type {
-  GraduationYearFilterConfig,
-  JDStructured,
-  SavedJobProfile,
-  ScoringSchema,
-} from '../types'
+import { useMutation } from '@tanstack/react-query'
+import { AlertCircle, ArrowLeft, Briefcase, Sparkles } from 'lucide-react'
+import { createJob } from '../api/jobs'
+import { getApiErrorMessage } from '../lib/apiError'
 
 export default function JobCreatePage() {
   const navigate = useNavigate()
-  const [parsedRole, setParsedRole] = useState<string | null>(null)
+  const [title, setTitle] = useState('')
+  const [department, setDepartment] = useState('')
+  const [headcount, setHeadcount] = useState('')
+  const [jdText, setJdText] = useState('')
+  const [error, setError] = useState('')
 
-  const handleParsed = (
-    _jdText: string,
-    structured: JDStructured,
-    _schema: ScoringSchema,
-  ) => {
-    setParsedRole(structured.role_title)
-  }
+  const create = useMutation({
+    mutationFn: () =>
+      createJob({
+        title: title.trim(),
+        department: department.trim() || null,
+        headcount: headcount ? Number(headcount) : null,
+        jd_text: jdText.trim() ? jdText.trim() : null,
+      }),
+    onSuccess: (job) => navigate(`/jobs/${job.id}`, { replace: true }),
+    onError: (err) => setError(getApiErrorMessage(err, '创建岗位失败。')),
+  })
 
-  const handleProceed = (
-    _schema: ScoringSchema,
-    _graduationFilter: GraduationYearFilterConfig,
-  ) => {
-    navigate('/jobs')
-  }
-
-  const handleSaved = (job: SavedJobProfile) => {
-    navigate(`/jobs/${encodeURIComponent(job.name)}`, {
-      state: { created: true },
-    })
-  }
+  const jdTooShort = jdText.trim().length > 0 && jdText.trim().length < 20
 
   return (
     <div className="ttc-page">
@@ -40,40 +33,98 @@ export default function JobCreatePage() {
         <div>
           <div className="hero-eyebrow">
             <span className="hero-eyebrow-dot" />
-            JOB INTAKE
+            NEW POSITION
             <span className="hero-eyebrow-line" />
-            <span>AI JD PARSING</span>
+            <span>JOB INTAKE</span>
           </div>
           <h1>新建岗位</h1>
-          <p>粘贴岗位描述，AI 将提取结构化岗位信息并生成评分维度。保存后可在岗位管理中复用。</p>
+          <p>先建岗位骨架，再在详情页粘贴或让模型生成 JD，选定版本后发布。</p>
         </div>
-        <Link to="/jobs" className="ttc-btn ttc-btn-secondary">
-          <ArrowLeft size={16} />
-          返回岗位列表
-        </Link>
+        <div className="ttc-heading-actions">
+          <Link to="/jobs" className="ttc-btn ttc-btn-secondary">
+            <ArrowLeft size={15} />
+            返回列表
+          </Link>
+        </div>
       </section>
 
-      <div className="ttc-notice">
-        <Info size={16} />
-        <span>
-          本页调用 <code>/api/jobs/parse</code> 与 <code>/api/jobs/saved</code>。
-          未配置 DeepSeek Key 时，解析会返回明确错误，不会生成假数据。
-        </span>
-      </div>
-
-      {parsedRole && (
-        <div className="ttc-parsed-badge">
-          <Sparkles size={15} />
-          已解析岗位：{parsedRole}
+      <form
+        className="ttc-card ttc-form-card"
+        onSubmit={(event) => {
+          event.preventDefault()
+          if (!title.trim() || jdTooShort) return
+          setError('')
+          create.mutate()
+        }}
+      >
+        <div className="ttc-card-header">
+          <div>
+            <h2 className="ttc-card-title">岗位信息</h2>
+            <p className="ttc-card-sub">岗位名称必填；JD 可以稍后补充。</p>
+          </div>
+          <Briefcase size={18} className="ttc-accent-icon" />
         </div>
-      )}
 
-      <JobDescriptionForm
-        onParsed={handleParsed}
-        onProceed={handleProceed}
-        onSaved={handleSaved}
-        proceedLabel="完成并查看岗位列表"
-      />
+        <div className="ttc-form-grid">
+          <label className="ttc-login-field">
+            <span>岗位名称</span>
+            <input
+              value={title}
+              maxLength={160}
+              required
+              placeholder="例如：后端工程师"
+              onChange={(event) => setTitle(event.target.value)}
+            />
+          </label>
+          <label className="ttc-login-field">
+            <span>部门</span>
+            <input
+              value={department}
+              placeholder="例如：技术部"
+              onChange={(event) => setDepartment(event.target.value)}
+            />
+          </label>
+          <label className="ttc-login-field">
+            <span>招聘人数</span>
+            <input
+              type="number"
+              min={1}
+              value={headcount}
+              placeholder="留空表示不限"
+              onChange={(event) => setHeadcount(event.target.value)}
+            />
+          </label>
+        </div>
+
+        <label className="ttc-login-field ttc-field-block">
+          <span>岗位描述（可选，至少 20 字）</span>
+          <textarea
+            rows={10}
+            value={jdText}
+            placeholder="粘贴完整的岗位描述；留空则创建后通过模型生成。"
+            onChange={(event) => setJdText(event.target.value)}
+          />
+        </label>
+
+        {jdTooShort && <p className="ttc-inline-hint">JD 少于 20 字，后端会拒绝保存。</p>}
+        {error && (
+          <div className="ttc-inline-error">
+            <AlertCircle size={16} />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <div className="ttc-form-actions">
+          <button
+            type="submit"
+            className="ttc-btn ttc-btn-primary"
+            disabled={create.isPending || !title.trim() || jdTooShort}
+          >
+            <Sparkles size={16} />
+            {create.isPending ? '创建中…' : '创建岗位'}
+          </button>
+        </div>
+      </form>
     </div>
   )
 }

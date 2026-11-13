@@ -1,5 +1,9 @@
 import axios from 'axios'
 
+export function isApiNotFound(error: unknown): boolean {
+  return axios.isAxiosError(error) && error.response?.status === 404
+}
+
 /** Convert backend/network failures into a readable message for the UI. */
 export function getApiErrorMessage(
   error: unknown,

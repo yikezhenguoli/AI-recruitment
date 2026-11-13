@@ -6,6 +6,7 @@ import {
   Briefcase,
   ChevronRight,
   LayoutDashboard,
+  LogOut,
   Menu,
   Mic,
   Settings,
@@ -15,6 +16,8 @@ import {
   X,
 } from 'lucide-react'
 import { getHealth } from '../../api/client'
+import { logout, roleLabel } from '../../api/auth'
+import { useAuthStore } from '../../store/authStore'
 import { CursorTrail } from '../visual/CursorTrail'
 import { PageTransition } from './PageTransition'
 
@@ -57,7 +60,17 @@ export function AppLayout() {
   const [scrolled, setScrolled] = useState(false)
   const scrolledRef = useRef(false)
   const location = useLocation()
+  const user = useAuthStore((state) => state.user)
+  const clearUser = useAuthStore((state) => state.clear)
   const title = resolvePageTitle(location.pathname)
+  const displayName = user?.display_name || '招聘用户'
+  const avatarText = displayName.slice(0, 1).toUpperCase()
+
+  async function handleLogout() {
+    await logout()
+    clearUser()
+    window.location.assign('/login')
+  }
   const isSessions = location.pathname === '/sessions' || location.pathname.startsWith('/sessions/')
 
   // Passive scroll listener with rAF coalescing; only a boolean re-render.
@@ -94,9 +107,9 @@ export function AppLayout() {
     ? { label: '检测后端…', tone: 'neutral' }
     : healthQuery.isError
       ? { label: '后端未连接', tone: 'danger' }
-      : healthQuery.data?.llm_configured
-        ? { label: '后端就绪 · DeepSeek 已配置', tone: 'ok' }
-        : { label: '后端就绪 · LLM 待配置', tone: 'warn' }
+      : healthQuery.data?.status === 'ready'
+        ? { label: '后端就绪', tone: 'ok' }
+        : { label: '后端异常', tone: 'warn' }
 
   const closeMobile = () => setMobileOpen(false)
 
@@ -166,13 +179,16 @@ export function AppLayout() {
               </div>
             </div>
             <div className="ttc-profile">
-              <span className="ttc-avatar">HR</span>
+              <span className="ttc-avatar">{avatarText}</span>
               <div>
-                <strong>招聘管理员</strong>
-                <span>企业工作空间</span>
+                <strong>{displayName}</strong>
+                <span>{roleLabel(user?.role ?? '')}</span>
               </div>
               <ShieldCheck size={16} className="ttc-profile-shield" />
             </div>
+            <button type="button" className="ttc-btn ttc-btn-secondary ttc-btn-sm" onClick={handleLogout}>
+              退出登录
+            </button>
           </div>
         </div>
       </aside>
@@ -205,11 +221,14 @@ export function AppLayout() {
                 <Bell size={17} />
               </button>
               <div className="ttc-topbar-divider" />
-              <span className="ttc-avatar ttc-avatar-sm">HR</span>
+              <span className="ttc-avatar ttc-avatar-sm">{avatarText}</span>
               <div className="ttc-topbar-user">
-                <strong>招聘管理员</strong>
-                <span>管理员</span>
+                <strong>{displayName}</strong>
+                <span>{roleLabel(user?.role ?? '')}</span>
               </div>
+              <button type="button" className="ttc-icon-btn" aria-label="退出登录" onClick={handleLogout}>
+                <LogOut size={17} />
+              </button>
             </div>
           </div>
         </header>

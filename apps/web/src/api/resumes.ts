@@ -1,26 +1,52 @@
-import { API_BASE, api } from './client'
+import { API_PREFIX, api } from './client'
+import type { ResumeClaimsResponse, ResumeSummary, ResumeVersionInfo } from '../types'
 
-export async function processResumes(
-  jdText: string,
-  files: File[],
-  scoringSchema?: unknown,
-  graduationFilter?: unknown,
-): Promise<{ session_id: string; total_files: number; message: string }> {
+const P = `${API_PREFIX}/resumes`
+
+export interface UploadResumeResult {
+  resume_id: string
+  task_id?: string
+  parse_status: string
+  duplicate?: boolean
+}
+
+export async function uploadResume(
+  candidateId: string,
+  file: File,
+  jobId?: string | null,
+): Promise<UploadResumeResult> {
   const form = new FormData()
-  form.append('jd_text', jdText)
-  if (scoringSchema) form.append('scoring_schema_json', JSON.stringify(scoringSchema))
-  if (graduationFilter) form.append('graduation_filter_json', JSON.stringify(graduationFilter))
-  files.forEach((file) => form.append('files', file))
+  form.append('candidate_id', candidateId)
+  if (jobId) form.append('job_id', jobId)
+  form.append('file', file)
+  const response = await api.post(P, form)
+  return response.data as UploadResumeResult
+}
 
-  // Let the browser/Axios set the multipart boundary.
-  const response = await api.post('/api/resumes/process', form)
+export async function getResume(resumeId: string): Promise<ResumeSummary & { mime?: string }> {
+  const response = await api.get(`${P}/${resumeId}`)
   return response.data
 }
 
-export function getResumePreviewUrl(sessionId: string, candidateId: string): string {
-  return `${API_BASE}/api/resumes/preview-file/${sessionId}/${candidateId}`
+export async function getResumeClaims(resumeId: string): Promise<ResumeClaimsResponse> {
+  const response = await api.get(`${P}/${resumeId}/claims`)
+  return response.data as ResumeClaimsResponse
 }
 
-export async function closeResumeSession(sessionId: string): Promise<void> {
-  await api.delete(`/api/resumes/session/${sessionId}`)
+export async function getResumeTimeline(resumeId: string): Promise<{ items: unknown[] }> {
+  const response = await api.get(`${P}/${resumeId}/timeline`)
+  return response.data
 }
+
+export async function reparseResume(
+  resumeId: string,
+): Promise<{ task_id: string; parse_status: string }> {
+  const response = await api.post(`${P}/${resumeId}/reparse`)
+  return response.data
+}
+
+export async function deleteResume(resumeId: string): Promise<void> {
+  await api.delete(`${P}/${resumeId}`)
+}
+
+export type { ResumeVersionInfo }
