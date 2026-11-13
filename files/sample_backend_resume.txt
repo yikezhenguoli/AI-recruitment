@@ -1,0 +1,30 @@
+Alex Chen
+Backend Engineer
+Email: alex.chen@example.com | Phone: +86 138 0000 0000
+
+SUMMARY
+Backend engineer with 5 years of experience building Python and Go services on Linux.
+Focused on API design, PostgreSQL performance tuning, and reliable deployment on cloud
+platforms.
+
+WORK EXPERIENCE
+
+Senior Backend Engineer, Nimbus Data Systems, 2021 - 2025
+- Designed and shipped REST APIs in Python (FastAPI) serving 2M requests per day.
+- Led a PostgreSQL 14 migration and reduced p95 query latency from 420 ms to 90 ms.
+- Built CI/CD pipelines with Docker, GitHub Actions, and Terraform on AWS.
+- Introduced structured logging and OpenTelemetry tracing for 12 microservices.
+
+Backend Engineer, Lumen Software, 2019 - 2021
+- Developed order services in Go and Python, integrating Redis caching and RabbitMQ.
+- Automated deployment with Ansible and improved release frequency from monthly to weekly.
+
+SKILLS
+Python, Go, SQL, PostgreSQL, Redis, Docker, Kubernetes, Linux, Git, FastAPI,
+REST API, pytest, Terraform, AWS, monitoring with Prometheus and Grafana.
+
+EDUCATION
+B.Eng. in Computer Science, Zhejiang University, 2015 - 2019.
+
+PROJECTS
+Open-source rate limiter library for FastAPI (1.2k GitHub stars), with benchmarks and docs.

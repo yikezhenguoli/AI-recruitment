@@ -27,6 +27,32 @@ class ConsentInput(BaseModel):
     acknowledged: bool
 
 
+@router.get("/consents")
+async def list_consents(candidate_id: UUID | None = None,
+                        user: Principal = Depends(require_roles("candidate", "hr", "admin")),
+                        session: AsyncSession = Depends(get_session)):
+    """列出授权记录。候选人只能看自己的；HR/管理员需显式指定候选人。"""
+    if candidate_id is not None:
+        await require_candidate(session, user, candidate_id)
+        where = "c.candidate_id = :candidate"
+        params: dict = {"candidate": candidate_id}
+    elif user.role == "candidate":
+        where = ("c.candidate_id IN (SELECT id FROM candidate "
+                 "WHERE user_id = :user AND tenant_id = :tenant)")
+        params = {"user": user.id, "tenant": user.tenant_id}
+    else:
+        raise TTCError("TTC-2002", "需要指定候选人", 422)
+    rows = (await session.execute(
+        text("SELECT c.id, c.candidate_id, p.display_name, c.purpose::text AS purpose, "
+             "c.status::text AS status, c.accepted_at, c.revoked_at, c.expires_at "
+             "FROM consent c JOIN candidate p ON p.id = c.candidate_id "
+             f"WHERE {where} "
+             "ORDER BY c.accepted_at DESC NULLS LAST, c.created_at DESC"),
+        params,
+    )).mappings().all()
+    return {"items": [dict(row) for row in rows]}
+
+
 @router.post("/consents", status_code=201)
 async def create_consent(body: ConsentInput, user: Principal = Depends(candidate_role),
                          session: AsyncSession = Depends(get_session)):
