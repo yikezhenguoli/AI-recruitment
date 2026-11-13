@@ -75,9 +75,11 @@ def test_synthetic_resume_assessment_and_tenant_access(monkeypatch):
                 "title": "后端工程师",
                 "jd_text": "负责后端服务开发，熟悉 Python 与 PostgreSQL，重视安全和工程质量。"})
             assert job.status_code == 201, job.text
+            assert client.get("/api/v1/jobs", headers=headers).status_code == 200
             candidate = client.post("/api/v1/candidates", headers=headers,
                                     json={"display_name": "合成候选人"})
             assert candidate.status_code == 201, candidate.text
+            assert client.get("/api/v1/candidates", headers=headers).status_code == 200
             candidate_id = candidate.json()["id"]
             async def link():
                 engine = create_async_engine(settings.database_url)
@@ -98,6 +100,12 @@ def test_synthetic_resume_assessment_and_tenant_access(monkeypatch):
             assert response.status_code == 202, response.text
             resume_id = response.json()["resume_id"]
             assert client.get(f"/api/v1/resumes/{resume_id}", headers=other).status_code == 404
+            listed = client.get(f"/api/v1/candidates/{candidate_id}/resumes",
+                                headers=headers)
+            assert listed.status_code == 200, listed.text
+            assert listed.json()["items"][0]["id"] == resume_id
+            assert client.get(f"/api/v1/candidates/{candidate_id}/resumes",
+                              headers=other).status_code == 404
             with client.websocket_connect(
                 f"/api/v1/ws/progress/{response.json()['task_id']}"
             ) as socket:

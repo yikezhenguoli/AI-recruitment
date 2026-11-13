@@ -69,7 +69,7 @@ async def list_candidates(job_id: UUID | None = None,
     rows = (await session.execute(
         text("SELECT id, display_name, job_id, source, is_synthetic, created_at "
              "FROM candidate WHERE tenant_id = :tenant "
-             "AND (:job IS NULL OR job_id = :job) "
+        "AND (CAST(:job AS uuid) IS NULL OR job_id = CAST(:job AS uuid)) "
              "ORDER BY created_at DESC, id DESC LIMIT :limit"),
         {"tenant": user.tenant_id, "job": job_id, "limit": limit},
     )).mappings().all()
@@ -80,3 +80,15 @@ async def list_candidates(job_id: UUID | None = None,
 async def get_candidate(candidate_id: UUID, user: Principal = Depends(current_user),
                         session: AsyncSession = Depends(get_session)):
     return await require_candidate(session, user, candidate_id)
+
+
+@router.get("/candidates/{candidate_id}/resumes")
+async def candidate_resumes(candidate_id: UUID, user: Principal = Depends(hr),
+                            session: AsyncSession = Depends(get_session)):
+    await require_candidate(session, user, candidate_id)
+    rows = (await session.execute(
+        text("SELECT id, file_name, parse_status, created_at FROM resume "
+             "WHERE candidate_id = :candidate ORDER BY created_at DESC, id DESC"),
+        {"candidate": candidate_id},
+    )).mappings().all()
+    return {"items": [dict(row) for row in rows]}
