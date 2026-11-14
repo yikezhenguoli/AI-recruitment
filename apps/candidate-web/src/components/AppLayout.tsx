@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 import {
+  ArrowUpRight,
   BriefcaseBusiness,
   FileText,
   Home,
@@ -28,6 +29,11 @@ export function AppLayout() {
   const user = useAuthStore((state) => state.user)
   const clear = useAuthStore((state) => state.clear)
   const [open, setOpen] = useState(false)
+  const employerOrigin =
+    typeof window === 'undefined'
+      ? 'http://localhost:5174'
+      : `${window.location.protocol}//${window.location.hostname}:5174`
+  const employerHref = `${employerOrigin}/login${import.meta.env.DEV ? '?autologin=1' : ''}`
 
   useEffect(() => {
     if (!open) return
@@ -80,6 +86,15 @@ export function AppLayout() {
           </nav>
 
           <div className="ml-auto flex items-center gap-2">
+            <a
+              href={employerHref}
+              className="btn-quiet"
+              title="切换至企业招聘工作台"
+            >
+              <span className="hidden sm:inline">企业招聘端</span>
+              <span className="sm:hidden">招聘端</span>
+              <ArrowUpRight size={14} />
+            </a>
             <div className="hidden text-right sm:block">
               <div className="text-xs font-bold text-ink">{user?.display_name ?? '求职者'}</div>
               <div className="text-[10px] text-muted">候选人账号</div>

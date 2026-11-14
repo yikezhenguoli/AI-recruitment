@@ -57,10 +57,11 @@ export default function AdminPage() {
     retry: false,
   })
   const candidatesQuery = useQuery({ queryKey: ['candidates'], queryFn: () => listCandidates() })
+  const effectiveCandidateId = candidateId || candidatesQuery.data?.[0]?.id || ''
   const consentsQuery = useQuery({
-    queryKey: ['consents', candidateId],
-    queryFn: () => listConsents(candidateId),
-    enabled: Boolean(candidateId),
+    queryKey: ['consents', effectiveCandidateId],
+    queryFn: () => listConsents(effectiveCandidateId),
+    enabled: Boolean(effectiveCandidateId),
   })
   const backupsQuery = useQuery({
     queryKey: ['backups'],
@@ -263,10 +264,10 @@ export default function AdminPage() {
           </div>
           <Users size={18} className="ttc-accent-icon" />
         </div>
-        <div className="ttc-launch-form">
+        <div className="ttc-launch-form ttc-launch-form--compact">
           <label className="ttc-login-field">
             <span>候选人</span>
-            <select value={candidateId} onChange={(event) => setCandidateId(event.target.value)}>
+            <select value={effectiveCandidateId} onChange={(event) => setCandidateId(event.target.value)}>
               <option value="">请选择候选人</option>
               {(candidatesQuery.data ?? []).map((candidate) => (
                 <option key={candidate.id} value={candidate.id}>
@@ -292,7 +293,7 @@ export default function AdminPage() {
               </span>
             </div>
           ))}
-          {candidateId && (consentsQuery.data ?? []).length === 0 && (
+          {effectiveCandidateId && (consentsQuery.data ?? []).length === 0 && (
             <p className="ttc-muted">该候选人没有授权记录。</p>
           )}
         </div>
@@ -306,27 +307,27 @@ export default function AdminPage() {
               租户级数据库逻辑快照；不含简历原件与录音，且只做 UPSERT 恢复。
             </p>
           </div>
-          <HardDriveDownload size={18} className="ttc-accent-icon" />
+          <div className="ttc-card-actions">
+            <button type="button" className="ttc-btn ttc-btn-primary ttc-btn-sm"
+              disabled={createBackupMutation.isPending}
+              onClick={() => createBackupMutation.mutate()}>
+              <ShieldCheck size={14} />
+              {createBackupMutation.isPending ? '生成中…' : '立即备份'}
+            </button>
+            <button type="button" className="ttc-btn ttc-btn-secondary ttc-btn-sm"
+              onClick={() => void backupsQuery.refetch()}>
+              <RefreshCw size={14} />
+              刷新
+            </button>
+            <HardDriveDownload size={18} className="ttc-accent-icon" aria-hidden="true" />
+          </div>
         </div>
         {backupNote && (
-          <p className="ttc-muted" style={{ fontSize: 10, marginBottom: 10 }}>
+          <p className="ttc-muted" style={{ fontSize: 12, marginBottom: 10 }}>
             {backupNote}
           </p>
         )}
-        <div className="ttc-card-actions">
-          <button type="button" className="ttc-btn ttc-btn-primary ttc-btn-sm"
-            disabled={createBackupMutation.isPending}
-            onClick={() => createBackupMutation.mutate()}>
-            <ShieldCheck size={14} />
-            {createBackupMutation.isPending ? '生成中…' : '立即备份'}
-          </button>
-          <button type="button" className="ttc-btn ttc-btn-secondary ttc-btn-sm"
-            onClick={() => void backupsQuery.refetch()}>
-            <RefreshCw size={14} />
-            刷新
-          </button>
-        </div>
-        <div className="ttc-table-scroll" style={{ marginTop: 10 }}>
+        <div className="ttc-table-scroll">
           <table className="ttc-result-table">
             <thead>
               <tr>
