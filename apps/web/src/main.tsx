@@ -5,6 +5,7 @@ import App from './App'
 import { queryClient } from './lib/queryClient'
 import './index.css'
 import './styles/ttc-glass2.css'
+import './styles/theme.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <QueryClientProvider client={queryClient}>
