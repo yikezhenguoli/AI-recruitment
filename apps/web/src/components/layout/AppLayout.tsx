@@ -72,8 +72,18 @@ function resolvePageTitle(pathname: string): string {
 
 export function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [isDrawerViewport, setIsDrawerViewport] = useState<boolean>(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return false
+    }
+    return window.matchMedia('(max-width: 1023px)').matches
+  })
   const [scrolled, setScrolled] = useState(false)
   const scrolledRef = useRef(false)
+  const sidebarRef = useRef<HTMLElement>(null)
+  const mainShellRef = useRef<HTMLDivElement>(null)
+  const menuBtnRef = useRef<HTMLButtonElement>(null)
+  const closeBtnRef = useRef<HTMLButtonElement>(null)
   const location = useLocation()
   const user = useAuthStore((state) => state.user)
   const clearUser = useAuthStore((state) => state.clear)
@@ -87,6 +97,50 @@ export function AppLayout() {
     window.location.assign('/login')
   }
   const isSessions = location.pathname === '/sessions' || location.pathname.startsWith('/sessions/')
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return
+    const query = window.matchMedia('(max-width: 1023px)')
+    const sync = () => {
+      setIsDrawerViewport(query.matches)
+      if (!query.matches) setMobileOpen(false)
+    }
+    sync()
+    if (typeof query.addEventListener === 'function') {
+      query.addEventListener('change', sync)
+      return () => query.removeEventListener('change', sync)
+    }
+    query.addListener(sync)
+    return () => query.removeListener(sync)
+  }, [])
+
+  useEffect(() => {
+    const sidebar = sidebarRef.current as (HTMLElement & { inert: boolean }) | null
+    const mainShell = mainShellRef.current as (HTMLDivElement & { inert: boolean }) | null
+    const drawerActive = isDrawerViewport && mobileOpen
+    if (mainShell) mainShell.inert = drawerActive
+    if (sidebar) sidebar.inert = isDrawerViewport && !mobileOpen
+    return () => {
+      if (mainShell) mainShell.inert = false
+      if (sidebar) sidebar.inert = false
+    }
+  }, [isDrawerViewport, mobileOpen])
+
+  useEffect(() => {
+    if (!isDrawerViewport || !mobileOpen) return
+    const frame = window.requestAnimationFrame(() => closeBtnRef.current?.focus())
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMobileOpen(false)
+        window.requestAnimationFrame(() => menuBtnRef.current?.focus())
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [isDrawerViewport, mobileOpen])
 
   // Passive scroll listener with rAF coalescing; only a boolean re-render.
   // Never intercepts or hijacks scrolling.
@@ -145,6 +199,12 @@ export function AppLayout() {
         : { label: '后端异常', tone: 'warn' }
 
   const closeMobile = () => setMobileOpen(false)
+  const closeDrawerAndRestoreFocus = () => {
+    setMobileOpen(false)
+    if (isDrawerViewport) {
+      window.requestAnimationFrame(() => menuBtnRef.current?.focus())
+    }
+  }
 
   return (
     <div className="ttc-app">
@@ -153,11 +213,16 @@ export function AppLayout() {
           type="button"
           className="fixed inset-0 z-40 bg-slate-900/20 backdrop-blur-sm lg:hidden"
           aria-label="关闭导航"
-          onClick={closeMobile}
+          onClick={closeDrawerAndRestoreFocus}
         />
       )}
 
       <aside
+        ref={sidebarRef}
+        id="ttc-nav-drawer"
+        role={isDrawerViewport ? 'dialog' : undefined}
+        aria-modal={isDrawerViewport && mobileOpen ? true : undefined}
+        aria-label={isDrawerViewport ? '主导航菜单' : undefined}
         className={`ttc-sidebar fixed inset-y-0 left-0 z-50 w-[272px] transition-transform duration-300 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
@@ -171,7 +236,13 @@ export function AppLayout() {
               </div>
               <div className="ttc-brand-sub">TALENT TRUST & CONNECT</div>
             </div>
-            <button type="button" className="ttc-icon-btn lg:hidden" onClick={closeMobile} aria-label="关闭导航">
+            <button
+              ref={closeBtnRef}
+              type="button"
+              className="ttc-icon-btn lg:hidden"
+              onClick={closeDrawerAndRestoreFocus}
+              aria-label="关闭导航"
+            >
               <X size={18} />
             </button>
           </div>
@@ -228,14 +299,17 @@ export function AppLayout() {
         </div>
       </aside>
 
-      <div className="ttc-main">
+      <div ref={mainShellRef} className="ttc-main">
         <header className={`ttc-topbar ${scrolled ? 'is-scrolled' : ''}`}>
           <div className="ttc-topbar-inner">
             <div className="ttc-topbar-left">
               <button
+                ref={menuBtnRef}
                 type="button"
                 className="ttc-icon-btn lg:hidden"
                 onClick={() => setMobileOpen(true)}
+                aria-expanded={isDrawerViewport ? mobileOpen : undefined}
+                aria-controls="ttc-nav-drawer"
                 aria-label="打开导航"
               >
                 <Menu size={19} />

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertCircle, FileText, Plus, RefreshCw, Send, XCircle } from 'lucide-react'
+import { ModalDialog } from '../components/layout/ModalDialog'
 import { listApplications } from '../api/applications'
 import {
   createOffer,
@@ -161,67 +162,88 @@ export default function OffersPage() {
         </div>
       )}
 
-      {formOpen && (
-        <article className="ttc-card">
-          <div className="ttc-card-header">
-            <div>
-              <h2 className="ttc-card-title">新建 Offer 草稿</h2>
-              <p className="ttc-card-sub">选择一条投递；同一投递只能有一份 Offer。</p>
-            </div>
-            <FileText size={18} className="ttc-accent-icon" />
-          </div>
-          <div className="ttc-launch-form">
-            <label className="ttc-login-field">
-              <span>投递</span>
-              <select value={applicationId} onChange={(event) => setApplicationId(event.target.value)}>
-                <option value="">请选择投递</option>
-                {availableApplications.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.candidate_name} · {item.job_title}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="ttc-login-field">
-              <span>月薪（元）</span>
-              <input value={salary} onChange={(event) => setSalary(event.target.value)}
-                inputMode="decimal" placeholder="18000" />
-            </label>
-            <label className="ttc-login-field">
-              <span>发薪月数</span>
-              <input value={months} onChange={(event) => setMonths(event.target.value)}
-                inputMode="numeric" placeholder="12" />
-            </label>
-            <label className="ttc-login-field">
-              <span>入职日期</span>
-              <input type="date" value={startDate}
-                onChange={(event) => setStartDate(event.target.value)} />
-            </label>
-            <label className="ttc-login-field">
-              <span>有效期至</span>
-              <input type="datetime-local" value={expiresAt}
-                onChange={(event) => setExpiresAt(event.target.value)} />
-            </label>
-            <label className="ttc-login-field">
-              <span>备注</span>
-              <input value={note} onChange={(event) => setNote(event.target.value)}
-                placeholder="给候选人看的补充说明" />
-            </label>
-          </div>
-          <div className="ttc-card-actions">
-            <button
-              type="button"
-              className="ttc-btn ttc-btn-primary"
-              disabled={!applicationId || createMutation.isPending}
-              onClick={() => createMutation.mutate()}
-            >
-              {createMutation.isPending ? '创建中…' : '创建草稿'}
-            </button>
-          </div>
-        </article>
-      )}
+      <ModalDialog
+        open={formOpen}
+        onClose={() => setFormOpen(false)}
+        title="新建 Offer 草稿"
+        subtitle="选择一条投递；同一投递只能有一份 Offer。"
+        icon={<FileText size={18} className="ttc-accent-icon" />}
+      >
+        <div className="ttc-launch-form">
+          <label className="ttc-login-field">
+            <span>投递</span>
+            <select value={applicationId} onChange={(event) => setApplicationId(event.target.value)}>
+              <option value="">请选择投递</option>
+              {availableApplications.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.candidate_name} · {item.job_title}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="ttc-login-field">
+            <span>月薪（元）</span>
+            <input
+              value={salary}
+              onChange={(event) => setSalary(event.target.value)}
+              inputMode="decimal"
+              placeholder="18000"
+            />
+          </label>
+          <label className="ttc-login-field">
+            <span>发薪月数</span>
+            <input
+              value={months}
+              onChange={(event) => setMonths(event.target.value)}
+              inputMode="numeric"
+              placeholder="12"
+            />
+          </label>
+          <label className="ttc-login-field">
+            <span>入职日期</span>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(event) => setStartDate(event.target.value)}
+            />
+          </label>
+          <label className="ttc-login-field">
+            <span>有效期至</span>
+            <input
+              type="datetime-local"
+              value={expiresAt}
+              onChange={(event) => setExpiresAt(event.target.value)}
+            />
+          </label>
+          <label className="ttc-login-field">
+            <span>备注</span>
+            <input
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+              placeholder="给候选人看的补充说明"
+            />
+          </label>
+        </div>
+        <div className="ttc-card-actions ttc-dialog-actions">
+          <button
+            type="button"
+            className="ttc-btn ttc-btn-secondary"
+            onClick={() => setFormOpen(false)}
+          >
+            取消
+          </button>
+          <button
+            type="button"
+            className="ttc-btn ttc-btn-primary"
+            disabled={!applicationId || createMutation.isPending}
+            onClick={() => createMutation.mutate()}
+          >
+            {createMutation.isPending ? '创建中…' : '创建草稿'}
+          </button>
+        </div>
+      </ModalDialog>
 
-      <div className="ttc-filter-chips">
+      <search className="ttc-filter-chips" aria-label="按 Offer 状态筛选">
         {(
           [
             ['all', '全部'],
@@ -239,7 +261,7 @@ export default function OffersPage() {
             {label}
           </button>
         ))}
-      </div>
+      </search>
 
       {offersQuery.isError && (
         <div className="ttc-error-panel">
@@ -251,7 +273,7 @@ export default function OffersPage() {
         </div>
       )}
 
-      <div className="ttc-table-scroll">
+      <div className="ttc-table-scroll ttc-table-container" tabIndex={0} role="region" aria-label="Offer 列表">
         <table className="ttc-result-table">
           <thead>
             <tr>
@@ -266,22 +288,22 @@ export default function OffersPage() {
           <tbody>
             {offers.map((offer) => (
               <tr key={offer.id}>
-                <td>
+                <td data-label="候选人">
                   <button type="button" className="ttc-link-btn" onClick={() => setSelected(offer.id)}>
                     {offer.candidate_name}
                   </button>
                 </td>
-                <td>{offer.position_title}</td>
-                <td className="ttc-muted">{formatSalary(offer.salary_monthly, offer.salary_months)}</td>
-                <td>
+                <td data-label="岗位">{offer.position_title}</td>
+                <td data-label="薪资" className="ttc-muted">{formatSalary(offer.salary_monthly, offer.salary_months)}</td>
+                <td data-label="状态">
                   <span className={`ttc-badge ${STATUS_CLASS[offer.status]}`}>
                     {STATUS_LABEL[offer.status]}
                   </span>
                 </td>
-                <td className="ttc-muted">
+                <td data-label="有效期" className="ttc-muted">
                   {offer.expires_at ? formatDateTime(offer.expires_at) : '未设置'}
                 </td>
-                <td>
+                <td data-label="操作">
                   <div className="ttc-card-actions">
                     {offer.status === 'draft' && (
                       <button type="button" className="ttc-btn ttc-btn-secondary ttc-btn-sm"

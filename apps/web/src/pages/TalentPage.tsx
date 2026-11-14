@@ -93,7 +93,7 @@ export default function TalentPage() {
           </div>
           <Search size={18} className="ttc-accent-icon" />
         </div>
-        <div className="ttc-inline-form">
+        <search className="ttc-inline-form" aria-label="按技能或关键词检索人才池">
           <label className="ttc-login-field" style={{ flexBasis: 320 }}>
             <span>检索条件</span>
             <input value={query} onChange={(event) => setQuery(event.target.value)}
@@ -105,7 +105,7 @@ export default function TalentPage() {
             <Sparkles size={15} />
             {searchMutation.isPending ? '检索中…' : '检索'}
           </button>
-        </div>
+        </search>
 
         {result && (
           <div style={{ marginTop: 12 }}>

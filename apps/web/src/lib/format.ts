@@ -19,8 +19,8 @@ export const VOICE_STATUS_LABELS: Record<VoiceSessionStatus, string> = {
 export const VOICE_STATUS_CLASS: Record<VoiceSessionStatus, string> = {
   created: 'ttc-badge-blue',
   connecting: 'ttc-badge-blue',
-  live: 'ttc-badge-amber',
-  ended: 'ttc-badge-green',
+  live: 'ttc-badge-green',
+  ended: 'ttc-badge-amber',
   failed: 'ttc-badge-red',
   revoked: 'ttc-badge-red',
 }

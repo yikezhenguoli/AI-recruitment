@@ -2614,8 +2614,10 @@ main.ttc-content {
   animation: none;
 }
 
-.ttc-page-transition {
-  animation: lg2-page-in 360ms var(--lg2-ease) both;
+@media (prefers-reduced-motion: no-preference) {
+  .ttc-page-transition {
+    animation: lg2-page-in 360ms var(--lg2-ease) both;
+  }
 }
 
 @keyframes lg2-page-in {
@@ -2746,9 +2748,6 @@ main.ttc-content {
     transition: none !important;
     transform: none !important;
     will-change: auto;
-  }
-  .ttc-page-transition {
-    animation-duration: 1ms !important;
   }
   .ttc-topbar {
     transition: none !important;
