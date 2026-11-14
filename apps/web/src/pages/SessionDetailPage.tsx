@@ -28,6 +28,7 @@ import { PremiumWaveform } from '../components/visual/PremiumWaveform'
 import { CapabilityAssessmentPanel } from '../components/voice/CapabilityAssessmentPanel'
 import { ConductAssessmentPanel } from '../components/voice/ConductAssessmentPanel'
 import { useHRObserver } from '../hooks/useHRObserver'
+import { useVoiceSessionStatus } from '../hooks/useVoiceSessionStatus'
 import { getApiErrorMessage, isApiNotFound } from '../lib/apiError'
 import { formatDateTime, VOICE_STATUS_LABELS } from '../lib/format'
 import type { CallReport } from '../types'
@@ -118,6 +119,7 @@ export default function SessionDetailPage() {
   const { id = '' } = useParams()
   const queryClient = useQueryClient()
   const observer = useHRObserver(id)
+  useVoiceSessionStatus(id)
   const transcriptRef = useRef<HTMLDivElement | null>(null)
   const [flowPaused, setFlowPaused] = useState(false)
 
@@ -125,6 +127,9 @@ export default function SessionDetailPage() {
     queryKey: ['voiceSession', id],
     queryFn: () => getVoiceSession(id),
     enabled: Boolean(id),
+    // Keep a low-frequency fallback for environments where WebSockets are blocked.
+    refetchInterval: (query) =>
+      query.state.data?.status === 'created' ? 5_000 : false,
   })
   const candidateQuery = useQuery({
     queryKey: ['candidate', sessionQuery.data?.candidate_id],

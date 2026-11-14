@@ -15,6 +15,11 @@ from ttc.domains.interview.plan import (
     plan_from_db,
     session_instructions,
 )
+from ttc.domains.interview.question_guard import (
+    QuestionLedger,
+    questions_equivalent,
+    response_instructions,
+)
 
 
 def test_normalize_plan_keeps_valid_questions():
@@ -370,6 +375,92 @@ def test_normalize_plan_caps_question_count():
     plan = normalize_plan({"questions": [{"text": f"第{i}个问题足够长"} for i in range(12)]})
     assert plan is not None
     assert len(plan["questions"]) == plan_module.MAX_QUESTIONS
+
+
+def test_normalize_plan_removes_duplicate_and_semantically_repeated_questions():
+    plan = normalize_plan(
+        {
+            "questions": [
+                {"text": "你在订单系统里具体负责哪一部分？", "section": "experience"},
+                {"text": "订单系统你做了哪些工作？", "section": "experience"},
+                {"text": "订单系统遇到困难时你怎么处理？", "section": "gap"},
+                {"text": "你为什么考虑这个岗位？", "section": "motivation"},
+            ],
+        }
+    )
+
+    assert plan is not None
+    assert [item["text"] for item in plan["questions"]] == [
+        "你在订单系统里具体负责哪一部分？",
+        "订单系统遇到困难时你怎么处理？",
+        "你为什么考虑这个岗位？",
+    ]
+
+
+def test_semantic_guard_distinguishes_topic_from_question_intent():
+    assert questions_equivalent(
+        "你在订单系统里具体负责哪一部分？",
+        "订单系统你做了哪些工作？",
+    )
+    assert questions_equivalent(
+        "请说明你如何定位线上性能问题？",
+        "线上性能问题你是怎样排查的？",
+    )
+    assert not questions_equivalent(
+        "你如何设计缓存一致性？",
+        "缓存不一致时你如何定位问题？",
+    )
+    assert not questions_equivalent(
+        "你为什么选择我们团队？",
+        "你为什么离开上一份工作？",
+    )
+    assert questions_equivalent(
+        "项目遇到什么困难？",
+        "项目最大的挑战是什么？",
+    )
+    assert questions_equivalent(
+        "最大的收获是什么？",
+        "你从这段经历学到了什么？",
+    )
+    assert not questions_equivalent(
+        "你最大的收获是什么？",
+        "你遇到的最大挑战是什么？",
+    )
+
+
+def test_custom_questions_are_deduplicated_by_semantics():
+    plan = merge_custom_questions(
+        {
+            "questions": [
+                {"id": "q1", "section": "skill", "text": "线上性能问题怎么排查？"},
+                {"id": "q2", "section": "experience", "text": "请介绍一段项目经历。"},
+            ],
+        },
+        [
+            "请说明你如何定位线上性能问题？",
+            "线上性能问题你是怎样排查的？",
+        ],
+    )
+
+    assert plan["custom_question_count"] == 1
+    assert plan["questions"][0]["text"] == "请说明你如何定位线上性能问题？"
+    assert "线上性能问题怎么排查？" not in [
+        item["text"] for item in plan["questions"]
+    ]
+
+
+def test_question_ledger_tracks_semantic_repeats_and_builds_guard_instructions():
+    ledger = QuestionLedger()
+    assert ledger.add("你好。你在订单系统里具体负责哪一部分？")
+    assert not ledger.add("订单系统你做了哪些工作？")
+    assert ledger.add("订单系统遇到困难时你怎么处理？")
+
+    text = response_instructions("基础面试指令。", ledger, "继续面试。")
+    assert "问题去重硬约束" in text
+    assert "你在订单系统里具体负责哪一部分？" in text
+    assert "订单系统遇到困难时你怎么处理？" in text
+    assert "换同义词、改写句式" in text
+    assert text.index("基础面试指令。") < text.index("问题去重硬约束")
 
 
 def test_plan_from_db_parses_jsonb_string():

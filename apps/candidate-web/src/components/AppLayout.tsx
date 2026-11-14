@@ -13,6 +13,7 @@ import {
   X,
 } from 'lucide-react'
 import { logout } from '../api/auth'
+import { getEmployerLoginUrl } from '../lib/appLinks'
 import { getRefreshToken } from '../lib/tokenStorage'
 import { useAuthStore } from '../store/auth'
 
@@ -29,11 +30,7 @@ export function AppLayout() {
   const user = useAuthStore((state) => state.user)
   const clear = useAuthStore((state) => state.clear)
   const [open, setOpen] = useState(false)
-  const employerOrigin =
-    typeof window === 'undefined'
-      ? 'http://localhost:5174'
-      : `${window.location.protocol}//${window.location.hostname}:5174`
-  const employerHref = `${employerOrigin}/login${import.meta.env.DEV ? '?autologin=1' : ''}`
+  const employerHref = getEmployerLoginUrl(import.meta.env.DEV ? '?autologin=1' : '')
 
   useEffect(() => {
     if (!open) return

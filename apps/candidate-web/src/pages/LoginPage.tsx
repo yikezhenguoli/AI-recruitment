@@ -3,6 +3,7 @@ import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react
 import { AlertCircle, ArrowRight, Loader2, LogIn } from 'lucide-react'
 import { fetchMe, login } from '../api/auth'
 import { getApiErrorMessage } from '../lib/apiError'
+import { getEmployerLoginUrl } from '../lib/appLinks'
 import { setStoredUser, setTokens } from '../lib/tokenStorage'
 import { useAuthStore } from '../store/auth'
 import { AuthShell } from '../components/AuthShell'
@@ -28,10 +29,6 @@ export default function LoginPage() {
   const from = state?.from
   const autoLogin = params.get('autologin') === '1'
   const autoLoginStarted = useRef(false)
-  const employerOrigin =
-    typeof window === 'undefined'
-      ? 'http://localhost:5174'
-      : `${window.location.protocol}//${window.location.hostname}:5174`
 
   const [tenantSlug, setTenantSlug] = useState(DEFAULT_TENANT)
   const [email, setEmail] = useState(DEV_CANDIDATE_EMAIL)
@@ -165,14 +162,16 @@ export default function LoginPage() {
           </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <a
-              href={`${employerOrigin}/login${import.meta.env.DEV ? '?role=admin&autologin=1' : ''}`}
+              href={getEmployerLoginUrl(import.meta.env.DEV ? '?role=admin&autologin=1' : '')}
               className="flex flex-col rounded-xl border border-line bg-white/75 px-3 py-2.5 text-left transition hover:border-brand/50 hover:bg-white"
             >
               <span className="text-xs font-bold text-brand-deep">管理员工作台 ↗</span>
               <span className="mt-0.5 text-[11px] text-muted">系统治理、团队与集成</span>
             </a>
             <a
-              href={`${employerOrigin}/login${import.meta.env.DEV ? '?role=hr&autologin=1' : '?role=hr'}`}
+              href={getEmployerLoginUrl(
+                import.meta.env.DEV ? '?role=hr&autologin=1' : '?role=hr',
+              )}
               className="flex flex-col rounded-xl border border-line bg-white/75 px-3 py-2.5 text-left transition hover:border-brand/50 hover:bg-white"
             >
               <span className="text-xs font-bold text-brand-deep">招聘专员入口 ↗</span>

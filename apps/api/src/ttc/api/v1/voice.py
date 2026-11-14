@@ -29,6 +29,7 @@ from ttc.core.config import get_settings
 from ttc.core.db import get_session
 from ttc.core.errors import TTCError
 from ttc.core.security import uuid7
+from ttc.domains.interview import question_guard
 from ttc.domains.interview.capability import normalize_capability
 from ttc.domains.interview.conduct import (
     has_live_candidate_violation,
@@ -319,6 +320,7 @@ class LiveInterviewRoom:
         self.hr_control = False
         self.hr_mic_open = False
         self.interview_paused = False
+        self.question_ledger = question_guard.QuestionLedger()
         self.last_voice_source = "candidate"
         self.last_voice_at = 0.0
         self.candidate_send_lock = asyncio.Lock()
@@ -378,6 +380,20 @@ class LiveInterviewRoom:
         async with self.upstream_send_lock:
             await self.upstream.send(raw)
 
+    def response_instructions(self, extra: str = "") -> str:
+        return question_guard.response_instructions(
+            self.instructions,
+            self.question_ledger,
+            extra,
+        )
+
+    async def refresh_question_guard(self) -> None:
+        """Apply the updated ledger to VAD-created as well as explicit responses."""
+        await self.send_upstream({
+            "type": "session.update",
+            "session": {"instructions": self.response_instructions()},
+        })
+
     async def control_state(self) -> None:
         await self.broadcast({
             "type": "control.state",
@@ -426,9 +442,8 @@ class LiveInterviewRoom:
             await self.send_upstream({
                 "type": "response.create",
                 "response": {
-                    "instructions": (
-                        self.instructions
-                        + "\nHR 与候选人的直接沟通已经结束。请基于刚才完整记录的双向对话，"
+                    "instructions": self.response_instructions(
+                        "HR 与候选人的直接沟通已经结束。请基于刚才完整记录的双向对话，"
                         "承接已有逻辑和未解决问题继续深入追问；不要重复已经确认的内容。"
                     )
                 },
@@ -479,9 +494,8 @@ class LiveInterviewRoom:
         await self.send_upstream({
             "type": "response.create",
             "response": {
-                "instructions": (
-                    "请先原样朗读：面试流程已恢复，可以继续进行交流。"
-                    + continuation
+                "instructions": self.response_instructions(
+                    "请先原样朗读：面试流程已恢复，可以继续进行交流。" + continuation
                 )
             },
         })
@@ -721,7 +735,7 @@ async def realtime_relay(websocket: WebSocket, session_id: UUID):
                         continue
                     response = payload.get("response")
                     response = dict(response) if isinstance(response, dict) else {}
-                    response.setdefault("instructions", instructions)
+                    response["instructions"] = room.response_instructions()
                     payload["response"] = response
                     raw = json.dumps(payload, ensure_ascii=False)
                 await room.send_upstream(raw)
@@ -798,11 +812,24 @@ async def realtime_relay(websocket: WebSocket, session_id: UUID):
                         upsert_live_turn(
                             f"interviewer:{response_key}", "interviewer", transcript
                         )
+                        room.question_ledger.add(transcript)
                         if (
                             last_candidate_text
                             and interviewer_announces_conduct_termination(transcript)
                         ):
                             conduct_signal.set()
+                elif event_type == "response.done":
+                    response_key = str(
+                        payload.get("response_id")
+                        or payload.get("item_id")
+                        or "current"
+                    )
+                    index = live_turn_index.get(f"interviewer:{response_key}")
+                    if index is not None:
+                        room.question_ledger.add(live_turns[index]["text"])
+                    # VAD can create the next response without a browser
+                    # response.create event, so update the live session too.
+                    await room.refresh_question_guard()
                 if RELAY_TRACE:
                     if any(f'"type":"{skip}"' in message for skip in TRACE_SKIP):
                         logger.info("relay %s upstream audio chunk %d bytes",

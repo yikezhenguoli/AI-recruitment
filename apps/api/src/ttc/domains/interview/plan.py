@@ -17,6 +17,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ttc.adapters.llm import LLMAdapter
 from ttc.adapters.storage import Storage
 from ttc.core.errors import TTCError
+from ttc.domains.interview.question_guard import (
+    deduplicate_questions,
+    questions_equivalent,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +75,11 @@ def normalize_plan(data: dict) -> dict | None:
             continue
         text_value = _text(raw.get("text"), 200)
         if len(text_value) < 4:
+            continue
+        if any(
+            questions_equivalent(text_value, existing["text"])
+            for existing in questions
+        ):
             continue
         section = raw.get("section")
         section = section if section in SECTIONS else "experience"
@@ -129,7 +138,11 @@ def merge_custom_questions(plan: dict, custom_questions: list[str]) -> dict:
             continue
         text = raw.strip()
         folded = text.casefold()
-        if not text or folded in seen:
+        if (
+            not text
+            or folded in seen
+            or any(questions_equivalent(text, existing) for existing in cleaned)
+        ):
             continue
         seen.add(folded)
         cleaned.append(text[:200])
@@ -138,16 +151,18 @@ def merge_custom_questions(plan: dict, custom_questions: list[str]) -> dict:
     if not cleaned:
         return plan
 
-    custom_texts = {text.casefold() for text in cleaned}
-    generated = [
+    generated = deduplicate_questions(
         {
             **dict(item),
             "source": item.get("source", "ai"),
         }
         for item in plan.get("questions", [])
         if isinstance(item, dict) and _text(item.get("text"), 200)
-        and _text(item.get("text"), 200).casefold() not in custom_texts
-    ]
+        and not any(
+            questions_equivalent(_text(item.get("text"), 200), custom_text)
+            for custom_text in cleaned
+        )
+    )
     custom = [
         {
             "id": f"hr{index}",
@@ -269,10 +284,16 @@ def session_instructions(plan: dict, job_title: str | None = None) -> str:
             "6. 信息已经充分、追问预算用尽或通话接近时限时，简短总结并礼貌收尾。",
             "硬性边界：",
             "- 每次开口只提出一个问题，把问题完整说完，不要只报题号或停在半句。",
-            "- 不重复候选人已经完整回答过的问题，不虚构简历和回答中不存在的事实。",
+            "- 严禁提出已经问过的问题，也严禁通过换同义词、改写句式、缩小或扩大范围"
+            "再次提出语义相同的问题；不得以“再具体说说”等方式变相重问。",
+            "- 初始问题之间已经做过去重；实际提出的问题会自动进入去重清单，"
+            "必须始终遵守去重清单。",
+            "- 不虚构简历和回答中不存在的事实。",
             "- 不要求身份证、住址等敏感信息，不询问性别、年龄、婚育、民族、宗教、残障。",
             "- 只围绕当前岗位和候选人经历开展追问，不做录用决定，表达流畅度不能替代能力判断。",
-            "- 候选人沉默或说没听清时，换一种说法重述当前问题，不要直接跳到下一题。",
+            "- 候选人沉默时只简短邀请其作答，不重复或改写当前问题。"
+            "只有候选人明确说“没听清/请再说一遍”时，才可以原样复述一次，"
+            "不得借机换一种说法再次提问。",
             "- 候选人短暂停顿、紧张、回答简短或表示不知道时，保持耐心并澄清一次；"
             "不得据此推断故意不配合或负面品性。",
             "- 若候选人明确辱骂、威胁、发表严重不当言论或持续故意扰乱沟通，"
