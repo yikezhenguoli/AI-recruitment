@@ -297,6 +297,17 @@ uv run python scripts/seed_demo_companies.py
 
 种子脚本是幂等的。候选人也可以直接在求职者门户注册到 `demo` 租户。
 
+演示测试完成后，可以清空全部业务记录并恢复当前账号基线：
+
+```bash
+cd apps/api
+uv run python scripts/reset_demo_database.py --dry-run
+uv run python scripts/reset_demo_database.py --yes
+```
+
+恢复脚本保留数据库结构和迁移版本，重建 `demo` 租户、1 个 HR 和 5 个候选人账号，
+并清除测试产生的登录会话。执行前应先停止正在处理任务的 Worker。
+
 ### 5. 启动 HR 工作台
 
 ```bash
