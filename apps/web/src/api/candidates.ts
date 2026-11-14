@@ -1,15 +1,36 @@
-import { api } from './client'
-import type { CandidateDetailResponse, SessionResultsResponse } from '../types'
+import { API_PREFIX, api } from './client'
+import type { Candidate, ResumeSummary } from '../types'
 
-export async function getSessionResults(sessionId: string): Promise<SessionResultsResponse> {
-  const response = await api.get(`/api/resumes/results/${sessionId}`)
-  return response.data as SessionResultsResponse
+export async function listCandidates(params?: {
+  job_id?: string
+  limit?: number
+}): Promise<Candidate[]> {
+  const response = await api.get(`${API_PREFIX}/candidates`, { params })
+  return response.data.items as Candidate[]
 }
 
-export async function getCandidateDetail(
-  sessionId: string,
+export async function createCandidate(payload: {
+  display_name: string
+  job_id?: string | null
+  source?: 'demo' | 'invite' | 'upload'
+  is_synthetic?: boolean
+}): Promise<Candidate> {
+  const response = await api.post(`${API_PREFIX}/candidates`, {
+    source: 'upload',
+    is_synthetic: true,
+    ...payload,
+  })
+  return response.data as Candidate
+}
+
+export async function getCandidate(candidateId: string): Promise<Candidate> {
+  const response = await api.get(`${API_PREFIX}/candidates/${candidateId}`)
+  return response.data as Candidate
+}
+
+export async function listCandidateResumes(
   candidateId: string,
-): Promise<CandidateDetailResponse> {
-  const response = await api.get(`/api/resumes/detail/${sessionId}/${candidateId}`)
-  return response.data as CandidateDetailResponse
+): Promise<ResumeSummary[]> {
+  const response = await api.get(`${API_PREFIX}/candidates/${candidateId}/resumes`)
+  return response.data.items as ResumeSummary[]
 }

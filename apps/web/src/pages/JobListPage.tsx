@@ -1,14 +1,32 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { AlertCircle, ArrowRight, Briefcase, Plus, RefreshCw } from 'lucide-react'
-import { listSavedJobs } from '../api/jobs'
+import {
+  AlertCircle,
+  ArrowRight,
+  Briefcase,
+  Plus,
+  RefreshCw,
+  Users,
+} from 'lucide-react'
+import { listJobs } from '../api/jobs'
 import { getApiErrorMessage } from '../lib/apiError'
 import { formatDateTime } from '../lib/format'
+import { JOB_STATUS_LABEL } from '../types'
+import type { JobStatus } from '../types'
+
+const FILTERS: Array<{ value: 'all' | JobStatus; label: string }> = [
+  { value: 'all', label: '全部' },
+  { value: 'draft', label: '草稿' },
+  { value: 'published', label: '已发布' },
+  { value: 'archived', label: '已归档' },
+]
 
 export default function JobListPage() {
+  const [status, setStatus] = useState<'all' | JobStatus>('all')
   const jobsQuery = useQuery({
-    queryKey: ['savedJobs'],
-    queryFn: listSavedJobs,
+    queryKey: ['jobs', status],
+    queryFn: () => listJobs(status === 'all' ? undefined : { status }),
   })
 
   const jobs = jobsQuery.data ?? []
@@ -21,10 +39,10 @@ export default function JobListPage() {
             <span className="hero-eyebrow-dot" />
             JOB PORTFOLIO
             <span className="hero-eyebrow-line" />
-            <span>POSITIONS</span>
+            <span>/api/v1/jobs</span>
           </div>
           <h1>岗位管理</h1>
-          <p>管理已保存的岗位画像、评分维度与后续候选人筛选流程。</p>
+          <p>岗位、JD 版本、权重方案与候选人筛选全部使用真实后端数据。</p>
         </div>
         <div className="ttc-heading-actions">
           <button
@@ -42,6 +60,19 @@ export default function JobListPage() {
         </div>
       </section>
 
+      <div className="ttc-filter-chips" role="group" aria-label="按岗位状态筛选">
+        {FILTERS.map((filter) => (
+          <button
+            key={filter.value}
+            type="button"
+            className={`ttc-chip ${status === filter.value ? 'ttc-chip-blue' : ''}`}
+            onClick={() => setStatus(filter.value)}
+          >
+            {filter.label}
+          </button>
+        ))}
+      </div>
+
       {jobsQuery.isError && (
         <div className="ttc-error-panel">
           <AlertCircle size={18} />
@@ -49,7 +80,11 @@ export default function JobListPage() {
             <strong>无法读取岗位列表</strong>
             <span>{getApiErrorMessage(jobsQuery.error, '请确认后端服务已启动。')}</span>
           </div>
-          <button type="button" className="ttc-btn ttc-btn-secondary ttc-btn-sm" onClick={() => void jobsQuery.refetch()}>
+          <button
+            type="button"
+            className="ttc-btn ttc-btn-secondary ttc-btn-sm"
+            onClick={() => void jobsQuery.refetch()}
+          >
             重试
           </button>
         </div>
@@ -66,11 +101,11 @@ export default function JobListPage() {
       {!jobsQuery.isLoading && !jobsQuery.isError && jobs.length === 0 && (
         <div className="ttc-card ttc-empty-large">
           <Briefcase size={30} />
-          <h2>还没有保存的岗位</h2>
-          <p>从一段岗位描述开始，AI 会提取结构化信息并生成可编辑的评分维度。</p>
+          <h2>当前筛选下没有岗位</h2>
+          <p>创建岗位后，可继续生成 JD 版本、配置权重并进入候选人筛选。</p>
           <Link to="/jobs/new" className="ttc-btn ttc-btn-primary">
             <Plus size={16} />
-            创建第一个岗位
+            创建岗位
           </Link>
         </div>
       )}
@@ -78,24 +113,48 @@ export default function JobListPage() {
       {!jobsQuery.isLoading && !jobsQuery.isError && jobs.length > 0 && (
         <div className="ttc-job-grid">
           {jobs.map((job) => (
-            <Link
-              key={job.name}
-              to={`/jobs/${encodeURIComponent(job.name)}`}
-              className="ttc-card ttc-job-card"
-            >
+            <article key={job.id} className="ttc-card ttc-job-card">
               <div className="ttc-job-card-top">
                 <span className="ttc-job-icon">
                   <Briefcase size={18} />
                 </span>
-                <span className="ttc-badge ttc-badge-blue">已保存</span>
+                <span
+                  className={`ttc-badge ${
+                    job.status === 'published'
+                      ? 'ttc-badge-green'
+                      : job.status === 'archived'
+                        ? 'ttc-badge-red'
+                        : 'ttc-badge-blue'
+                  }`}
+                >
+                  {JOB_STATUS_LABEL[job.status]}
+                </span>
               </div>
-              <h3>{job.role_title}</h3>
-              <p>{job.name}</p>
+              <h3>{job.title}</h3>
+              <p>
+                {job.department || '未设置部门'}
+                {job.headcount ? ` · 招聘 ${job.headcount} 人` : ''}
+              </p>
               <div className="ttc-job-card-foot">
                 <span>更新于 {formatDateTime(job.updated_at)}</span>
-                <ArrowRight size={15} />
+                <div className="ttc-card-actions">
+                  <Link
+                    to={`/candidates?job=${job.id}`}
+                    className="ttc-btn ttc-btn-secondary ttc-btn-sm"
+                  >
+                    <Users size={14} />
+                    候选人
+                  </Link>
+                  <Link
+                    to={`/jobs/${job.id}`}
+                    className="ttc-btn ttc-btn-primary ttc-btn-sm"
+                  >
+                    详情
+                    <ArrowRight size={14} />
+                  </Link>
+                </div>
               </div>
-            </Link>
+            </article>
           ))}
         </div>
       )}

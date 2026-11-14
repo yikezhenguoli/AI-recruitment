@@ -1,107 +1,41 @@
-export type Stage =
-  | 'queued'
-  | 'parsing'
-  | 'extracting'
-  | 'screening'
-  | 'evaluating'
-  | 'done'
-  | 'error'
-  | 'skipped'
-  | 'filtered'
-  | 'review'
+/**
+ * TTC `/api/v1` 契约类型。
+ *
+ * 所有字段保持后端返回的 snake_case 原样，避免前端再维护一套映射；
+ * 可选字段按“后端可能不返回”处理，UI 负责显示「未提供」。
+ */
 
-export type ScreeningOutcome =
-  | 'ranked'
-  | 'filtered'
-  | 'review'
-  | 'duplicate'
-  | 'error'
+export type Role = 'admin' | 'hr' | 'candidate'
 
-export interface GraduationYearInfo {
-  selected_degree?: string
-  graduation_year?: number
-  source: 'explicit' | 'inferred' | 'unknown' | 'not_applicable'
+export interface AuthTokens {
+  access_token: string
+  refresh_token: string
+  token_type: string
+  expires_in: number
 }
 
-export interface GraduationYearFilterConfig {
-  enabled: boolean
-  accepted_years: number[]
-  unknown_year_behavior: 'manual_review'
-  degree_selection: 'highest_relevant_degree'
+export interface CurrentUser {
+  id: string
+  tenant_id: string
+  role: Role
+  display_name: string
 }
 
-export interface DimensionScore {
-  name: string
-  score: number
-  reason: string
+export interface HealthStatus {
+  status: string
+  database?: string
 }
 
-export interface CandidateProgress {
-  candidateId: string
-  fileName: string
-  name?: string
-  email?: string
-  phone?: string
-  score?: number
-  explanation?: string[]
-  dimensionScores?: DimensionScore[]
-  stage: Stage
-  error?: string
-  parseMethod?: string
-  screeningOutcome: ScreeningOutcome
-  screeningReason?: string
-  graduationYearInfo: GraduationYearInfo
-  previewAvailable: boolean
-}
+/* ────────────────────────────── 岗位 / JD ────────────────────────────── */
 
-export interface WSProgressMsg {
-  type: 'progress'
-  session_id: string
-  candidate_id: string
-  stage: Stage
-  message: string
-  data?: Record<string, unknown>
-}
+export type JobStatus = 'draft' | 'published' | 'locked' | 'archived'
 
-export interface WSResultMsg {
-  type: 'result'
-  session_id: string
-  candidate_id: string
-  result: {
-    candidate_id: string
-    file_name: string
-    name?: string
-    email?: string
-    phone?: string
-    score?: number
-    explanation?: string[]
-    dimension_scores?: DimensionScore[]
-    stage: Stage
-    error?: string
-    parse_method?: string
-    screening_outcome: ScreeningOutcome
-    screening_reason?: string
-    graduation_year_info?: GraduationYearInfo
-    preview_available?: boolean
-  }
-}
-
-export interface WSCompleteMsg {
-  type: 'complete'
-  session_id: string
-  total: number
-  completed: number
-  failed: number
-  skipped?: number
-}
-
-export type WSMessage = WSProgressMsg | WSResultMsg | WSCompleteMsg
-
-export interface JDStructured {
-  role_title: string
+export interface JdStructured {
+  role_title?: string
+  responsibilities?: string[]
+  required_skills?: string[]
+  preferred_skills?: string[]
   seniority_level?: string
-  required_skills: string[]
-  preferred_skills: string[]
   min_years_experience?: number
   preferred_years_experience?: number
   education_requirements?: {
@@ -109,128 +43,438 @@ export interface JDStructured {
     field?: string
     required?: boolean
   }
-  responsibilities: string[]
-  keywords: string[]
+  keywords?: string[]
+  [key: string]: unknown
 }
 
-export interface ScoringDimension {
-  name: string
-  label: string
-  description: string
-  max_points: number
+export interface JdWarning {
+  field?: string
+  message?: string
+  [key: string]: unknown
 }
 
-export interface ScoringSchema {
-  dimensions: ScoringDimension[]
-}
-
-export interface SavedJobSummary {
-  name: string
-  role_title: string
-  updated_at: string
-}
-
-export interface SavedJobProfile {
-  name: string
+export interface JobVersion {
+  id: string
+  version_no: number
   jd_text: string
-  structured: JDStructured
-  scoring_schema: ScoringSchema
+  structured: JdStructured
+  source: string
+  is_saved?: boolean
+  created_at?: string
+}
+
+export interface JobSummary {
+  id: string
+  title: string
+  department: string | null
+  status: JobStatus
+  headcount: number | null
+  current_version_id: string | null
   created_at: string
   updated_at: string
 }
 
-export interface CandidateResult {
-  candidate_id: string
-  file_name: string
-  name?: string
-  email?: string
-  phone?: string
-  score?: number
-  explanation: string[]
-  dimension_scores?: DimensionScore[]
-  stage: Stage
-  error?: string
-  parse_method?: string
-  screening_outcome: ScreeningOutcome
-  screening_reason?: string
-  graduation_year_info?: GraduationYearInfo
-  preview_available?: boolean
+export interface JobDetail extends JobSummary {
+  tenant_id: string
+  owner_id: string
+  published_at?: string | null
+  archived_at?: string | null
+  current_version: JobVersion | null
 }
 
-export interface PersonalInfo {
-  first_name?: string | null
-  last_name?: string | null
-  email?: string | null
-  phone?: string | null
-  location?: string | null
+export interface JobStats {
+  candidates: number
+  assessments: number
+  voice_sessions: number
 }
 
-export interface EducationEntry {
-  institution?: string | null
-  degree?: string | null
-  field?: string | null
-  score_gpa?: string | null
-  start_date?: string | null
-  end_date?: string | null
-}
-
-export interface WorkExperienceEntry {
-  organization?: string | null
-  role?: string | null
-  start_date?: string | null
-  end_date?: string | null
-  responsibilities: string[]
-}
-
-export interface ProjectEntry {
-  name?: string | null
+export interface WeightDimension {
+  key: string
+  label: string
+  weight_pct: number
   description?: string | null
-  technologies: string[]
 }
 
-export interface PublicationEntry {
-  title?: string | null
-  journal?: string | null
-  year?: string | null
+export interface WeightTemplate {
+  name: string
+  mode: string
+  dimensions: WeightDimension[]
 }
 
-export interface CertificationEntry {
-  name?: string | null
-  issuer?: string | null
-  date?: string | null
+export interface InterviewPlan {
+  id: string
+  name: string
+  duration_min: number
+  rounds: number
+  dimensions: unknown
 }
 
-export interface ResumeStructured {
-  personal_info: PersonalInfo
-  skills: string[]
-  education: EducationEntry[]
-  work_experience: WorkExperienceEntry[]
-  projects: ProjectEntry[]
-  publications: PublicationEntry[]
-  certifications: CertificationEntry[]
-  additional_info: Record<string, unknown>
+export interface GeneratedJobVersion {
+  id: string
+  version_no: number
+  jd_text: string
+  structured: JdStructured
+  source: string
+  is_saved: boolean
 }
 
-export interface CandidateDetailResponse {
-  candidate: CandidateResult
-  resume_structured: ResumeStructured
+export interface JdGenerationResult {
+  generation_id: string | null
+  versions: GeneratedJobVersion[]
+  suggestions?: string[]
 }
 
-export interface SessionResultsResponse {
-  session_id: string
+/* ────────────────────────────── 候选人 / 简历 ────────────────────────────── */
+
+export type CandidateSource = 'demo' | 'invite' | 'upload'
+
+export interface Candidate {
+  id: string
+  tenant_id?: string
+  user_id?: string | null
+  display_name: string
+  contact_masked?: string | null
+  source: CandidateSource
+  job_id: string | null
+  is_synthetic: boolean
+  created_at: string
+}
+
+export type ParseStatus = 'queued' | 'parsing' | 'done' | 'failed'
+
+export interface ResumeSummary {
+  id: string
+  candidate_id?: string
+  file_name: string
+  mime?: string
+  size_bytes?: number
+  parse_status: ParseStatus
+  page_count?: number | null
+  created_at: string
+}
+
+export interface UploadedResume {
+  resume_id: string
+  task_id: string
+  parse_status: ParseStatus
+  duplicate?: boolean
+  checks?: {
+    mime_ok: boolean
+    size_ok: boolean
+    hash: string
+  }
+}
+
+export type ClaimType =
+  | 'education'
+  | 'work'
+  | 'project'
+  | 'publication'
+  | 'patent'
+  | 'award'
+  | 'skill'
+  | 'contact'
+  | 'summary'
+
+export interface ResumeClaim {
+  id: string
+  type: ClaimType
+  ordinal: number
+  raw_text: string
+  normalized: Record<string, unknown>
+  page_no: number | null
+  char_start: number | null
+  char_end: number | null
+  confidence: number
+  needs_review: boolean
+}
+
+export interface ClaimsResponse {
+  resume_id: string
+  version: number | null
+  status?: ParseStatus
+  claims: ResumeClaim[]
+}
+
+export interface TimelineItem {
+  claim_id?: string
+  type?: string
+  kind?: string
+  title?: string
+  start?: string | null
+  end?: string | null
+  needs_review?: boolean
+  raw?: string
+  [key: string]: unknown
+}
+
+export interface TimelineConflict {
+  type: string
+  claim_ids: string[]
+  start_month?: number
+  end_month?: number
+  note?: string
+}
+
+export interface TimelineResponse {
+  items: TimelineItem[]
+  conflicts: TimelineConflict[]
+  gaps: TimelineConflict[]
+}
+
+/* ────────────────────────────── 评估 / 匹配 ────────────────────────────── */
+
+export type EvidenceState =
+  | 'strong'
+  | 'partial'
+  | 'self_claim'
+  | 'missing'
+
+export interface AssessmentDimension {
+  key: string
+  label: string
+  weight_pct: number
+  score: number | null
+  evidence_state: EvidenceState
+  evidence_ids?: string[]
+  source_claim_ids?: string[]
+  reasoning: string
+  status?: string
+}
+
+export interface MatchExplanation {
   status: string
-  total: number
-  completed: number
-  failed: number
-  results: CandidateResult[]
+  summary?: string | null
+  strengths?: string[]
+  gaps?: string[]
+  suggestions?: string[]
+  risk_notes?: string[]
+  reason?: string | null
 }
 
-export interface HealthResponse {
+export interface AssessmentReport {
+  meta?: {
+    assessed_at?: string
+    model_version?: string
+    source?: string
+    [key: string]: unknown
+  }
+  evidence_ledger?: {
+    score?: number
+    grade?: string
+    coverage?: { supported?: number; verifiable?: number }
+    breakdown?: Record<string, number>
+  }
+  match_ledger?: {
+    score?: number | null
+    category?: string
+    confidence?: number
+    top_k?: Array<{ code: string; score: number }>
+    dimensions?: AssessmentDimension[]
+  }
+  explanation?: MatchExplanation
+  limitations?: string[]
+  human_review?: { status?: string }
+  [key: string]: unknown
+}
+
+export interface Assessment {
+  id: string
+  candidate_id: string
+  job_id: string
   status: string
-  app: string
+  report: AssessmentReport
+}
+
+export interface MatchResult {
+  assessment_id: string
+  match_score: number
+  category: string
+  confidence: number
+  jd_match_score?: number | null
+  top_k: Array<{ code: string; score: number }>
+  explanation: MatchExplanation
+  model_version: string
+  fallback_reason?: string | null
+  created_at: string
+}
+
+/* ────────────────────────────── 证据 ────────────────────────────── */
+
+export interface EvidenceItem {
+  id: string
+  claim_id: string
+  entity_id?: string
+  source_name: string
+  source_url: string
+  title: string
+  snippet: string
+  grade: string
+  match_method?: string
+  match_confidence?: number
+  accessed_at: string
+  verified_by?: string | null
+}
+
+export interface EvidenceSearchResult {
+  task_id: string
+  entities: number
+  status: string
+}
+
+/* ────────────────────────────── 语音会话 ────────────────────────────── */
+
+export type VoiceScenario = 'screen' | 'verify' | 'skill' | 'mock'
+export type VoiceStatus =
+  | 'created'
+  | 'connecting'
+  | 'live'
+  | 'ended'
+  | 'failed'
+  | 'revoked'
+
+export interface VoiceQuestion {
+  id: string
+  section: string
+  text: string
+}
+
+export interface VoicePlan {
+  sections_order?: string[]
+  questions: VoiceQuestion[]
+  language_mode?: { primary?: string; mixed?: boolean }
+}
+
+export interface VoiceSession {
+  id: string
+  candidate_id: string
+  job_id: string
+  scenario: VoiceScenario
+  status: VoiceStatus
   provider: string
-  model: string
-  llm_configured: boolean
+  max_seconds: number
+  plan_json: VoicePlan | string
+  created_at: string
+  started_at?: string | null
+  ended_at?: string | null
+  end_reason?: string | null
 }
 
-export type AppStep = 'jd' | 'upload' | 'processing' | 'results'
+export interface CreateVoiceSessionResult {
+  id: string
+  status: VoiceStatus
+  consent_checked: boolean
+  plan: VoicePlan
+}
+
+export interface VoiceTurnInput {
+  index: number
+  role: 'interviewer' | 'candidate' | 'system'
+  text: string
+  question_id?: string | null
+}
+
+export interface CallReport {
+  session: {
+    id: string
+    scenario: VoiceScenario
+    status: VoiceStatus
+    provider: string
+  }
+  status: string
+  summary: Record<string, unknown>
+  dimensions: unknown
+  quotes: Array<{
+    turn_id: string
+    question_id?: string | null
+    text: string
+  }>
+  crosscheck: Record<string, unknown>
+  followups: unknown
+  model_version: string
+}
+
+/* ────────────────────────────── 进度 / 管理 ────────────────────────────── */
+
+export type ProgressType = 'progress' | 'done' | 'error'
+
+export interface TaskProgressEvent {
+  type: ProgressType
+  task_id: string
+  stage: string
+  resource_id: string
+  attempts?: number
+  message?: string | null
+}
+
+export interface DataSource {
+  id: string | null
+  name: string
+  enabled: boolean
+  rate_limit: number
+}
+
+export interface AuditLogItem {
+  id: string
+  actor_id: string | null
+  action: string
+  resource_type: string
+  resource_id: string | null
+  request_id: string | null
+  detail: Record<string, unknown> | null
+  created_at: string
+}
+
+export interface TaskMetrics {
+  tasks: Record<string, number>
+  scope: string
+}
+
+export interface IntegrationStatus {
+  openats: { configured: boolean; status: string }
+  vekt: { configured: boolean; status: string; fallback?: string }
+}
+
+/* ────────────────────────────── UI 辅助 ────────────────────────────── */
+
+export const JOB_STATUS_LABEL: Record<JobStatus, string> = {
+  draft: '草稿',
+  published: '已发布',
+  locked: '已锁定',
+  archived: '已归档',
+}
+
+export const PARSE_STATUS_LABEL: Record<ParseStatus, string> = {
+  queued: '排队中',
+  parsing: '解析中',
+  done: '已完成',
+  failed: '解析失败',
+}
+
+export const CLAIM_TYPE_LABEL: Record<ClaimType, string> = {
+  education: '教育',
+  work: '工作',
+  project: '项目',
+  publication: '论文',
+  patent: '专利',
+  award: '奖项',
+  skill: '技能',
+  contact: '联系方式',
+  summary: '概述',
+}
+
+export const EVIDENCE_STATE_LABEL: Record<EvidenceState, string> = {
+  strong: '强证据',
+  partial: '部分证据',
+  self_claim: '简历自述',
+  missing: '缺少证据',
+}
+
+export const VOICE_STATUS_LABEL: Record<VoiceStatus, string> = {
+  created: '已创建',
+  connecting: '连接中',
+  live: '通话中',
+  ended: '已结束',
+  failed: '失败',
+  revoked: '授权已撤回',
+}
