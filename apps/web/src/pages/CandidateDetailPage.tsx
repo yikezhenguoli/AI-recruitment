@@ -49,6 +49,11 @@ const STAGE_LABEL: Record<string, string> = {
   canceled: '已取消',
 }
 
+const ocrLabel = (model?: string | null) => {
+  const raw = model?.split('+ocr:')[1]
+  return raw ? `OCR · ${raw.replace(/^vlm:/, '')}` : ''
+}
+
 export default function CandidateDetailPage() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
@@ -327,6 +332,7 @@ export default function CandidateDetailPage() {
                   </span>
                   <span className="ttc-file-meta">
                     {resume.parse_status} · {formatDateTime(resume.created_at)}
+                    {ocrLabel(resume.extractor_model) && ` · ${ocrLabel(resume.extractor_model)}`}
                   </span>
                 </button>
                 <button

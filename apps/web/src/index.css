@@ -556,6 +556,8 @@ main .fixed.inset-0 { backdrop-filter: blur(9px); }
 .ttc-file-meta span { margin-top: 3px; color: #91a6bb; font-size: 9px; }
 .ttc-file-status { padding: 3px 7px; border-radius: 999px; color: #8a6a2f; background: rgba(255,244,220,.9); font-size: 9px; font-weight: 700; white-space: nowrap; }
 .ttc-file-status.is-submitted { color: #287c66; background: rgba(229,249,243,.9); }
+.ttc-file-row .ttc-file-block { flex: 1; min-width: 0; margin-top: 0; text-align: left; }
+.ttc-file-row .ttc-file-block-head { justify-content: flex-start; }
 .ttc-rejected-block {
   margin-top: 12px; padding: 11px 13px; border: 1px solid rgba(224,168,77,.3); border-radius: 13px;
   background: rgba(255,248,235,.72); color: #8a6a2f;
