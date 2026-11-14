@@ -23,9 +23,12 @@ logger = logging.getLogger(__name__)
 SECTIONS = ("experience", "skill", "gap", "motivation")
 MIN_QUESTIONS = 3
 MAX_QUESTIONS = 5
+MAX_CUSTOM_QUESTIONS = 5
+MAX_INITIAL_QUESTIONS = 10
 MAX_FOLLOWUPS_PER_TOPIC = 2
 MAX_TOTAL_QUESTIONS = 10
 STRATEGY = "initial-seeds-with-live-followups"
+CUSTOM_SECTION = "hr_custom"
 
 FALLBACK_PLAN: dict = {
     "sections_order": ["intro", "experience", "wrap"],
@@ -115,6 +118,63 @@ def plan_from_db(value) -> dict:
     return plan if plan.get("questions") else FALLBACK_PLAN
 
 
+def merge_custom_questions(plan: dict, custom_questions: list[str]) -> dict:
+    """把 HR 指定问题置于初始问题之前，并让 AI 问题补足剩余主题。"""
+    if not isinstance(plan, dict):
+        plan = _fallback_with_context(None)
+    cleaned: list[str] = []
+    seen: set[str] = set()
+    for raw in custom_questions:
+        if not isinstance(raw, str):
+            continue
+        text = raw.strip()
+        folded = text.casefold()
+        if not text or folded in seen:
+            continue
+        seen.add(folded)
+        cleaned.append(text[:200])
+        if len(cleaned) == MAX_CUSTOM_QUESTIONS:
+            break
+    if not cleaned:
+        return plan
+
+    custom_texts = {text.casefold() for text in cleaned}
+    generated = [
+        {
+            **dict(item),
+            "source": item.get("source", "ai"),
+        }
+        for item in plan.get("questions", [])
+        if isinstance(item, dict) and _text(item.get("text"), 200)
+        and _text(item.get("text"), 200).casefold() not in custom_texts
+    ]
+    custom = [
+        {
+            "id": f"hr{index}",
+            "section": CUSTOM_SECTION,
+            "text": text,
+            "focus": "HR指定必问",
+            "source": "hr",
+            "required": True,
+        }
+        for index, text in enumerate(cleaned, 1)
+    ]
+    remaining = max(0, MAX_INITIAL_QUESTIONS - len(custom))
+    merged = custom + generated[:remaining]
+    sections = [
+        "intro",
+        *(item["section"] for item in merged),
+        "wrap",
+    ]
+    return {
+        **plan,
+        "questions": merged,
+        "sections_order": list(dict.fromkeys(sections)),
+        "custom_question_count": len(custom),
+        "strategy": "hr-required-with-ai-followups",
+    }
+
+
 def session_instructions(plan: dict, job_title: str | None = None) -> str:
     """把初始问题和动态追问规则拼成实时语音系统指令。"""
     if not isinstance(plan, dict):
@@ -123,7 +183,7 @@ def session_instructions(plan: dict, job_title: str | None = None) -> str:
         item
         for item in plan.get("questions", [])
         if isinstance(item, dict) and _text(item.get("text"), 200)
-    ][:MAX_QUESTIONS]
+    ][:MAX_INITIAL_QUESTIONS]
     if not questions:
         return session_instructions(FALLBACK_PLAN, job_title)
 
@@ -182,11 +242,18 @@ def session_instructions(plan: dict, job_title: str | None = None) -> str:
             details.append(f"岗位关联：{relevance}")
         if anchor:
             details.append(f"简历锚点：{anchor}")
+        if item.get("source") == "hr":
+            details.append("来源：HR指定必问")
         suffix = f"（{'；'.join(details)}）" if details else ""
         lines.append(f"{index}. {_text(item.get('text'), 200)}{suffix}")
 
     lines.extend(
         [
+            "HR指定问题属于必须覆盖的问题，应优先于 AI 生成的非必问题；"
+            "时间不足时压缩 AI 生成问题，不得静默跳过 HR 指定问题。",
+            "来源只决定排序和必问标记。所有初始问题不论来自 HR 还是 AI，"
+            "都必须使用完全相同的回答充分性判断、追问条件、每主题追问层数、"
+            "切换话题和收尾规则，不另设简化流程。",
             "动态推进规则：",
             "1. 候选人回答充分覆盖当前问题的岗位要求、个人贡献、过程和可验证结果时，"
             "进入下一道初始问题，避免为了追问而追问。",
@@ -196,8 +263,9 @@ def session_instructions(plan: dict, job_title: str | None = None) -> str:
             "不要把面试扩展成无关聊天。",
             "4. 回答中出现矛盾、模糊指标或无法确认的事实时应继续核实；结论记为待核实，"
             "不要当场指控或推断动机。",
-            f"5. 每道初始问题最多追问 {MAX_FOLLOWUPS_PER_TOPIC} 层；"
-            f"初始问题和追问合计不超过 {MAX_TOTAL_QUESTIONS} 个。",
+            f"5. 每道初始问题，包括 HR 指定问题，都最多追问 "
+            f"{MAX_FOLLOWUPS_PER_TOPIC} 层；初始问题和追问合计不超过 "
+            f"{MAX_TOTAL_QUESTIONS} 个。",
             "6. 信息已经充分、追问预算用尽或通话接近时限时，简短总结并礼貌收尾。",
             "硬性边界：",
             "- 每次开口只提出一个问题，把问题完整说完，不要只报题号或停在半句。",
@@ -205,6 +273,10 @@ def session_instructions(plan: dict, job_title: str | None = None) -> str:
             "- 不要求身份证、住址等敏感信息，不询问性别、年龄、婚育、民族、宗教、残障。",
             "- 只围绕当前岗位和候选人经历开展追问，不做录用决定，表达流畅度不能替代能力判断。",
             "- 候选人沉默或说没听清时，换一种说法重述当前问题，不要直接跳到下一题。",
+            "- 候选人短暂停顿、紧张、回答简短或表示不知道时，保持耐心并澄清一次；"
+            "不得据此推断故意不配合或负面品性。",
+            "- 若候选人明确辱骂、威胁、发表严重不当言论或持续故意扰乱沟通，"
+            "不争辩、不模仿、不反击；简短说明相关言行将被如实记录，然后礼貌结束本轮沟通。",
         ]
     )
     return "\n".join(lines)

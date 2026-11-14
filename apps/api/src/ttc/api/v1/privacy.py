@@ -107,7 +107,9 @@ async def process_request(request_id: UUID,
         await session.execute(text(
             "DELETE FROM task WHERE (resource_type = 'candidate' AND resource_id = :id) "
             "OR (resource_type = 'resume' AND resource_id IN "
-            "(SELECT id FROM resume WHERE candidate_id = :id))"
+            "(SELECT id FROM resume WHERE candidate_id = :id)) "
+            "OR (resource_type = 'voice_session' AND type = 'voice_report' AND resource_id IN "
+            "(SELECT id FROM voice_session WHERE candidate_id = :id))"
         ), {"id": candidate_id})
         await session.execute(text(
             "DELETE FROM assessment WHERE candidate_id = :id"

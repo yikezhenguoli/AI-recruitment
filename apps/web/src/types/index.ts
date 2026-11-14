@@ -194,6 +194,12 @@ export interface VoiceSessionSummary {
   ended_at: string | null
   end_reason: string | null
   has_report: boolean
+  is_paused: boolean
+  conduct_score: number | null
+  conduct_status: 'assessed' | 'unassessed' | 'vetoed' | null
+  conduct_veto: boolean
+  capability_score: number | null
+  capability_status: CapabilityStatus | null
 }
 
 export interface VoiceSessionDetail {
@@ -212,6 +218,8 @@ export interface VoiceSessionDetail {
       focus?: string
       job_relevance?: string
       resume_anchor?: string
+      source?: 'hr' | 'ai'
+      required?: boolean
     }[]
     sections_order?: string[]
     language_mode?: { primary: string; mixed: boolean }
@@ -221,12 +229,13 @@ export interface VoiceSessionDetail {
   started_at: string | null
   ended_at: string | null
   end_reason: string | null
+  is_paused: boolean
 }
 
 export interface VoiceTurn {
   id: string
   turn_index: number
-  role: 'interviewer' | 'candidate' | 'system'
+  role: 'interviewer' | 'candidate' | 'hr' | 'system'
   text: string
   question_id: string | null
   started_at: string
@@ -236,6 +245,78 @@ export interface CallReportQuote {
   turn_id: string
   question_id: string | null
   text: string
+}
+
+export type ConductStatus = 'assessed' | 'unassessed' | 'vetoed'
+
+export interface ConductEvidenceQuote {
+  turn_id: string
+  text: string
+}
+
+export interface ConductDimension {
+  key: string
+  label: string
+  weight_pct: number
+  score: number | null
+  reason: string
+  evidence_turn_ids: string[]
+}
+
+export interface ConductIncident {
+  category: 'disruption' | 'intentional_non_answer' | 'hostility' | 'inappropriate_speech'
+  category_label: string
+  severity: 'minor' | 'moderate' | 'severe'
+  description: string
+  evidence_turn_ids: string[]
+  quotes: ConductEvidenceQuote[]
+  source: 'model' | 'rule'
+}
+
+export interface CandidateConductAssessment {
+  status: ConductStatus
+  score: number | null
+  veto: boolean
+  review_required: boolean
+  summary: string
+  dimensions: ConductDimension[]
+  incidents: ConductIncident[]
+  veto_reasons: string[]
+  limitations: string[]
+}
+
+export type CapabilityStatus = 'assessed' | 'unassessed'
+
+export interface CapabilityDimension {
+  key: string
+  label: string
+  weight_pct: number
+  score: number | null
+  reason: string
+  evidence_turn_ids: string[]
+}
+
+export interface CapabilityEvidence {
+  turn_id: string
+  text: string
+}
+
+export interface CandidateCapabilityAssessment {
+  status: CapabilityStatus
+  score: number | null
+  review_required: boolean
+  summary: string
+  dimensions: CapabilityDimension[]
+  evidence: CapabilityEvidence[]
+  evidence_coverage: {
+    cited_turns: number
+    candidate_turns: number
+    ratio: number
+  }
+  strengths: string[]
+  gaps: string[]
+  verification_questions: string[]
+  limitations: string[]
 }
 
 export interface CallReport {
@@ -253,6 +334,15 @@ export interface CallReport {
   crosscheck: Record<string, unknown>
   followups: string[]
   model_version: string
+  conduct: CandidateConductAssessment
+  conduct_status: ConductStatus
+  conduct_score: number | null
+  conduct_veto: boolean
+  conduct_model_version: string | null
+  capability: CandidateCapabilityAssessment
+  capability_status: CapabilityStatus
+  capability_score: number | null
+  capability_model_version: string | null
 }
 
 /** HR 端沟通纪要：/voice-sessions/{id}/summary。 */
@@ -269,6 +359,15 @@ export interface VoiceSummary {
   qa: { question: string; answer_summary: string }[]
   followups: string[]
   limitations: string[]
+  conduct: CandidateConductAssessment
+  conduct_status: ConductStatus
+  conduct_score: number | null
+  conduct_veto: boolean
+  conduct_model_version: string | null
+  capability: CandidateCapabilityAssessment
+  capability_status: CapabilityStatus
+  capability_score: number | null
+  capability_model_version: string | null
 }
 
 export interface DataSource {

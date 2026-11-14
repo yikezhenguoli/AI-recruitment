@@ -26,6 +26,7 @@ export const END_REASON: Record<string, string> = {
   candidate_end: '你主动结束',
   completed: '正常结束',
   timeout: '达到时长上限',
+  conduct_violation: '严重言行触发自动结束',
   revoked: '授权已撤回',
   upstream_closed: '语音服务断开',
   error: '连接异常',

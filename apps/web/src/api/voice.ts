@@ -30,6 +30,7 @@ export async function createVoiceSession(body: {
   job_id: string
   scenario?: 'screen' | 'verify' | 'skill' | 'mock'
   max_seconds?: number
+  custom_questions?: string[]
 }): Promise<{
   id: string
   status: string
@@ -49,7 +50,7 @@ export async function finishVoiceSession(
   sessionId: string,
   body: {
     reason?: 'completed' | 'timeout' | 'candidate_end'
-    turns?: { index: number; role: 'interviewer' | 'candidate' | 'system'; text: string; question_id?: string | null }[]
+    turns?: { index: number; role: 'interviewer' | 'candidate' | 'hr' | 'system'; text: string; question_id?: string | null }[]
   },
 ): Promise<{ report_id: string; status: string; completed_at: string }> {
   const response = await api.post(`${P}/${sessionId}/finish`, body)
@@ -59,6 +60,19 @@ export async function finishVoiceSession(
 export async function getVoiceReport(sessionId: string): Promise<CallReport> {
   const response = await api.get(`${P}/${sessionId}/report`)
   return response.data as CallReport
+}
+
+export async function controlVoiceInterview(
+  sessionId: string,
+  action: 'pause' | 'resume',
+): Promise<{
+  session_id: string
+  status: string
+  interview_paused: boolean
+  ai_active: boolean
+}> {
+  const response = await api.post(`${P}/${sessionId}/flow-control`, { action })
+  return response.data
 }
 
 /** HR 端沟通纪要（只含模型整理后的字段）。 */

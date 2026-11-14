@@ -216,7 +216,11 @@ class LLMAdapter:
             speaker = (
                 "AI 面试官"
                 if role == "interviewer"
-                else ("候选人" if role == "candidate" else "系统")
+                else (
+                    "候选人"
+                    if role == "candidate"
+                    else ("HR" if role == "hr" else "系统")
+                )
             )
             lines.append(f"{speaker}：{turn.get('text', '')}")
         title = job_title.strip() if isinstance(job_title, str) else ""
@@ -277,3 +281,173 @@ class LLMAdapter:
             "followups": texts("followups"),
             "limitations": texts("limitations"),
         }
+
+    async def assess_interview_capability(
+        self,
+        plan: dict,
+        turns: list[dict],
+        job_title: str | None = None,
+    ) -> dict:
+        """依据回答内容评估岗位相关能力证据，不做通用能力或人格测评。"""
+        settings = get_settings()
+        if not all((settings.llm_base_url, settings.llm_api_key, settings.llm_model)):
+            raise TTCError("TTC-5004", "尚未配置面试能力评估模型", 503)
+        prompt = (
+            "你是面试回答能力评估助手。只依据【岗位信息】【初始问题】和【通话转写】"
+            "评价候选人在本次回答中展示出的岗位相关能力证据。不得根据外貌、声线、"
+            "口音、性别、年龄、婚育、民族、宗教、残障、人格、情绪或表达是否流利推断能力。\n"
+            "评分维度及权重必须为：job_knowledge(岗位知识与技能,20)、"
+            "relevant_experience(相关经历深度,25)、problem_solving(分析与问题解决,20)、"
+            "ownership_impact(个人贡献与结果,20)、learning_adaptability(学习与迁移,15)。"
+            "每项 0-100。只评价回答中明确出现的内容：候选人没有回答、回答含糊或只重复"
+            "面试官问题时，对应维度 score 必须为 null；不得因为候选人声称会某技能就直接"
+            "认定其已掌握，必须结合具体职责、做法、决策、结果或异常处理等证据。"
+            "技术或业务正确性只有在岗位信息或通用专业知识足以判断时才评价；无法确认时"
+            "降低评分置信度并写入 verification_questions，不得把不确定内容写成事实。\n"
+            "硬性证据规则：每个有分数的维度必须给出 evidence_turn_ids，且只能引用输入中"
+            "候选人发言的轮次 ID；不得引用面试官或系统轮次，不得编造轮次、引语或候选人"
+            "没有说过的经历、指标和成果。候选人对同一问题的多轮回答可以共同作为证据。\n"
+            "只输出 JSON 对象，字段为：summary(本次能力证据的一句话结论)、"
+            "dimensions(数组，元素为 {key,score,reason,evidence_turn_ids})、"
+            "strengths(字符串数组)、gaps(字符串数组)、"
+            "verification_questions(建议下一轮核验的问题，字符串数组)、"
+            "review_required(布尔)、limitations(字符串数组)。"
+            "所有文本使用简洁中文，不要 Markdown。"
+        )
+        questions = [
+            item.get("text", "")
+            for item in plan.get("questions", [])
+            if isinstance(item, dict) and item.get("text")
+        ]
+        job_context = plan.get("job_context")
+        context = json.dumps(
+            job_context if isinstance(job_context, dict) else {},
+            ensure_ascii=False,
+        )
+        lines = []
+        for turn in turns:
+            role = turn.get("role")
+            speaker = (
+                "AI 面试官"
+                if role == "interviewer"
+                else (
+                    "候选人"
+                    if role == "candidate"
+                    else ("HR" if role == "hr" else "系统")
+                )
+            )
+            lines.append(
+                f"[turn:{turn.get('id', '')}] {speaker}：{turn.get('text', '')}"
+            )
+        title = job_title.strip() if isinstance(job_title, str) else ""
+        payload = (
+            (f"应聘岗位：{title}\n\n" if title else "")
+            + f"【岗位信息】\n{context[:16000]}\n\n"
+            + "【初始问题】\n"
+            + "\n".join(f"- {text}" for text in questions)
+            + "\n\n【通话转写】\n"
+            + "\n".join(lines)
+        )
+        try:
+            async with llm_client(settings.llm_timeout_seconds) as client:
+                response = await client.post(
+                    f"{settings.llm_base_url.rstrip('/')}/chat/completions",
+                    headers={"Authorization": f"Bearer {settings.llm_api_key}"},
+                    json={
+                        "model": settings.llm_model,
+                        "temperature": 0,
+                        "response_format": {"type": "json_object"},
+                        "messages": [
+                            {"role": "system", "content": prompt},
+                            {"role": "user", "content": payload[:60000]},
+                        ],
+                    },
+                )
+                response.raise_for_status()
+        except httpx.TimeoutException as exc:
+            raise TTCError("TTC-5001", "面试能力评估模型超时", 504) from exc
+        except httpx.HTTPError as exc:
+            raise TTCError("TTC-5004", "面试能力评估模型不可用", 503) from exc
+        try:
+            data = json.loads(response.json()["choices"][0]["message"]["content"])
+            if not isinstance(data, dict):
+                raise ValueError("capability assessment is not an object")
+        except (KeyError, IndexError, ValueError, TypeError) as exc:
+            raise TTCError("TTC-5002", "能力评估模型输出不符合契约", 502) from exc
+        return data
+
+    async def assess_interview_conduct(self, turns: list[dict]) -> dict:
+        """审核面试转写中的言行，并要求严重事件绑定原始轮次 ID。"""
+        settings = get_settings()
+        if not all((settings.llm_base_url, settings.llm_api_key, settings.llm_model)):
+            raise TTCError("TTC-5004", "尚未配置面试言行审核模型", 503)
+        prompt = (
+            "你是面试言行审核助手。仅依据给出的候选人原始转写，审核其在本次面试中的"
+            "尊重、秩序、作答态度和职业化表达。只评价可观察到的言语行为，不评价外貌、"
+            "声线、口音、情绪稳定性、人格、能力，也不推断性别、年龄、婚育、民族、宗教、"
+            "残障等敏感属性。\n"
+            "评分维度及权重必须为：respect(尊重与边界,30)、order(秩序与配合,30)、"
+            "integrity(诚信与作答态度,25)、professionalism(职业化表达,15)。每项 0-100 分。\n"
+            "以下严重事件必须在 incidents 中如实记录，severity 设为 severe，并使 veto=true："
+            "1) disruption：故意扰乱面试秩序；"
+            "2) intentional_non_answer：经澄清后仍故意胡言乱语、答非所问或持续用无意义内容"
+            "阻挠面试；"
+            "3) hostility：顶撞、辱骂、威胁面试官或进行人身攻击；"
+            "4) inappropriate_speech：发表歧视、侮辱、性骚扰、暴力威胁、违法煽动等不当言论。"
+            "普通分歧、合理质疑、请求澄清、紧张、沉默、简短回答或一次说“不知道”，"
+            "不得认定为严重事件或故意不配合。候选人引用不当说法进行谴责、澄清或反驳时，"
+            "不得把引用本身当作其发表不当言论。\n"
+            "硬性证据规则：每个 incident 的 evidence_turn_ids 必须只使用输入中 candidates "
+            "发言的轮次 ID；不得使用面试官轮次，不得编造引语、轮次或事件。"
+            "无法定位到原始候选人轮次的严重事件不要输出。"
+            "若无严重事件，veto 必须为 false。存在 moderate 事件时应 review_required=true。"
+            "只输出 JSON 对象，字段为："
+            "summary(一句话审核结论), score(0-100 的建议总分), "
+            "dimensions(数组，元素为 {key,score,reason,evidence_turn_ids}), "
+            "incidents(数组，元素为 {category,severity:minor|moderate|severe,"
+            "description,evidence_turn_ids}), veto(布尔), veto_reasons(字符串数组), "
+            "review_required(布尔), limitations(字符串数组)。"
+            "所有文本使用简洁中文，不要 Markdown。"
+        )
+        lines = []
+        for turn in turns:
+            role = turn.get("role")
+            speaker = (
+                "AI 面试官"
+                if role == "interviewer"
+                else (
+                    "候选人"
+                    if role == "candidate"
+                    else ("HR" if role == "hr" else "系统")
+                )
+            )
+            turn_id = str(turn.get("id") or "")
+            lines.append(f"[turn:{turn_id}] {speaker}：{turn.get('text', '')}")
+        payload = "\n".join(lines)
+        try:
+            async with llm_client(settings.llm_timeout_seconds) as client:
+                response = await client.post(
+                    f"{settings.llm_base_url.rstrip('/')}/chat/completions",
+                    headers={"Authorization": f"Bearer {settings.llm_api_key}"},
+                    json={
+                        "model": settings.llm_model,
+                        "temperature": 0,
+                        "response_format": {"type": "json_object"},
+                        "messages": [
+                            {"role": "system", "content": prompt},
+                            {"role": "user", "content": payload[:60000]},
+                        ],
+                    },
+                )
+                response.raise_for_status()
+        except httpx.TimeoutException as exc:
+            raise TTCError("TTC-5001", "面试言行审核模型超时", 504) from exc
+        except httpx.HTTPError as exc:
+            raise TTCError("TTC-5004", "面试言行审核模型不可用", 503) from exc
+        try:
+            data = json.loads(response.json()["choices"][0]["message"]["content"])
+            if not isinstance(data, dict):
+                raise ValueError("conduct assessment is not an object")
+        except (KeyError, IndexError, ValueError, TypeError) as exc:
+            raise TTCError("TTC-5002", "言行审核模型输出不符合契约", 502) from exc
+        return data

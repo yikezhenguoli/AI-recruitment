@@ -2,11 +2,12 @@
 
 FastAPI + PostgreSQL 16 + async SQLAlchemy + Alembic。实现登录、岗位及 JD、候选人、同意、
 简历解析、Crossref DOI 证据、谨慎的双账本评估、语音会话/逐轮转写、隐私删除、管理员与任务进度。
-接口和交互文档见启动后的 `/docs`，以实际 API schema 为准；当前有 28 张表、20 个枚举。
+接口和交互文档见启动后的 `/docs`，以实际 API schema 为准；当前有 36 张表、20 个枚举。
 
 **尚未交付**：OpenATS/Vekt 对接（需两者明确的 API 契约与凭证）；未配置实时语音账号时
 服务端 SDP 代理 `/voice-sessions/{id}/connect` 返回 503；`/realtime/mint` 因无法在授权撤回时
-切断直连通话，配置服务后返回 410，不再提供直连凭证。通话报告仅返回原样转写及“未评估”，不伪造能力评分。
+切断直连通话，配置服务后返回 410，不再提供直连凭证。通话报告保留原样转写，
+并在配置 LLM 后生成能力问答纪要；言行审核独立评分，严重事件必须绑定候选人原始轮次才可一票否决。
 证据检索只核验简历原文内存在的 DOI 并从 Crossref 获取元数据，**不证明作者身份**。
 JD 生成/抽取及简历 claim 抽取需要设置 LLM 的 URL、模型及凭证，未配置返回 503。
 评估没有岗位专属规则时不给虚构的适配度分数。样本只允许合成或明确授权的数据。
@@ -93,7 +94,7 @@ rm "$pwfile"
 
 ```bash
 uv run alembic upgrade head
-uv run alembic current                 # 0004_realtime_call (head)
+uv run alembic current                 # 0007_interview_conduct (head)
 uv run uvicorn ttc.main:app --app-dir src --host 127.0.0.1 --port 8000
 ```
 
@@ -110,9 +111,37 @@ AI 简历字段必须从原文连续片段定位；扫描 PDF 暂不支持 OCR�
 `REALTIME_API_KEY`、`REALTIME_MODEL` 后，由候选人端把 SDP offer 以 `application/sdp` 发至
 `POST /api/v1/voice-sessions/{id}/connect`，服务端转发并返回 SDP answer。未经真实服务账号联调；
 撤回/隐私删除会优先排队挂断已登记的 provider call；worker 也会在 `max_seconds` 到期后
-排队挂断并生成标注“未评估”的转写报告，故需保持 worker 运行。媒体流尚未自动转写、
-没有模型能力评估；文字轮次须由候选人端以 `/voice-sessions/{id}/turns` 上报，
+排队挂断并生成转写报告，故需保持 worker 运行。媒体流尚未自动转写、
+没有独立技能测试；文字轮次须由候选人端以 `/voice-sessions/{id}/turns` 上报，
 否则报告只有空轮次摘要，不代表完整通话内容。
+言行审核使用 `respect`、`order`、`integrity`、`professionalism` 四维评分。模型不可用时，
+明确辱骂/威胁由窄规则兜底；模型提出的严重事件必须引用候选人原始 `voice_turn.id`，
+否则不会触发一票否决，其余结果标记人工复核。只评价转写中的言语行为，不评价外貌、声线或口音。
+实时中转层还会对最终候选人转写执行窄规则检查；命中明确辱骂，或 AI 已明确宣告因言行严重
+不当而结束时，服务端会在当前警告回复完成后关闭上游和浏览器连接，保存已完成轮次并将
+`end_reason` 写为 `conduct_violation`。模型未正常收尾时最多等待 8 秒便强制断开，并排队
+生成 `voice_report` 报告任务，不依赖用户点击“结束通话”。
+通话报告同时生成独立的面试能力证据评分，维度为岗位知识与技能 20%、相关经历深度 25%、
+问题解决 20%、个人贡献与结果 20%、学习与迁移 15%。有分数的维度必须引用候选人原始
+`voice_turn.id`；无回答证据的维度保持 `null`，有效权重不足 50% 时不输出总分。该分数用于
+本次面试的能力证据复核，不并入岗位匹配分，也不能替代专业笔试、技能测试或人工面试。
+创建语音会话时可额外传入 `custom_questions: string[]`，最多 5 个、每项不超过 200 字。
+服务端会去重并把这些问句置于 `plan_json.questions` 前部，标记 `source:"hr"`、
+`required:true`；实时指令要求优先覆盖 HR 指定问题，时间不足时压缩 AI 生成问题。
+候选人专用音频通道 `WS /voice-sessions/{id}/realtime` 会拒绝 HR/admin 建立连接，
+避免企业端误把 HR 当成被面试者。HR 只能在候选人接通后使用
+`WS /voice-sessions/{id}/observe` 实时旁听。加入旁听不会请求或开启麦克风。
+`control.take` 会取消当前 AI 回答并暂停自动回应；`hr_audio.start` 和
+`hr_audio.append` 只有在 HR 显式点击麦克风按钮后才会启用，将 HR 的
+16 kHz PCM16 音频实时转发给候选人，同时进入 AI 输入转录链路。`control.release`
+会恢复自动回应，并让 AI 基于 HR 与候选人的完整对话上下文继续追问。HR 转写以
+`turn_role='hr'` 保存，且不会计入候选人能力或言行评分。
+当前实时房间路由保存在 API 进程内，单进程或粘性会话部署可直接使用；多 API 实例
+需要共享房间总线（如 Redis Pub/Sub）或保证同一会话固定路由到同一实例。
+`POST /voice-sessions/{id}/flow-control` 接受 `{"action":"pause"}` 或
+`{"action":"resume"}`。暂停会持久化 `voice_session.is_paused`、取消当前 AI 回答并
+要求模型只播放“面试流程被HR暂停，请等待面试流程恢复进行。”；恢复会播放
+“面试流程已恢复，可以继续进行交流。”并根据完整上下文继续，不重新开始问题清单。
 通话转写兜底上报使用 `/voice-sessions/{id}/turns`。进度 WebSocket 连接后 10 秒内先发送
 `{"token":"<短期 Bearer access_token>"}`，不在 URL 中传递令牌。
 

@@ -317,7 +317,7 @@ async def application_detail(application_id: UUID,
         ), {"id": assessment["id"]})).mappings().all()]
     sessions = [dict(item) for item in (await session.execute(text(
         "SELECT id, status::text AS status, scenario::text AS scenario, created_at, "
-        "started_at, ended_at, end_reason FROM voice_session "
+        "started_at, ended_at, end_reason, is_paused FROM voice_session "
         "WHERE candidate_id = :candidate AND job_id = :job ORDER BY created_at DESC"
     ), {"candidate": candidate["id"], "job": row["job_id"]})).mappings().all()]
     return {**dict(row), "assessment": dict(assessment) if assessment else None,
@@ -349,7 +349,7 @@ async def list_interviews(user: Principal = Depends(candidate_role),
         return {"items": []}
     rows = (await session.execute(text(
         "SELECT v.id, v.status::text AS status, v.scenario::text AS scenario, "
-        "v.created_at, v.started_at, v.ended_at, v.end_reason, v.max_seconds, "
+        "v.created_at, v.started_at, v.ended_at, v.end_reason, v.is_paused, v.max_seconds, "
         "j.id AS job_id, j.title, "
         "COALESCE(jsonb_array_length(v.plan_json->'questions'), 0) AS question_count "
         "FROM voice_session v JOIN job j ON j.id = v.job_id "
@@ -375,6 +375,7 @@ async def interview_detail(session_id: UUID, user: Principal = Depends(candidate
         "max_seconds": row["max_seconds"],
         "created_at": row["created_at"], "started_at": row["started_at"],
         "ended_at": row["ended_at"], "end_reason": row["end_reason"],
+        "is_paused": row["is_paused"],
         "live_ready": live_transport is not None,
         "live_transport": live_transport,
     }

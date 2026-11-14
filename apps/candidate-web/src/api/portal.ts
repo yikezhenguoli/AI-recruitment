@@ -86,7 +86,7 @@ export async function getInterview(sessionId: string): Promise<InterviewDetail> 
 
 export interface InterviewTurn {
   index: number
-  role: 'interviewer' | 'candidate' | 'system'
+  role: 'interviewer' | 'candidate' | 'hr' | 'system'
   text: string
 }
 

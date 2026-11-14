@@ -20,6 +20,7 @@ export default defineConfig({
     https,
     port: 5175,
     strictPort: true,
+    allowedHosts: ['.cpolar.top', '.cpolar.cn'],
     proxy: {
       '/api': {
         target: 'http://localhost:8000',

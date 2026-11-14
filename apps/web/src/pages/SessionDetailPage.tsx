@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -6,27 +6,31 @@ import {
   Bot,
   Clock,
   FileText,
+  Hand,
+  Headphones,
   Mic,
   MicOff,
-  PhoneOff,
+  PauseCircle,
   PlayCircle,
   Radio,
   RefreshCw,
   UserRound,
 } from 'lucide-react'
 import { getCandidate } from '../api/candidates'
-import { getVoiceReport, getVoiceSession, listVoiceTurns, regenerateVoiceReport } from '../api/voice'
+import {
+  controlVoiceInterview,
+  getVoiceReport,
+  getVoiceSession,
+  listVoiceTurns,
+  regenerateVoiceReport,
+} from '../api/voice'
 import { PremiumWaveform } from '../components/visual/PremiumWaveform'
-import { useRealtimeInterview } from '../hooks/useRealtimeInterview'
+import { CapabilityAssessmentPanel } from '../components/voice/CapabilityAssessmentPanel'
+import { ConductAssessmentPanel } from '../components/voice/ConductAssessmentPanel'
+import { useHRObserver } from '../hooks/useHRObserver'
 import { getApiErrorMessage, isApiNotFound } from '../lib/apiError'
 import { formatDateTime, VOICE_STATUS_LABELS } from '../lib/format'
 import type { CallReport } from '../types'
-
-function formatClock(seconds: number): string {
-  const minutes = Math.floor(seconds / 60).toString().padStart(2, '0')
-  const rest = (seconds % 60).toString().padStart(2, '0')
-  return `${minutes}:${rest}`
-}
 
 function ReportPanel({
   report,
@@ -64,6 +68,9 @@ function ReportPanel({
         <span>共 {report.summary.turn_count ?? 0} 轮发言</span>
         <span>模型 {report.model_version}</span>
       </div>
+
+      <CapabilityAssessmentPanel assessment={report.capability} />
+      <ConductAssessmentPanel assessment={report.conduct} />
 
       {report.summary.overview && <p className="ttc-report-overview">{report.summary.overview}</p>}
 
@@ -110,8 +117,9 @@ function ReportPanel({
 export default function SessionDetailPage() {
   const { id = '' } = useParams()
   const queryClient = useQueryClient()
-  const interview = useRealtimeInterview(id)
+  const observer = useHRObserver(id)
   const transcriptRef = useRef<HTMLDivElement | null>(null)
+  const [flowPaused, setFlowPaused] = useState(false)
 
   const sessionQuery = useQuery({
     queryKey: ['voiceSession', id],
@@ -136,23 +144,21 @@ export default function SessionDetailPage() {
   })
 
   const session = sessionQuery.data
-  const isLive = interview.phase === 'live' || interview.phase === 'connecting'
   const isEnded = session?.status === 'ended' || session?.status === 'failed' || session?.status === 'revoked'
+  const isObserving = observer.phase === 'listening' || observer.phase === 'connecting'
+
+  useEffect(() => {
+    if (session) setFlowPaused(session.is_paused)
+  }, [session?.is_paused])
+
+  useEffect(() => {
+    if (observer.phase === 'listening') setFlowPaused(observer.interviewPaused)
+  }, [observer.interviewPaused, observer.phase])
 
   useEffect(() => {
     const node = transcriptRef.current
     if (node) node.scrollTop = node.scrollHeight
-  }, [interview.lines.length])
-
-  const finish = useMutation({
-    mutationFn: () => interview.stop('completed'),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['voiceSession', id] })
-      void queryClient.invalidateQueries({ queryKey: ['voiceTurns', id] })
-      void queryClient.invalidateQueries({ queryKey: ['voiceSessions'] })
-      void queryClient.invalidateQueries({ queryKey: ['voiceReport', id] })
-    },
-  })
+  }, [observer.lines.length])
 
   const regenerate = useMutation({
     mutationFn: () => regenerateVoiceReport(id),
@@ -161,11 +167,21 @@ export default function SessionDetailPage() {
     },
   })
 
-  const liveLines = interview.lines
+  const flowControl = useMutation({
+    mutationFn: (action: 'pause' | 'resume') => controlVoiceInterview(id, action),
+    onSuccess: (result) => {
+      setFlowPaused(result.interview_paused)
+      void queryClient.invalidateQueries({ queryKey: ['voiceSession', id] })
+      void queryClient.invalidateQueries({ queryKey: ['voiceSessions'] })
+    },
+  })
+
+  const liveLines = observer.lines
   const persistedTurns = turnsQuery.data ?? []
   const showLiveTranscript = liveLines.length > 0
   const questions = session?.plan_json?.questions ?? []
-  const hasAcousticMotion = isLive && !interview.muted
+  const customQuestionCount = questions.filter((question) => question.source === 'hr').length
+  const hasAcousticMotion = observer.phase === 'listening'
 
   if (sessionQuery.isLoading) {
     return (
@@ -204,51 +220,57 @@ export default function SessionDetailPage() {
           <p>
             {VOICE_STATUS_LABELS[session.status] ?? session.status} · 创建于{' '}
             {formatDateTime(session.created_at)}
-            {interview.relay ? ` · ${interview.relay.model}` : ''}
+            {observer.model ? ` · ${observer.model}` : ''}
           </p>
         </div>
         <div className="ttc-heading-actions">
           <Link to="/sessions" className="ttc-btn ttc-btn-secondary">
             返回列表
           </Link>
-          {session.status === 'created' && !isLive && (
-            <button type="button" className="ttc-btn ttc-btn-primary" onClick={interview.start}>
-              <PlayCircle size={16} />
-              开始面试
+          {session.status === 'created' && (
+            <span className="ttc-badge ttc-badge-amber">等待候选人接通</span>
+          )}
+          {session.status === 'live' && !isObserving && (
+            <button
+              type="button"
+              className="ttc-btn ttc-btn-secondary"
+              onClick={observer.start}
+            >
+              <Headphones size={16} />
+              实时旁听 / 接管
             </button>
           )}
-          {isLive && (
-            <>
-              <span className="ttc-live-clock">
-                <i />
-                {formatClock(interview.elapsed)}
-              </span>
-              <button
-                type="button"
-                className="ttc-btn ttc-btn-secondary"
-                onClick={() => interview.setMuted(!interview.muted)}
-              >
-                {interview.muted ? <MicOff size={16} /> : <Mic size={16} />}
-                {interview.muted ? '取消静音' : '静音'}
-              </button>
-              <button
-                type="button"
-                className="ttc-btn ttc-btn-primary"
-                disabled={finish.isPending}
-                onClick={() => finish.mutate()}
-              >
-                <PhoneOff size={16} />
-                {finish.isPending ? '收尾中…' : '结束面试'}
-              </button>
-            </>
+          {session.status === 'live' && (
+            <button
+              type="button"
+              className={`ttc-btn ${flowPaused ? 'ttc-btn-primary' : 'ttc-btn-secondary'}`}
+              disabled={flowControl.isPending}
+              onClick={() => flowControl.mutate(flowPaused ? 'resume' : 'pause')}
+            >
+              {flowPaused ? <PlayCircle size={16} /> : <PauseCircle size={16} />}
+              {flowControl.isPending
+                ? flowPaused
+                  ? '恢复中…'
+                  : '暂停中…'
+                : flowPaused
+                  ? '恢复面试'
+                  : '暂停面试'}
+            </button>
           )}
         </div>
       </section>
 
-      {interview.error && (
+      {observer.error && (
         <div className="ttc-inline-error" role="alert">
           <AlertCircle size={16} />
-          <span>{interview.error}</span>
+          <span>{observer.error}</span>
+        </div>
+      )}
+
+      {flowControl.isError && (
+        <div className="ttc-inline-error" role="alert">
+          <AlertCircle size={16} />
+          <span>{getApiErrorMessage(flowControl.error, '暂停或恢复面试失败。')}</span>
         </div>
       )}
 
@@ -271,13 +293,17 @@ export default function SessionDetailPage() {
             </div>
             <span
               className={`ttc-voice-badge ${
-                interview.phase === 'live' ? 'ttc-voice-badge-ok' : 'ttc-voice-badge-muted'
+                observer.phase === 'listening'
+                  ? 'ttc-voice-badge-ok'
+                  : 'ttc-voice-badge-muted'
               }`}
             >
-              {interview.phase === 'live'
-                ? interview.muted
-                  ? '已静音'
-                  : '实时收音中'
+              {flowPaused
+                ? 'HR 已暂停面试'
+                : observer.phase === 'listening'
+                ? observer.hrControl
+                  ? 'HR 接管 · 同步记录中'
+                  : 'HR 旁听 · AI 主持中'
                 : VOICE_STATUS_LABELS[session.status] ?? session.status}
             </span>
           </div>
@@ -286,16 +312,21 @@ export default function SessionDetailPage() {
             <div className="ttc-acoustic-stage-meta">
               <span className="ttc-acoustic-pill">
                 <Radio size={13} aria-hidden="true" />
-                {hasAcousticMotion
-                  ? '声学波形实时响应'
-                  : interview.muted
-                    ? '麦克风已静音 · 波形暂停'
-                    : isEnded
-                      ? '会话已结束 · 保留完整转写回放'
-                      : '待开启实时语音会话'}
+                {flowPaused
+                  ? '面试流程已暂停 · 等待 HR 恢复'
+                  : hasAcousticMotion
+                  ? observer.hrControl
+                    ? 'HR 接管中 · 候选人可听到 HR 发言'
+                    : 'HR 正在同步收听候选人与 AI 对话'
+                  : isEnded
+                    ? '会话已结束 · 保留完整转写回放'
+                    : session.status === 'live'
+                      ? '候选人通话中 · 可点击实时旁听'
+                      : '等待候选人接通 AI 面试'}
               </span>
               <span className="ttc-muted">
-                {interview.relay?.model ?? session.provider} · 上限 {Math.round(session.max_seconds / 60)} 分钟
+                {observer.model || session.provider} · 上限{' '}
+                {Math.round(session.max_seconds / 60)} 分钟
               </span>
             </div>
             <PremiumWaveform
@@ -311,9 +342,9 @@ export default function SessionDetailPage() {
               <div className="ttc-transcript-empty">
                 <p>
                   {session.status === 'created'
-                    ? '点击右上角「开始面试」，浏览器会请求麦克风权限并接入实时语音模型，AI 面试官会先开场白。'
-                    : isLive
-                      ? '正在等待双方首句语音转写…'
+                    ? '等待候选人进入求职门户并接通 AI 面试。企业端不会由 HR 建立候选人通话，也不会自动开启 HR 麦克风。'
+                    : observer.phase === 'listening'
+                      ? 'HR 正在旁听，等待候选人或 AI 的首句转写…'
                       : '实时语音服务没有返回任何转写文本。'}
                 </p>
               </div>
@@ -324,7 +355,13 @@ export default function SessionDetailPage() {
                 <div key={turn.id} className={`ttc-transcript-line is-${turn.role}`}>
                   <span className="ttc-transcript-who">
                     {turn.role === 'interviewer' ? <Bot size={14} /> : <UserRound size={14} />}
-                    {turn.role === 'interviewer' ? 'AI 面试官' : turn.role === 'candidate' ? '候选人' : '系统'}
+                    {turn.role === 'interviewer'
+                      ? 'AI 面试官'
+                      : turn.role === 'candidate'
+                        ? '候选人'
+                        : turn.role === 'hr'
+                          ? 'HR'
+                          : '系统'}
                   </span>
                   <p>{turn.text}</p>
                 </div>
@@ -335,7 +372,13 @@ export default function SessionDetailPage() {
                 <div key={line.id} className={`ttc-transcript-line is-${line.role}`}>
                   <span className="ttc-transcript-who">
                     {line.role === 'interviewer' ? <Bot size={14} /> : <UserRound size={14} />}
-                    {line.role === 'interviewer' ? 'AI 面试官' : line.role === 'candidate' ? '候选人' : '系统'}
+                    {line.role === 'interviewer'
+                      ? 'AI 面试官'
+                      : line.role === 'candidate'
+                        ? '候选人'
+                        : line.role === 'hr'
+                          ? 'HR'
+                          : '系统'}
                   </span>
                   <p className={line.pending ? 'is-pending' : ''}>{line.text}</p>
                 </div>
@@ -354,7 +397,11 @@ export default function SessionDetailPage() {
                 <h2>初始问题与追问方向</h2>
               </div>
               {questions.length > 0 && (
-                <span className="ttc-badge ttc-badge-blue">{questions.length} 个初始问题</span>
+                <span className="ttc-badge ttc-badge-blue">
+                  {customQuestionCount > 0
+                    ? `${customQuestionCount} 个 HR 指定 · 共 ${questions.length} 个`
+                    : `${questions.length} 个初始问题`}
+                </span>
               )}
             </div>
             <ol className="ttc-question-list">
@@ -362,7 +409,11 @@ export default function SessionDetailPage() {
                 <li key={question.id} className="ttc-question-item">
                   <span className="ttc-question-num">{String(index + 1).padStart(2, '0')}</span>
                   <div className="ttc-question-copy">
-                    <span className="ttc-question-section">{question.section}</span>
+                    <span className="ttc-question-section">
+                      {question.source === 'hr'
+                        ? 'HR 指定必问'
+                        : `AI · ${question.section}`}
+                    </span>
                     <p>{question.text}</p>
                   </div>
                 </li>
@@ -375,6 +426,125 @@ export default function SessionDetailPage() {
               </p>
             )}
           </article>
+
+          {(session.status === 'live' || isObserving) && (
+            <article className="ttc-card ttc-voice-panel">
+              <div className="ttc-voice-panel-head">
+                <div>
+                  <div className="ttc-mini-heading">
+                    <Headphones size={14} />
+                    <span>HR LIVE CONTROL</span>
+                  </div>
+                  <h2>实时旁听与接管</h2>
+                </div>
+                <span
+                  className={`ttc-badge ${
+                    observer.phase === 'listening'
+                      ? 'ttc-badge-green'
+                      : observer.phase === 'error'
+                        ? 'ttc-badge-red'
+                        : 'ttc-badge-amber'
+                  }`}
+                >
+                  {observer.phase === 'listening'
+                    ? flowPaused
+                      ? '面试流程已暂停'
+                      : observer.hrControl
+                      ? 'HR 接管中'
+                      : 'AI 主持中'
+                    : observer.phase === 'connecting'
+                      ? '连接中'
+                      : observer.phase === 'error'
+                        ? '连接异常'
+                        : '未旁听'}
+                </span>
+              </div>
+
+              {!isObserving ? (
+                <>
+                  <p className="ttc-muted">
+                    旁听后可以实时听到候选人的回答；接管时会暂停 AI 自动提问，
+                    打开麦克风即可直接与候选人沟通。
+                  </p>
+                  <button
+                    type="button"
+                    className="ttc-btn ttc-btn-primary ttc-btn-sm"
+                    onClick={observer.start}
+                  >
+                    <Headphones size={14} />
+                    开始实时旁听
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div className="ttc-voice-meta-list">
+                    <div className="ttc-voice-meta-row">
+                      <span className="ttc-voice-meta-icon"><Bot size={15} /></span>
+                      <div className="ttc-voice-meta-copy">
+                        <strong>AI 自动提问</strong>
+                        <span>
+                          {flowPaused
+                            ? '面试流程已暂停，等待 HR 恢复'
+                            : observer.aiActive
+                              ? '开启'
+                              : '已暂停，持续记录上下文'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="ttc-voice-meta-row">
+                      <span className="ttc-voice-meta-icon"><Mic size={15} /></span>
+                      <div className="ttc-voice-meta-copy">
+                        <strong>HR 麦克风</strong>
+                        <span>{observer.micOpen ? '已打开，候选人可实时听到' : '关闭'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="ttc-heading-actions">
+                    {!observer.hrControl && (
+                      <button
+                        type="button"
+                        className="ttc-btn ttc-btn-secondary ttc-btn-sm"
+                        onClick={observer.takeControl}
+                      >
+                        <Hand size={14} />
+                        打断 AI 并接管
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="ttc-btn ttc-btn-secondary ttc-btn-sm"
+                      onClick={() => void observer.toggleMic()}
+                    >
+                      {observer.micOpen ? <MicOff size={14} /> : <Mic size={14} />}
+                      {observer.micOpen ? '关闭麦克风' : '打开麦克风'}
+                    </button>
+                    {observer.hrControl && (
+                      <button
+                        type="button"
+                        className="ttc-btn ttc-btn-primary ttc-btn-sm"
+                        onClick={observer.releaseControl}
+                      >
+                        <Bot size={14} />
+                        交回 AI
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="ttc-btn ttc-btn-secondary ttc-btn-sm"
+                      onClick={observer.stop}
+                    >
+                      退出旁听
+                    </button>
+                  </div>
+                  <p className="ttc-muted">
+                    HR 接管期间，双方语音仍进入同一转录链路；交回 AI 后，
+                    系统会基于完整上下文继续追问，而不是重新开始问题清单。
+                  </p>
+                </>
+              )}
+            </article>
+          )}
 
           <article className="ttc-card ttc-voice-panel">
             <div className="ttc-voice-panel-head">
@@ -393,7 +563,7 @@ export default function SessionDetailPage() {
                 </span>
                 <div className="ttc-voice-meta-copy">
                   <strong>实时模型</strong>
-                  <span>{interview.relay?.model ?? session.provider ?? '—'}</span>
+                  <span>{observer.model || session.provider || '—'}</span>
                 </div>
               </div>
               <div className="ttc-voice-meta-row">
@@ -407,7 +577,12 @@ export default function SessionDetailPage() {
               </div>
             </div>
             {session.end_reason && (
-              <p className="ttc-muted">结束原因：{session.end_reason}</p>
+              <p className="ttc-muted">
+                结束原因：
+                {session.end_reason === 'conduct_violation'
+                  ? '严重言行触发自动结束'
+                  : session.end_reason}
+              </p>
             )}
           </article>
 

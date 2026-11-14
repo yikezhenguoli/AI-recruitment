@@ -36,6 +36,8 @@ export default function InterviewDetailPage() {
   const [hasVoiceConsent, setHasVoiceConsent] = useState<boolean | null>(null)
   const [liveState, setLiveState] = useState<LiveState>('idle')
   const [liveError, setLiveError] = useState<string | null>(null)
+  const [terminationMessage, setTerminationMessage] = useState<string | null>(null)
+  const [interviewPaused, setInterviewPaused] = useState(false)
   const [elapsed, setElapsed] = useState(0)
   const [lines, setLines] = useState<RelayLine[]>([])
   const [relayInfo, setRelayInfo] = useState<RelayInfo | null>(null)
@@ -53,6 +55,7 @@ export default function InterviewDetailPage() {
         if (cancelled) return
         if (interviewResult.status === 'fulfilled') {
           setDetail(interviewResult.value)
+          setInterviewPaused(interviewResult.value.is_paused)
           setError(null)
         } else {
           setError(getApiErrorMessage(interviewResult.reason, '面试详情加载失败。'))
@@ -88,6 +91,8 @@ export default function InterviewDetailPage() {
   const handleStart = async () => {
     if (!detail) return
     setLiveError(null)
+    setTerminationMessage(null)
+    setInterviewPaused(false)
     setElapsed(0)
     setLines([])
     setRelayInfo(null)
@@ -98,6 +103,9 @@ export default function InterviewDetailPage() {
         onState: (state, message) => {
           setLiveState(state)
           if (state === 'error' && message) setLiveError(message)
+          if (state === 'closed') {
+            void getInterview(id).then(setDetail).catch(() => undefined)
+          }
         },
         onLine: (line) => {
           setLines((current) => {
@@ -111,6 +119,13 @@ export default function InterviewDetailPage() {
           })
         },
         onRelay: setRelayInfo,
+        onTerminated: (info) => {
+          setTerminationMessage(info.message)
+          void getInterview(id).then(setDetail).catch(() => undefined)
+        },
+        onControl: (state) => {
+          setInterviewPaused(state.interviewPaused)
+        },
       })
       relayRef.current = relay
       void relay.start()
@@ -225,6 +240,9 @@ export default function InterviewDetailPage() {
             <ul className="mt-3 space-y-2 text-xs leading-relaxed text-muted">
               <li>· 需要你单独授予「AI 语音面试」授权后才能接通，撤回会立即切断通话。</li>
               <li>· 系统默认不保存原始音频，只保留转写文本，供招聘方整理面试记录。</li>
+              <li>· 系统会依据回答中的具体职责、做法、取舍和结果评估岗位相关能力证据，不代表通用能力或人格测评。</li>
+              <li>· 系统会依据转写审核沟通中的尊重、秩序、作答态度与职业化表达；严重不当言行将如实记录并触发一票否决。</li>
+              <li>· 招聘方可以实时旁听本场面试，并在需要时打开麦克风接管沟通；接管期间的双方发言同样会进入面试记录。</li>
               <li>· 你可以随时结束通话，已说过的内容仍会用于本次评估。</li>
               <li>· 沟通中出现不一致或不确定的信息会被标记为「待核实」，不会直接作为负面结论。</li>
             </ul>
@@ -347,7 +365,11 @@ export default function InterviewDetailPage() {
                 {lines.map((line) => (
                   <div key={line.id}>
                     <p className="text-[10px] font-bold text-muted">
-                      {line.role === 'interviewer' ? 'AI 面试官' : '我'}
+                      {line.role === 'interviewer'
+                        ? 'AI 面试官'
+                        : line.role === 'hr'
+                          ? 'HR'
+                          : '我'}
                       {line.pending ? ' · 识别中…' : ''}
                     </p>
                     <p className="text-[11px] leading-relaxed text-ink/85">{line.text}</p>
@@ -356,7 +378,20 @@ export default function InterviewDetailPage() {
               </div>
             )}
 
+            {interviewPaused && (
+              <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-[11px] leading-relaxed text-amber-800">
+                <p className="font-semibold">面试流程已被 HR 暂停</p>
+                <p className="mt-1">请等待 HR 恢复面试流程后继续交流。</p>
+              </div>
+            )}
+
             {liveError && <div className="mt-3"><ErrorNote message={liveError} /></div>}
+            {terminationMessage && (
+              <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-3 text-[11px] leading-relaxed text-red-800">
+                <p className="font-semibold">通话已由系统终止</p>
+                <p className="mt-1">{terminationMessage}</p>
+              </div>
+            )}
             {liveState === 'closed' && !closed && (
               <p className="mt-3 text-center text-[10px] text-muted">通话已结束，可刷新页面查看最新状态。</p>
             )}

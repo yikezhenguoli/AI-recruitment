@@ -54,6 +54,8 @@ async def run_once(*, llm=None, storage=None) -> bool:
                 await fetch_crossref(session, task)
             elif task["type"] == "realtime_hangup":
                 await hangup_call(task["payload"]["call_id"])
+            elif task["type"] == "voice_report":
+                await create_transcript_report(session, task["resource_id"])
             else:
                 raise ValueError(f"Unsupported task type: {task['type']}")
             await session.execute(text(

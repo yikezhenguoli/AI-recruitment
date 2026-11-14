@@ -22,6 +22,8 @@ import { watchTask } from '../api/progress'
 import { getResumeClaims, getResumeText, reparseResume, uploadResume } from '../api/resumes'
 import { createAssessment } from '../api/assessments'
 import { getVoiceSummary, listVoiceSessions } from '../api/voice'
+import { CapabilityAssessmentPanel } from '../components/voice/CapabilityAssessmentPanel'
+import { ConductAssessmentPanel } from '../components/voice/ConductAssessmentPanel'
 import { getApiErrorMessage } from '../lib/apiError'
 import { EVIDENCE_GRADE_CLASS, formatDate, formatDateTime, VOICE_STATUS_CLASS, VOICE_STATUS_LABELS } from '../lib/format'
 import type { ConsentPurpose, ResumeClaim, TaskProgressMessage } from '../types'
@@ -771,6 +773,8 @@ export default function CandidateDetailPage() {
                       <span>模型：{summaryQuery.data.model_version}</span>
                       <span>生成于 {formatDateTime(summaryQuery.data.generated_at)}</span>
                     </div>
+                    <CapabilityAssessmentPanel assessment={summaryQuery.data.capability} compact />
+                    <ConductAssessmentPanel assessment={summaryQuery.data.conduct} compact />
                     {summaryQuery.data.overview && (
                       <p className="ttc-report-overview">{summaryQuery.data.overview}</p>
                     )}

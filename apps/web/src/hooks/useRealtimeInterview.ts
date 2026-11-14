@@ -16,7 +16,7 @@ export type InterviewPhase =
 
 export interface TranscriptLine {
   id: string
-  role: 'interviewer' | 'candidate' | 'system'
+  role: 'interviewer' | 'candidate' | 'hr' | 'system'
   text: string
   pending: boolean
 }
@@ -36,11 +36,16 @@ interface UpstreamEvent {
   message?: string
   error?: { message?: string }
   session?: { id?: string }
+  speaker?: 'candidate' | 'hr'
+  audio?: string
+  sample_rate?: number
+  ai_active?: boolean
+  hr_control?: boolean
 }
 
 interface TurnPayload {
   index: number
-  role: 'interviewer' | 'candidate' | 'system'
+  role: 'interviewer' | 'candidate' | 'hr' | 'system'
   text: string
 }
 
@@ -51,6 +56,7 @@ interface TurnPayload {
 export function useRealtimeInterview(sessionId: string | undefined) {
   const [phase, setPhase] = useState<InterviewPhase>('idle')
   const [error, setError] = useState('')
+  const [termination, setTermination] = useState('')
   const [lines, setLines] = useState<TranscriptLine[]>([])
   const [relay, setRelay] = useState<RelayInfo | null>(null)
   const [muted, setMutedState] = useState(false)
@@ -106,6 +112,7 @@ export function useRealtimeInterview(sessionId: string | undefined) {
   const start = useCallback(() => {
     if (!sessionId || phaseRef.current === 'connecting' || phaseRef.current === 'live') return
     setError('')
+    setTermination('')
     setLines([])
     linesRef.current = []
     setElapsed(0)
@@ -155,21 +162,39 @@ export function useRealtimeInterview(sessionId: string | undefined) {
         return
       }
 
+      if (type === 'session.terminated') {
+        setTermination(
+          payload.message ?? '检测到严重不当言行，通话已由系统终止并记录。',
+        )
+        setPhaseSafe('ending')
+        teardownAudio()
+        return
+      }
+
+      if (type === 'control.state') {
+        if (payload.ai_active === false || payload.hr_control === true) {
+          playerRef.current?.interrupt()
+        }
+        return
+      }
+
       switch (type) {
         case 'input_audio_buffer.speech_started':
           // 候选人插话：停掉正在播的面试官音频。
           playerRef.current?.interrupt()
           break
         case 'conversation.item.input_audio_transcription.delta': {
-          const key = `candidate:${payload.item_id ?? 'current'}`
+          const role = payload.speaker === 'hr' ? 'hr' : 'candidate'
+          const key = `${role}:${payload.item_id ?? 'current'}`
           const existing = linesRef.current.find((line) => line.id === key)
-          upsertLine(key, 'candidate', (existing?.text ?? '') + (payload.delta ?? ''), true)
+          upsertLine(key, role, (existing?.text ?? '') + (payload.delta ?? ''), true)
           break
         }
         case 'conversation.item.input_audio_transcription.completed': {
-          const key = `candidate:${payload.item_id ?? 'current'}`
+          const role = payload.speaker === 'hr' ? 'hr' : 'candidate'
+          const key = `${role}:${payload.item_id ?? 'current'}`
           const text = (payload.transcript ?? '').trim()
-          if (text) upsertLine(key, 'candidate', text, false)
+          if (text) upsertLine(key, role, text, false)
           break
         }
         case 'response.audio_transcript.delta':
@@ -188,6 +213,11 @@ export function useRealtimeInterview(sessionId: string | undefined) {
         }
         case 'response.audio.delta':
           if (payload.delta) playerRef.current?.enqueue(payload.delta)
+          break
+        case 'participant.audio':
+          if (payload.audio) {
+            playerRef.current?.enqueue(payload.audio, payload.sample_rate ?? 16000)
+          }
           break
         case 'response.done':
           setLines((current) => {
@@ -261,5 +291,16 @@ export function useRealtimeInterview(sessionId: string | undefined) {
     }
   }, [teardownAudio])
 
-  return { phase, error, lines, relay, muted, elapsed, start, stop, setMuted }
+  return {
+    phase,
+    error,
+    termination,
+    lines,
+    relay,
+    muted,
+    elapsed,
+    start,
+    stop,
+    setMuted,
+  }
 }

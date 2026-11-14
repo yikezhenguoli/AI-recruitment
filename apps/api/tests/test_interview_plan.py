@@ -10,6 +10,7 @@ from ttc.domains.interview import plan as plan_module
 from ttc.domains.interview.plan import (
     FALLBACK_PLAN,
     build_plan,
+    merge_custom_questions,
     normalize_plan,
     plan_from_db,
     session_instructions,
@@ -77,6 +78,8 @@ def test_session_instructions_carry_profile_and_focus():
     assert "初始问题只用于确定对话主题" in text
     assert "动态推进规则" in text
     assert "敏感信息" in text
+    assert "相关言行将被如实记录" in text
+    assert "不得据此推断故意不配合" in text
 
 
 def test_session_instructions_include_job_context_and_followup_budget():
@@ -114,6 +117,62 @@ def test_session_instructions_include_job_context_and_followup_budget():
 def test_session_instructions_rejects_bad_plan_input():
     text = session_instructions("not-a-dict")  # type: ignore[arg-type]
     assert FALLBACK_PLAN["questions"][0]["text"] in text
+
+
+def test_hr_custom_questions_are_prioritized_and_marked_required():
+    plan = merge_custom_questions(
+        {
+            "questions": [
+                {"id": "q1", "section": "skill", "text": "如何设计缓存一致性？"},
+                {"id": "q2", "section": "experience", "text": "请介绍一个项目。"},
+            ],
+        },
+        [
+            "请说明你如何评估一次线上故障的影响范围？",
+            "请介绍上一份工作中最有代表性的交付结果。",
+            "请说明你如何评估一次线上故障的影响范围？",
+        ],
+    )
+
+    assert [item["text"] for item in plan["questions"][:2]] == [
+        "请说明你如何评估一次线上故障的影响范围？",
+        "请介绍上一份工作中最有代表性的交付结果。",
+    ]
+    assert plan["questions"][0]["source"] == "hr"
+    assert plan["questions"][0]["required"] is True
+    assert plan["custom_question_count"] == 2
+    text = session_instructions(plan, "后端工程师")
+    assert "来源：HR指定必问" in text
+    assert "HR指定问题属于必须覆盖的问题" in text
+    assert "所有初始问题不论来自 HR 还是 AI" in text
+    assert "完全相同的回答充分性判断、追问条件" in text
+    assert "包括 HR 指定问题，都最多追问" in text
+    assert text.index("请说明你如何评估一次线上故障") < text.index("如何设计缓存一致性")
+
+
+def test_custom_questions_replace_duplicate_ai_question_and_respect_cap():
+    plan = merge_custom_questions(
+        {
+            "questions": [
+                {"id": "q1", "section": "skill", "text": "如何设计缓存一致性？"},
+                *[
+                    {"id": f"q{i}", "section": "experience", "text": f"AI问题{i}"}
+                    for i in range(2, 11)
+                ],
+            ],
+        },
+        [
+            "如何设计缓存一致性？",
+            *[f"HR问题{i}" for i in range(2, 8)],
+        ],
+    )
+
+    assert len(plan["questions"]) == plan_module.MAX_INITIAL_QUESTIONS
+    assert plan["custom_question_count"] == plan_module.MAX_CUSTOM_QUESTIONS
+    assert plan["questions"][0]["source"] == "hr"
+    assert all(
+        item["source"] == "hr" for item in plan["questions"][:plan_module.MAX_CUSTOM_QUESTIONS]
+    )
 
 
 def test_session_instructions_carry_job_title():

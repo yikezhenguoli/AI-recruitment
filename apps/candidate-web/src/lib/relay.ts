@@ -5,7 +5,7 @@ import { describeSocketClose, openAuthedSocket } from './ws'
 
 export interface RelayLine {
   id: string
-  role: 'interviewer' | 'candidate' | 'system'
+  role: 'interviewer' | 'candidate' | 'hr' | 'system'
   text: string
   pending: boolean
 }
@@ -20,6 +20,12 @@ export interface RelayHandlers {
   onState: (state: LiveState, detail?: string) => void
   onLine: (line: RelayLine) => void
   onRelay: (info: RelayInfo) => void
+  onTerminated?: (info: { reason: string; message: string }) => void
+  onControl?: (state: {
+    aiActive: boolean
+    hrControl: boolean
+    interviewPaused: boolean
+  }) => void
 }
 
 interface UpstreamEvent {
@@ -30,6 +36,13 @@ interface UpstreamEvent {
   response_id?: string
   message?: string
   error?: { message?: string }
+  reason?: string
+  speaker?: 'candidate' | 'hr'
+  sample_rate?: number
+  audio?: string
+  ai_active?: boolean
+  hr_control?: boolean
+  interview_paused?: boolean
   model?: string
   voice?: string
   maxSeconds?: number
@@ -50,6 +63,7 @@ export class RelayInterview {
   private cancelled = false
   private lastActivity = 0
   private watchdog: number | null = null
+  private terminationAudioTimer: number | null = null
   private responding = false
 
   /** 上游与浏览器都没有新事件多久之后，主动请面试官接着说。 */
@@ -143,20 +157,58 @@ export class RelayInterview {
         return
       }
 
+      if (type === 'session.terminated') {
+        this.closing = true
+        this.cancelled = true
+        this.started = false
+        this.stopWatchdog()
+        this.mic?.stop()
+        this.mic = null
+        if (this.terminationAudioTimer !== null) {
+          window.clearTimeout(this.terminationAudioTimer)
+        }
+        // Keep already queued audio long enough to finish the AI's final warning.
+        this.terminationAudioTimer = window.setTimeout(() => {
+          this.player?.close()
+          this.player = null
+          this.terminationAudioTimer = null
+        }, 1500)
+        this.handlers.onTerminated?.({
+          reason: payload.reason ?? 'conduct_violation',
+          message: payload.message ?? '检测到严重不当言行，通话已由系统终止并记录。',
+        })
+        return
+      }
+
+      if (type === 'control.state') {
+        if (payload.ai_active === false || payload.hr_control === true) {
+          this.player?.interrupt()
+          this.responding = false
+        }
+        this.handlers.onControl?.({
+          aiActive: payload.ai_active ?? true,
+          hrControl: payload.hr_control ?? false,
+          interviewPaused: payload.interview_paused ?? false,
+        })
+        return
+      }
+
       switch (type) {
         case 'input_audio_buffer.speech_started':
           this.player?.interrupt()
           break
         case 'conversation.item.input_audio_transcription.delta': {
-          const key = `candidate:${payload.item_id ?? 'current'}`
+          const role = payload.speaker === 'hr' ? 'hr' : 'candidate'
+          const key = `${role}:${payload.item_id ?? 'current'}`
           const existing = this.lines.get(key)
-          this.upsert(key, 'candidate', (existing?.text ?? '') + (payload.delta ?? ''), true)
+          this.upsert(key, role, (existing?.text ?? '') + (payload.delta ?? ''), true)
           break
         }
         case 'conversation.item.input_audio_transcription.completed': {
-          const key = `candidate:${payload.item_id ?? 'current'}`
+          const role = payload.speaker === 'hr' ? 'hr' : 'candidate'
+          const key = `${role}:${payload.item_id ?? 'current'}`
           const text = (payload.transcript ?? '').trim()
-          if (text) this.upsert(key, 'candidate', text, false)
+          if (text) this.upsert(key, role, text, false)
           break
         }
         case 'response.audio_transcript.delta':
@@ -175,6 +227,11 @@ export class RelayInterview {
         }
         case 'response.audio.delta':
           if (payload.delta) this.player?.enqueue(payload.delta)
+          break
+        case 'participant.audio':
+          if (payload.audio) {
+            this.player?.enqueue(payload.audio, payload.sample_rate ?? 16000)
+          }
           break
         case 'response.created':
           this.responding = true
@@ -198,7 +255,7 @@ export class RelayInterview {
 
     socket.onclose = (event) => {
       this.stopWatchdog()
-      this.teardownAudio()
+      if (this.terminationAudioTimer === null) this.teardownAudio()
       this.socket = null
       if (this.closing) {
         this.handlers.onState('closed')
@@ -319,6 +376,10 @@ export class RelayInterview {
   }
 
   private teardownAudio(): void {
+    if (this.terminationAudioTimer !== null) {
+      window.clearTimeout(this.terminationAudioTimer)
+      this.terminationAudioTimer = null
+    }
     this.mic?.stop()
     this.mic = null
     this.player?.close()

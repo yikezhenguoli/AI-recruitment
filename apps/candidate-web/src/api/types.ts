@@ -196,6 +196,8 @@ export interface InterviewPlan {
     section?: string
     job_relevance?: string
     resume_anchor?: string
+    source?: 'hr' | 'ai'
+    required?: boolean
   }>
   strategy?: string
   [key: string]: unknown
@@ -212,6 +214,7 @@ export interface InterviewDetail {
   started_at: string | null
   ended_at: string | null
   end_reason: string | null
+  is_paused: boolean
   live_ready: boolean
   live_transport: 'sdp' | 'relay' | null
 }

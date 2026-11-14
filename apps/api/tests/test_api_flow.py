@@ -1,14 +1,19 @@
 import asyncio
+import base64
 import io
+import json
 from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
+from starlette.websockets import WebSocketDisconnect
 
 from ttc.core.config import get_settings
 from ttc.core.security import hash_password, uuid7
+from ttc.domains.interview.capability import normalize_capability
+from ttc.domains.interview.conduct import normalize_conduct
 from ttc.main import app
 from ttc.tasks.runner import run_once
 
@@ -139,15 +144,31 @@ def test_synthetic_resume_assessment_and_tenant_access(monkeypatch):
                                              "email": "candidate@example.invalid",
                                              "password": password}
             ).json()["access_token"]}
+
+            async def quick_capability(turns, _plan, _job_title):
+                return normalize_capability(
+                    {}, [dict(turn) for turn in turns]
+                ), "synthetic-capability"
+
+            monkeypatch.setattr("ttc.api.v1.voice.assess_capability", quick_capability)
             assert client.post("/api/v1/voice-sessions", headers=headers, json={
                 "candidate_id": candidate_id, "job_id": job.json()["id"]}).status_code == 403
             consent = client.post("/api/v1/consents", headers=candidate_headers, json={
                 "candidate_id": candidate_id, "purpose": "voice_interview",
                 "text_version": "synthetic-v1", "acknowledged": True})
             assert consent.status_code == 201, consent.text
+            too_many_questions = client.post("/api/v1/voice-sessions", headers=headers, json={
+                "candidate_id": candidate_id, "job_id": job.json()["id"],
+                "custom_questions": [f"问题{i}" for i in range(6)]})
+            assert too_many_questions.status_code == 422, too_many_questions.text
             voice = client.post("/api/v1/voice-sessions", headers=headers, json={
-                "candidate_id": candidate_id, "job_id": job.json()["id"]})
+                "candidate_id": candidate_id, "job_id": job.json()["id"],
+                "custom_questions": ["请说明你如何定位线上性能问题？"]})
             assert voice.status_code == 201, voice.text
+            assert voice.json()["plan"]["questions"][0]["source"] == "hr"
+            assert voice.json()["plan"]["questions"][0]["text"] == (
+                "请说明你如何定位线上性能问题？"
+            )
             voice_id = voice.json()["id"]
             assert client.post("/api/v1/realtime/mint", headers=candidate_headers,
                                json={"session_id": voice_id}).status_code == 503
@@ -157,8 +178,20 @@ def test_synthetic_resume_assessment_and_tenant_access(monkeypatch):
             assert finished.status_code == 202, finished.text
             assert client.get(f"/api/v1/voice-sessions/{voice_id}/report",
                               headers=candidate_headers).status_code == 403
-            assert client.get(f"/api/v1/voice-sessions/{voice_id}/report",
-                              headers=headers).json()["quotes"][0]["text"] == "合成回答"
+            call_report = client.get(f"/api/v1/voice-sessions/{voice_id}/report",
+                                     headers=headers).json()
+            assert call_report["quotes"][0]["text"] == "合成回答"
+            assert call_report["conduct"]["status"] in ("assessed", "unassessed", "vetoed")
+            assert (
+                call_report["conduct_score"] is None
+                or 0 <= call_report["conduct_score"] <= 100
+            )
+            assert call_report["conduct_veto"] is False
+            assert call_report["capability"]["status"] in ("assessed", "unassessed")
+            assert (
+                call_report["capability_score"] is None
+                or 0 <= call_report["capability_score"] <= 100
+            )
             call_index = 0
 
             async def synthetic_call(offer, instructions):
@@ -215,6 +248,235 @@ def test_synthetic_resume_assessment_and_tenant_access(monkeypatch):
                                              "Content-Type": "application/sdp"},
                                     content=b"v=0\r\nsynthetic-offer-for-test-only")
             assert connected.status_code == 200, connected.text
+
+            policy_voice = client.post("/api/v1/voice-sessions", headers=headers, json={
+                "candidate_id": candidate_id, "job_id": job.json()["id"]})
+            assert policy_voice.status_code == 201, policy_voice.text
+            policy_id = policy_voice.json()["id"]
+
+            class FakeQwen:
+                def __init__(self):
+                    self.events = [
+                        json.dumps({
+                            "type": "conversation.item.input_audio_transcription.completed",
+                            "item_id": "candidate-1",
+                            "transcript": "我操你妈。",
+                        }, ensure_ascii=False),
+                        json.dumps({
+                            "type": "response.audio_transcript.delta",
+                            "response_id": "warning-1",
+                            "delta": "你刚才的言语非常不当，我会如实记录。"
+                                     "这次沟通到此结束。",
+                        }, ensure_ascii=False),
+                        json.dumps({
+                            "type": "response.done",
+                            "response_id": "warning-1",
+                        }),
+                    ]
+
+                def __aiter__(self):
+                    return self
+
+                async def __anext__(self):
+                    if not self.events:
+                        await asyncio.sleep(1)
+                        raise StopAsyncIteration
+                    return self.events.pop(0)
+
+                async def send(self, _message):
+                    return None
+
+                async def close(self):
+                    return None
+
+            async def fake_qwen_session(_instructions, _voice=None):
+                return (
+                    FakeQwen(),
+                    "synthetic-qwen",
+                    "Tina",
+                    [json.dumps({"type": "session.created"})],
+                )
+
+            async def quick_summary(_session, _session_id, turns):
+                return (
+                    {"status": "assessed", "turn_count": len(turns),
+                     "overview": "合成言行终止测试", "qa": [], "limitations": []},
+                    [],
+                    "synthetic-summary",
+                )
+
+            async def quick_conduct(turns):
+                return normalize_conduct({}, [dict(turn) for turn in turns]), "synthetic-conduct"
+
+            monkeypatch.setattr("ttc.api.v1.voice.qwen.open_session", fake_qwen_session)
+            monkeypatch.setattr("ttc.api.v1.voice.summarize_turns", quick_summary)
+            monkeypatch.setattr("ttc.api.v1.voice.assess_turns", quick_conduct)
+            with client.websocket_connect(
+                f"/api/v1/voice-sessions/{policy_id}/realtime"
+            ) as socket:
+                socket.send_json({"token": candidate_headers["Authorization"].split()[1]})
+                message_types = []
+                for _ in range(10):
+                    payload = socket.receive_json()
+                    message_types.append(payload["type"])
+                    if payload["type"] == "session.terminated":
+                        assert payload["reason"] == "conduct_violation"
+                        break
+                assert "session.terminated" in message_types
+
+            policy_state = client.get(f"/api/v1/voice-sessions/{policy_id}",
+                                      headers=headers).json()
+            assert policy_state["status"] == "ended"
+            assert policy_state["end_reason"] == "conduct_violation"
+            policy_turns = client.get(f"/api/v1/voice-sessions/{policy_id}/turns",
+                                      headers=headers).json()["items"]
+            assert any(turn["role"] == "candidate" and "操你妈" in turn["text"]
+                       for turn in policy_turns)
+
+            async def verify_policy_report_task():
+                engine = create_async_engine(settings.database_url)
+                try:
+                    async with engine.connect() as connection:
+                        return await connection.scalar(text(
+                            "SELECT count(*) FROM task WHERE type = 'voice_report' "
+                            "AND resource_type = 'voice_session' AND resource_id = :id"
+                        ), {"id": policy_id})
+                finally:
+                    await engine.dispose()
+
+            assert asyncio.run(verify_policy_report_task()) == 1
+
+            observer_voice = client.post("/api/v1/voice-sessions", headers=headers, json={
+                "candidate_id": candidate_id, "job_id": job.json()["id"]})
+            assert observer_voice.status_code == 201, observer_voice.text
+            observer_id = observer_voice.json()["id"]
+
+            class ObserverUpstream:
+                def __init__(self):
+                    self.sent = []
+                    self.events = []
+
+                def __aiter__(self):
+                    return self
+
+                async def __anext__(self):
+                    while not self.events:
+                        await asyncio.sleep(0.02)
+                    return self.events.pop(0)
+
+                async def send(self, message):
+                    self.sent.append(message)
+
+                async def close(self):
+                    return None
+
+            observer_holder = {}
+
+            async def fake_observer_session(_instructions, _voice=None):
+                upstream = ObserverUpstream()
+                observer_holder["upstream"] = upstream
+                return (
+                    upstream,
+                    "synthetic-observer",
+                    "Tina",
+                    [json.dumps({"type": "session.created"})],
+                )
+
+            monkeypatch.setattr("ttc.api.v1.voice.qwen.open_session", fake_observer_session)
+            token = candidate_headers["Authorization"].split()[1]
+            audio = base64.b64encode(b"\x10\x40" * 320).decode()
+            with client.websocket_connect(
+                f"/api/v1/voice-sessions/{observer_id}/realtime"
+            ) as candidate_socket:
+                candidate_socket.send_json({"token": token})
+                assert candidate_socket.receive_json()["type"] == "session.created"
+                assert candidate_socket.receive_json()["type"] == "relay.ready"
+                with pytest.raises(WebSocketDisconnect) as denied:
+                    with client.websocket_connect(
+                        f"/api/v1/voice-sessions/{observer_id}/realtime"
+                    ) as hr_realtime:
+                        hr_realtime.send_json(
+                            {"token": headers["Authorization"].split()[1]}
+                        )
+                        hr_realtime.receive_json()
+                assert denied.value.code == 4403
+                with client.websocket_connect(
+                    f"/api/v1/voice-sessions/{observer_id}/observe"
+                ) as hr_socket:
+                    hr_socket.send_json(
+                        {"token": headers["Authorization"].split()[1]}
+                    )
+                    initial_types = {
+                        hr_socket.receive_json()["type"],
+                        hr_socket.receive_json()["type"],
+                    }
+                    assert "relay.ready" in initial_types
+                    assert "control.state" in initial_types
+
+                    paused = client.post(
+                        f"/api/v1/voice-sessions/{observer_id}/flow-control",
+                        headers=headers,
+                        json={"action": "pause"},
+                    )
+                    assert paused.status_code == 200, paused.text
+                    assert paused.json()["interview_paused"] is True
+                    assert any(
+                        "面试流程被HR暂停" in json.dumps(message, ensure_ascii=False)
+                        for message in observer_holder["upstream"].sent
+                    )
+
+                    resumed = client.post(
+                        f"/api/v1/voice-sessions/{observer_id}/flow-control",
+                        headers=headers,
+                        json={"action": "resume"},
+                    )
+                    assert resumed.status_code == 200, resumed.text
+                    assert resumed.json()["interview_paused"] is False
+                    assert any(
+                        "面试流程已恢复" in json.dumps(message, ensure_ascii=False)
+                        for message in observer_holder["upstream"].sent
+                    )
+
+                    candidate_socket.send_json({
+                        "type": "input_audio_buffer.append",
+                        "audio": audio,
+                    })
+                    candidate_event = hr_socket.receive_json()
+                    while candidate_event["type"] != "participant.audio":
+                        candidate_event = hr_socket.receive_json()
+                    assert candidate_event["role"] == "candidate"
+                    assert candidate_event["sample_rate"] == 16000
+
+                    hr_socket.send_json({"type": "control.take"})
+                    control_event = hr_socket.receive_json()
+                    while control_event["type"] != "control.state":
+                        control_event = hr_socket.receive_json()
+                    assert control_event["hr_control"] is True
+
+                    hr_socket.send_json({
+                        "type": "hr_audio.append",
+                        "audio": audio,
+                    })
+                    candidate_event = candidate_socket.receive_json()
+                    while candidate_event["type"] != "participant.audio":
+                        candidate_event = candidate_socket.receive_json()
+                    assert candidate_event["role"] == "hr"
+                    assert candidate_event["sample_rate"] == 16000
+
+                    observer_holder["upstream"].events.append(json.dumps({
+                        "type": "conversation.item.input_audio_transcription.completed",
+                        "item_id": "hr-turn-1",
+                        "transcript": "请具体说明你处理线上故障的步骤。",
+                    }, ensure_ascii=False))
+                    transcript_event = hr_socket.receive_json()
+                    while transcript_event["type"] != (
+                        "conversation.item.input_audio_transcription.completed"
+                    ):
+                        transcript_event = hr_socket.receive_json()
+                    assert transcript_event["speaker"] == "hr"
+
+                    hr_socket.send_json({"type": "control.release"})
+
             assert client.delete(f"/api/v1/resumes/{resume_id}", headers=headers).status_code == 200
             request = client.post("/api/v1/privacy/requests", headers=candidate_headers,
                                   json={"candidate_id": candidate_id,
