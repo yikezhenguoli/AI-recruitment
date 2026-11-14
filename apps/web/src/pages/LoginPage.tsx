@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { FileText, LogIn, ShieldCheck, Sparkles } from 'lucide-react'
+import { LogIn } from 'lucide-react'
 import { fetchMe, login } from '../api/auth'
 import { getApiErrorMessage } from '../lib/apiError'
 import { useAuthStore } from '../store/authStore'
@@ -34,49 +34,11 @@ export default function LoginPage() {
 
   return (
     <div className="ttc-login">
-      <aside className="ttc-login-aside">
-        <div className="ttc-login-aside-brand">
-          <img src="/ttc-mark.svg" alt="" width={42} height={42} />
-          <div>
-            <strong>TTC 才多对</strong>
-            <span>TALENT TRUST &amp; CONNECT</span>
-          </div>
-        </div>
-
-        <div className="ttc-login-aside-copy">
-          <h2>
-            把招聘的每一步
-            <br />
-            都<em>留下依据</em>。
-          </h2>
-          <p>
-            岗位解析、简历证据、语音面试与评估报告，在同一条链路上完成。
-            招聘方看到的每个结论，都能回到原始材料。
-          </p>
-          <ul className="ttc-login-points">
-            <li>
-              <ShieldCheck size={16} aria-hidden="true" />
-              真实候选人需先取得授权，数据可随时撤回。
-            </li>
-            <li>
-              <Sparkles size={16} aria-hidden="true" />
-              AI 给出结构化判断依据，人工保留最终复核权。
-            </li>
-            <li>
-              <FileText size={16} aria-hidden="true" />
-              每一步产物都可追溯到简历原文与面试转写。
-            </li>
-          </ul>
-        </div>
-
-        <div className="ttc-login-aside-foot">© 2026 TTC · AI 辅助决策，人工最终复核</div>
-      </aside>
-
-      <form className="ttc-login-card" onSubmit={handleSubmit} aria-labelledby="login-title">
+      <form className="ttc-login-card" onSubmit={handleSubmit}>
         <div className="ttc-login-brand">
           <img src="/ttc-mark.svg" alt="" width={40} height={40} />
           <div>
-            <strong id="login-title">招聘工作台</strong>
+            <strong>招聘工作台</strong>
             <span>TTC Talent Workbench</span>
           </div>
         </div>
