@@ -22,15 +22,11 @@ from ttc.core.config import get_settings
 from ttc.core.db import get_session
 from ttc.core.errors import TTCError
 from ttc.core.security import uuid7
+from ttc.domains.interview.plan import (FALLBACK_PLAN, build_plan, parse_plan,
+                                        plan_from_db, session_instructions)
 
 router = APIRouter(tags=["voice"])
 hr = require_roles("hr", "admin")
-PLAN = {"sections_order": ["intro", "experience", "wrap"],
-        "questions": [
-            {"id": "q1", "section": "intro", "text": "请介绍你最相关的一段经历。"},
-            {"id": "q2", "section": "experience", "text": "这段经历中你亲自负责什么？"},
-            {"id": "q3", "section": "wrap", "text": "你目前的求职意愿和到岗时间？"},
-        ], "language_mode": {"primary": "zh", "mixed": False}}
 
 
 class SessionInput(BaseModel):
@@ -56,12 +52,6 @@ class FinishInput(BaseModel):
 class MintInput(BaseModel):
     session_id: UUID
     connection_ephemeral: bool = True
-
-
-def session_instructions(plan):
-    return ("你是招聘初筛沟通助手。只依次询问指定问题，不做录用决定。"
-            "不要要求身份证、住址等敏感信息。对不确定信息标记待核实。问题：" +
-            "；".join(question["text"] for question in plan["questions"]))
 
 
 async def require_session(session: AsyncSession, user: Principal, session_id: UUID):
@@ -93,6 +83,8 @@ async def create_session(body: SessionInput, user: Principal = Depends(hr),
     ), {"candidate": body.candidate_id})).scalar_one_or_none()
     if parsed is None:
         raise TTCError("TTC-2002", "简历未解析完成", 409)
+    # 按简历与岗位生成问题；生成失败会回退固定清单，不影响建会话。
+    plan = await build_plan(session, body.candidate_id, body.job_id, body.scenario)
     session_id = uuid7()
     await session.execute(text(
         "INSERT INTO voice_session (id, candidate_id, job_id, consent_id, scenario, "
@@ -101,9 +93,9 @@ async def create_session(body: SessionInput, user: Principal = Depends(hr),
         "'created', :provider, 'unconfigured', CAST(:plan AS jsonb), :max_seconds)"
     ), {"id": session_id, "candidate": body.candidate_id, "job": body.job_id,
         "consent": consent_id, "scenario": body.scenario, "provider": body.provider,
-        "plan": json.dumps(PLAN, ensure_ascii=False), "max_seconds": body.max_seconds})
+        "plan": json.dumps(plan, ensure_ascii=False), "max_seconds": body.max_seconds})
     await session.commit()
-    return {"id": session_id, "status": "created", "consent_checked": True, "plan": PLAN}
+    return {"id": session_id, "status": "created", "consent_checked": True, "plan": plan}
 
 
 @router.get("/voice-sessions")
@@ -132,9 +124,12 @@ async def list_voice_sessions(candidate_id: UUID | None = None,
 async def get_voice_session(session_id: UUID, user: Principal = Depends(current_user),
                             session: AsyncSession = Depends(get_session)):
     row = await require_session(session, user, session_id)
-    return {key: row[key] for key in ("id", "candidate_id", "job_id", "scenario", "status",
-                                     "provider", "max_seconds", "plan_json", "created_at",
-                                     "started_at", "ended_at", "end_reason")}
+    detail = {key: row[key] for key in ("id", "candidate_id", "job_id", "scenario", "status",
+                                        "provider", "max_seconds", "plan_json", "created_at",
+                                        "started_at", "ended_at", "end_reason")}
+    # jsonb 经 asyncpg 读出来是字符串，不解析前端拿到的 plan_json 就是一串文本。
+    detail["plan_json"] = parse_plan(row["plan_json"])
+    return detail
 
 
 @router.post("/realtime/mint")
@@ -167,7 +162,8 @@ async def connect_call(session_id: UUID, request: Request,
         offer.extend(chunk)
     if len(offer) < 30 or not offer.startswith(b"v=0"):
         raise TTCError("TTC-4000", "SDP 内容无效", 422)
-    answer, call_id = await create_call(bytes(offer), session_instructions(row["plan_json"]))
+    answer, call_id = await create_call(bytes(offer),
+                                         session_instructions(plan_from_db(row["plan_json"])))
     result = await session.execute(text(
         "UPDATE voice_session SET status = 'live', started_at = now(), "
         "provider_call_id = :call, model = :model WHERE id = :id "
@@ -282,15 +278,7 @@ async def realtime_relay(websocket: WebSocket, session_id: UUID):
         await session.commit()
         plan = row["plan_json"]
 
-    if isinstance(plan, str):
-        try:
-            plan = json.loads(plan)
-        except ValueError:
-            plan = PLAN
-    plan = plan if isinstance(plan, dict) else PLAN
-    if not plan.get("questions"):
-        plan = PLAN
-    instructions = session_instructions(plan)
+    instructions = session_instructions(plan_from_db(plan))
 
     try:
         upstream, model, voice, initial = await qwen.open_session(
@@ -461,8 +449,7 @@ async def summarize_turns(session: AsyncSession, session_id: UUID,
     plan = (await session.execute(text(
         "SELECT plan_json FROM voice_session WHERE id = :id"), {"id": session_id}
     )).scalar_one_or_none()
-    if not isinstance(plan, dict) or not plan.get("questions"):
-        plan = PLAN
+    plan = plan_from_db(plan)
     try:
         result = await LLMAdapter().summarize_interview(plan, [dict(turn) for turn in turns])
     except TTCError as exc:
