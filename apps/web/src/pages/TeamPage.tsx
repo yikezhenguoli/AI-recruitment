@@ -260,9 +260,11 @@ export default function TeamPage() {
                 </td>
               </tr>
             ))}
-            {!membersQuery.isLoading && members.length === 0 && !forbidden && (
+            {!membersQuery.isLoading && members.length === 0 && (
               <tr>
-                <td colSpan={5} className="ttc-muted">还没有成员。</td>
+                <td colSpan={5} className="ttc-muted">
+                  {forbidden ? '需要成员管理权限才能查看成员列表。' : '还没有成员。'}
+                </td>
               </tr>
             )}
           </tbody>
