@@ -27,7 +27,7 @@ import { PARSE_STATUS } from '../lib/labels'
 import { Badge, ErrorNote, LoadingBlock } from '../components/ui'
 import { useAuthStore } from '../store/auth'
 
-const ACCEPTED = '.pdf,.docx,.txt'
+const ACCEPTED = '.pdf,.docx,.txt,.png,.jpg,.jpeg,.webp'
 const MAX_BYTES = 20 * 1024 * 1024
 
 export default function JobDetailPage() {
@@ -84,7 +84,7 @@ export default function JobDetailPage() {
     if (!candidate) return
     const lower = candidate.name.toLowerCase()
     if (!ACCEPTED.split(',').some((suffix) => lower.endsWith(suffix))) {
-      setSubmitError('仅支持 PDF、DOCX 和 TXT 格式的简历。')
+      setSubmitError('仅支持 PDF、DOCX、TXT 与 PNG/JPEG/WebP 图片。')
       return
     }
     if (candidate.size > MAX_BYTES) {
@@ -291,7 +291,7 @@ export default function JobDetailPage() {
               <div>
                 <h2 className="section-title">投递这个岗位</h2>
                 <p className="mt-2 text-xs leading-relaxed text-muted">
-                  支持 PDF、DOCX、TXT，单个文件不超过 20 MB。
+                  支持 PDF、DOCX、TXT 与图片，单个文件不超过 20 MB；扫描件会自动识别文字。
                 </p>
 
                 <div
@@ -332,7 +332,7 @@ export default function JobDetailPage() {
                     <>
                       <UploadCloud size={24} className="mx-auto text-brand" />
                       <p className="mt-2 text-xs font-semibold text-ink">拖入简历，或点击选择文件</p>
-                      <p className="mt-1 text-[10px] text-muted">PDF / DOCX / TXT · 最大 20 MB</p>
+                      <p className="mt-1 text-[10px] text-muted">PDF / DOCX / TXT / 图片 · 最大 20 MB</p>
                     </>
                   )}
                 </div>
