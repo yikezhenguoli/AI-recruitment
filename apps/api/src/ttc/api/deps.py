@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ttc.core.db import get_session
 from ttc.core.errors import TTCError
+from ttc.core.permissions import has_permission
 from ttc.core.security import decode_access_token
 
 bearer = HTTPBearer(auto_error=False)
@@ -47,4 +48,16 @@ def require_roles(*allowed: str):
         if user.role not in allowed:
             raise TTCError("TTC-1002", "无权执行该操作", 403)
         return user
+    return check
+
+
+def require_permission(permission: str):
+    """按租户的权限矩阵校验；admin 始终通过。"""
+
+    async def check(user: Principal = Depends(current_user),
+                    session: AsyncSession = Depends(get_session)) -> Principal:
+        if not await has_permission(session, user.tenant_id, user.role, permission):
+            raise TTCError("TTC-1002", f"缺少权限：{permission}", 403)
+        return user
+
     return check

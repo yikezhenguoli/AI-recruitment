@@ -15,7 +15,7 @@ from ttc.core.audit import record_audit
 from ttc.core.db import get_session
 from ttc.core.errors import TTCError
 from ttc.core.security import uuid7
-from ttc.domains.resume.service import extract_text
+from ttc.domains.resume.service import validate_document
 from ttc.domains.resume.timeline import build_timeline
 
 router = APIRouter(tags=["resumes"])
@@ -24,6 +24,10 @@ MIMES = {
     ".pdf": "application/pdf",
     ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ".txt": "text/plain",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
 }
 MAX_FILE = 20 * 1024 * 1024
 
@@ -55,13 +59,13 @@ async def upload_resume(candidate_id: UUID = Form(), job_id: UUID | None = Form(
     name = Path(file.filename or "").name
     mime = MIMES.get(Path(name).suffix.lower())
     if not mime:
-        raise TTCError("TTC-3001", "仅支持 PDF、DOCX 和 TXT", 415)
+        raise TTCError("TTC-3001", "仅支持 PDF、DOCX、TXT 与 PNG/JPEG/WebP 图片", 415)
     if file.content_type != mime:
         raise TTCError("TTC-3004", "声明的 MIME 与扩展名不一致", 422)
     data = await file.read(MAX_FILE + 1)
     if len(data) > MAX_FILE:
         raise TTCError("TTC-3002", "简历超过 20 MB", 413)
-    extract_text(data, mime)
+    validate_document(data, mime)
     digest = hashlib.sha256(data).digest()
     existing = (await session.execute(
         text("SELECT id, parse_status FROM resume WHERE candidate_id = :candidate "
@@ -124,6 +128,24 @@ async def claims(resume_id: UUID, user: Principal = Depends(hr),
     )).mappings().all()
     return {"resume_id": resume_id, "version": version["version_no"],
             "status": version["status"], "claims": [dict(row) for row in rows]}
+
+
+@router.get("/resumes/{resume_id}/text")
+async def resume_text(resume_id: UUID, user: Principal = Depends(hr),
+                      session: AsyncSession = Depends(get_session)):
+    """返回最近一版的纯文本（扫描件即 OCR 转写结果），供 HR 对照原件核对。"""
+    await require_resume(session, user, resume_id)
+    version = (await session.execute(
+        text("SELECT version_no, extractor_model, text_uri FROM resume_version "
+             "WHERE resume_id = :id ORDER BY version_no DESC LIMIT 1"),
+        {"id": resume_id},
+    )).mappings().one_or_none()
+    if version is None or not version["text_uri"]:
+        raise TTCError("TTC-2001", "还没有可查看的转写文本", 404)
+    data = await Storage().get(version["text_uri"])
+    return {"version": version["version_no"],
+            "extractor_model": version["extractor_model"],
+            "text": data.decode("utf-8", errors="replace")}
 
 
 @router.get("/resumes/{resume_id}/timeline")

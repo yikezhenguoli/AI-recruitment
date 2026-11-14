@@ -87,8 +87,10 @@ async def candidate_resumes(candidate_id: UUID, user: Principal = Depends(hr),
                             session: AsyncSession = Depends(get_session)):
     await require_candidate(session, user, candidate_id)
     rows = (await session.execute(
-        text("SELECT id, file_name, parse_status, created_at FROM resume "
-             "WHERE candidate_id = :candidate ORDER BY created_at DESC, id DESC"),
+        text("SELECT r.id, r.file_name, r.parse_status, r.created_at, "
+             "(SELECT v.extractor_model FROM resume_version v WHERE v.resume_id = r.id "
+             "ORDER BY v.version_no DESC LIMIT 1) AS extractor_model FROM resume r "
+             "WHERE r.candidate_id = :candidate ORDER BY r.created_at DESC, r.id DESC"),
         {"candidate": candidate_id},
     )).mappings().all()
     return {"items": [dict(row) for row in rows]}

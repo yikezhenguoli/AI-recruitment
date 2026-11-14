@@ -27,7 +27,9 @@ import argparse
 import csv
 import json
 import math
+import pickle
 import re
+import shutil
 import statistics
 import sys
 import time
@@ -283,7 +285,8 @@ def variant_jd_texts(jd_docs: list[dict], variant: str) -> list[str]:
 
 
 def build_features(resumes: list[dict], jd_docs: list[dict], variant: str,
-                   fit_texts: list[str]) -> np.ndarray:
+                   fit_texts: list[str], vecs=None,
+                   return_vecs: bool = False):
     """返回 (n_resume, 24, n_feature)。
 
     variant 决定 JD 侧哪些信息可用：
@@ -291,21 +294,27 @@ def build_features(resumes: list[dict], jd_docs: list[dict], variant: str,
       title       ：JD 文本=标题，技能/年限/学历三类结构化特征置 0；
       body        ：JD 文本=正文（无标题），标题类特征（intent_title_cos /
                     intent_hit_title）置 0。
+
+    vecs 非空时直接复用已保存的 (vec24, vec12)，不再 fit（供 --verify-model
+    复现训练期特征）；return_vecs=True 时额外返回这两个向量器（供 --save-model）。
     """
     docs = jd_docs
     jd_texts = variant_jd_texts(docs, variant)
     n_res, n_jd = len(resumes), len(docs)
 
-    vec24 = TfidfVectorizer(analyzer="char", ngram_range=(2, 4),
-                            sublinear_tf=True, min_df=2)
-    vec24.fit(fit_texts + jd_texts)
+    if vecs is None:
+        vec24 = TfidfVectorizer(analyzer="char", ngram_range=(2, 4),
+                                sublinear_tf=True, min_df=2)
+        vec24.fit(fit_texts + jd_texts)
+        vec12 = TfidfVectorizer(analyzer="char", ngram_range=(1, 2),
+                                sublinear_tf=True, min_df=2)
+        vec12.fit(fit_texts + jd_texts)
+    else:
+        vec24, vec12 = vecs
     res24 = normalize(vec24.transform([r["text"] for r in resumes]))
     jd24 = normalize(vec24.transform(jd_texts))
     cos24 = np.asarray((res24 @ jd24.T).todense(), dtype=np.float64)
 
-    vec12 = TfidfVectorizer(analyzer="char", ngram_range=(1, 2),
-                            sublinear_tf=True, min_df=2)
-    vec12.fit(fit_texts + jd_texts)
     res12 = normalize(vec12.transform([r["text"] for r in resumes]))
     jd12 = normalize(vec12.transform(jd_texts))
     cos12 = np.asarray((res12 @ jd12.T).todense(), dtype=np.float64)
@@ -373,6 +382,8 @@ def build_features(resumes: list[dict], jd_docs: list[dict], variant: str,
                 math.log1p(jd_len[j]),
                 r_len / max(1, jd_len[j]),
             )
+    if return_vecs:
+        return X, (vec24, vec12)
     return X
 
 
@@ -493,6 +504,136 @@ def clean(block: dict) -> dict:
     return {k: v for k, v in block.items() if not k.startswith("_")}
 
 
+# --------------------------------------------------------------------- 模型存取
+def save_model_artifacts(model_dir: Path, clf, vecs, jd_docs: list[dict],
+                         resumes: list[dict], codes: list[str], X: np.ndarray,
+                         csv_path: Path, split_path: Path, jd_path: Path,
+                         seed: int) -> dict:
+    """把重放推理所需的状态落盘（默认不触发，仅 --save-model 时调用）。"""
+    import sklearn
+
+    model_dir.mkdir(parents=True, exist_ok=True)
+    with (model_dir / "model.pkl").open("wb") as handle:
+        pickle.dump(clf, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    with (model_dir / "vectorizers.pkl").open("wb") as handle:
+        pickle.dump({"vec24": vecs[0], "vec12": vecs[1]}, handle,
+                    protocol=pickle.HIGHEST_PROTOCOL)
+    (model_dir / "jd_docs.json").write_text(
+        json.dumps(jd_docs, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    split_counts: dict[str, int] = {}
+    per_class: dict[str, dict[str, int]] = {}
+    for row in resumes:
+        split_counts[row["split"]] = split_counts.get(row["split"], 0) + 1
+        per_class.setdefault(row["category"], {}).setdefault(row["split"], 0)
+        per_class[row["category"]][row["split"]] += 1
+
+    np.savez_compressed(
+        model_dir / "feature_table.npz",
+        X=X,
+        resume_ids=np.array([row["id"] for row in resumes]),
+        codes=np.array(codes),
+        feature_names=np.array(FEATURE_NAMES),
+    )
+    metadata = {
+        "model": "sklearn.ensemble.HistGradientBoostingClassifier",
+        "gbdt_params": {k: (v if not isinstance(v, np.generic) else v.item())
+                        for k, v in GBDT_PARAMS.items()},
+        "feature_names": FEATURE_NAMES,
+        "jd_variant": "full",
+        "seed": seed,
+        "paths": {"csv": str(csv_path), "split": str(split_path),
+                  "jd": str(jd_path)},
+        "training_summary": {
+            "n_resumes": len(resumes),
+            "n_classes": len(codes),
+            "split_counts": split_counts,
+            "per_class_counts": per_class,
+            "n_train_pairs": int(split_counts.get("train", 0) * len(codes)),
+            "n_negative_per_positive": len(codes) - 1,
+        },
+        "environment": {"python": sys.version.split()[0],
+                        "sklearn": sklearn.__version__,
+                        "numpy": np.__version__},
+        "artifacts": {
+            "model": "model.pkl",
+            "vectorizers": "vectorizers.pkl",
+            "jd_docs": "jd_docs.json",
+            "feature_table": "feature_table.npz（X 为全部简历 × 24 JD 的 14 维特征）",
+        },
+    }
+    (model_dir / "metadata.json").write_text(
+        json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8")
+    return metadata
+
+
+def verify_model(model_dir: Path, csv_path: Path, split_path: Path,
+                 jd_path: Path) -> int:
+    """用保存的向量器/模型重算特征与预测，逐行核对训练期产物。
+
+    判据：特征表最大绝对误差为 0（浮点层面一致），predictions.csv 的
+    top1/rank 逐行完全一致，概率格式化到 6 位小数后完全一致。
+    """
+    model_dir = model_dir.expanduser().resolve()
+    metadata = json.loads((model_dir / "metadata.json").read_text(encoding="utf-8"))
+    with (model_dir / "model.pkl").open("rb") as handle:
+        clf = pickle.load(handle)
+    with (model_dir / "vectorizers.pkl").open("rb") as handle:
+        saved_vecs = pickle.load(handle)
+    jd_docs = json.loads((model_dir / "jd_docs.json").read_text(encoding="utf-8"))
+    saved = np.load(model_dir / "feature_table.npz")
+
+    resumes = load_resumes(csv_path)
+    attach_splits(resumes, read_split(split_path))
+    vecs = (saved_vecs["vec24"], saved_vecs["vec12"])
+    X = build_features(resumes, jd_docs, "full", [], vecs=vecs)
+
+    saved_ids = [str(x) for x in saved["resume_ids"]]
+    ids = [row["id"] for row in resumes]
+    if saved_ids != ids:
+        raise SystemExit("简历顺序/ID 与保存时不一致，无法逐行核对")
+    if X.shape != saved["X"].shape:
+        raise SystemExit(f"特征形状不一致: {X.shape} vs {saved['X'].shape}")
+    feature_maxdiff = float(np.max(np.abs(X - saved["X"]))) if X.size else 0.0
+
+    codes = [str(x) for x in saved["codes"]]
+    label2id = {code: i for i, code in enumerate(codes)}
+    test_idx = [i for i, r in enumerate(resumes) if r["split"] == "test"]
+    scores = score_matrix(clf, X, test_idx)
+
+    pred_path = model_dir / "predictions.csv"
+    with pred_path.open(encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle))
+    if len(rows) != len(test_idx):
+        raise SystemExit(f"predictions.csv 行数不一致: {len(rows)} vs {len(test_idx)}")
+
+    label_ok = prob_ok = 0
+    max_prob_diff = 0.0
+    for pos, row in enumerate(rows):
+        i = test_idx[pos]
+        if row["id"] != resumes[i]["id"]:
+            raise SystemExit(f"第 {pos} 行 ID 不一致: {row['id']} vs {resumes[i]['id']}")
+        top = int(np.argmax(scores[pos]))
+        rank = int(np.where(np.argsort(-scores[pos]) == label2id[resumes[i]["category"]])[0][0]) + 1
+        pred_top, pred_rank = codes[top], str(rank)
+        if row["top1"] == pred_top and row["rank"] == pred_rank:
+            label_ok += 1
+        diff = abs(float(row["prob_top1"]) - float(scores[pos, top]))
+        max_prob_diff = max(max_prob_diff, diff)
+        if f"{scores[pos, top]:.6f}" == row["prob_top1"]:
+            prob_ok += 1
+
+    n = len(rows)
+    print("== 模型重载一致性 ==")
+    print(f"特征表最大绝对误差 {feature_maxdiff:.3e}")
+    print(f"top1+rank 一致 {label_ok}/{n} = {label_ok / max(n, 1):.2%}")
+    print(f"概率(6 位小数)一致 {prob_ok}/{n} = {prob_ok / max(n, 1):.2%}"
+          f"  最大概率差 {max_prob_diff:.3e}")
+    ok = (feature_maxdiff == 0.0 and label_ok == n and prob_ok == n)
+    print("结论:", "100% 一致" if ok else "存在不一致，需排查")
+    return 0 if ok else 1
+
+
 # --------------------------------------------------------------------- 主流程
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__,
@@ -503,7 +644,24 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out", default=None)
     parser.add_argument("--bootstrap-n", type=int, default=2000)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--save-model", default=None,
+                        help="把模型+向量器+JD 派生表+特征表存到该目录（默认不保存）")
+    parser.add_argument("--verify-model", default=None,
+                        help="加载该目录的模型重算特征与预测，逐行核对一致性后退出")
     args = parser.parse_args(argv)
+
+    if args.verify_model:
+        model_dir = Path(args.verify_model).expanduser().resolve()
+        meta_path = model_dir / "metadata.json"
+        if not meta_path.is_file():
+            raise SystemExit(f"{model_dir} 下没有 metadata.json")
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        saved = meta["paths"]
+        csv_path = Path(args.csv).expanduser().resolve() if args.csv else Path(saved["csv"])
+        split_path = (Path(args.split).expanduser().resolve() if args.split
+                      else Path(saved["split"]))
+        jd_path = Path(args.jd).expanduser().resolve() if args.jd else Path(saved["jd"])
+        return verify_model(model_dir, csv_path, split_path, jd_path)
 
     started = time.time()
     csv_path = resolve_path(args.csv, [PROJECT_ROOT / "data" / "resumes.csv",
@@ -540,8 +698,7 @@ def main(argv: list[str] | None = None) -> int:
     if missing_codes:
         raise SystemExit(f"这些类别没有简历: {sorted(missing_codes)}")
 
-    # 合成数据上限诊断：生成器把目标岗位名写进了简历（自我评价恒含 title，
-    # 求职意向 85% 含 title），这决定了任务的难度上限。
+    # 合成数据上限诊断：目标岗位名是否被写进简历正文/求职意向，决定任务难度上限。
     title_by_code = {doc["code"]: doc["title"] for doc in jd_docs}
 
     def title_diagnostics(indices: list[int]) -> dict:
@@ -566,9 +723,17 @@ def main(argv: list[str] | None = None) -> int:
 
     all_idx = list(range(len(resumes)))
     title_leak = {"overall": title_diagnostics(all_idx),
-                  "test": title_diagnostics(test_idx),
-                  "note": ("生成器让每份简历的自我评价恒含目标岗位名，求职意向约 86% 含目标岗位名；"
-                           "因此仅凭岗位名即可 24 选 1，指标必然饱和。")}
+                  "test": title_diagnostics(test_idx)}
+    leak = title_leak["overall"]
+    if leak["contains_own_title_frac"] > 0 or leak["intent_matches_title_frac"] > 0:
+        title_leak["note"] = (
+            f"简历正文含自身岗位名 {leak['contains_own_title_frac']:.1%}、"
+            f"求职意向匹配岗位名 {leak['intent_matches_title_frac']:.1%}；"
+            "岗位名可被直接抄到，指标会被抬高。")
+    else:
+        title_leak["note"] = (
+            "简历正文不含自身岗位名，求职意向也不匹配岗位名；"
+            "标题类捷径已被切断，指标由正文与 JD 的重合度决定。")
 
     print("== 数据 ==")
     print(f"总简历 {len(resumes)}  train={len(train_idx)} val={len(val_idx)} "
@@ -585,7 +750,12 @@ def main(argv: list[str] | None = None) -> int:
     train_texts = [resumes[i]["text"] for i in train_idx]
     print("\n== 构建特征（TF-IDF 只在 train 简历 + 全部 JD 上 fit）==")
     t0 = time.time()
-    X_full = build_features(resumes, jd_docs, "full", train_texts)
+    feature_vecs = None
+    if args.save_model:
+        X_full, feature_vecs = build_features(resumes, jd_docs, "full", train_texts,
+                                              return_vecs=True)
+    else:
+        X_full = build_features(resumes, jd_docs, "full", train_texts)
     print(f"full 特征 {X_full.shape}  {time.time() - t0:.1f}s")
     X_title = build_features(resumes, jd_docs, "title", train_texts)
     print(f"title-only 特征 {X_title.shape}")
@@ -751,11 +921,11 @@ def main(argv: list[str] | None = None) -> int:
         "falsification": falsification,
         "ablation_diff": ablation_diff,
         "per_class": test_block["per_class"],
-        "caveat": ("合成简历由 JD 模板生成：每份简历的自我评价恒含目标岗位名、"
-                   "约 86% 的求职意向含目标岗位名、技能词与职责句在简历与 JD 之间逐字重合。"
-                   "因此指标是合成数据上的上限，不代表真实简历场景的泛化性能；"
-                   "shuffled_jd 塌到随机水平说明排序能力来自模板/岗位名词面重叠，"
-                   "而不是对真实简历的语义理解。"),
+        "caveat": (f"合成简历由语料拼装生成：正文含自身岗位名 {leak['contains_own_title_frac']:.1%}、"
+                   f"求职意向匹配岗位名 {leak['intent_matches_title_frac']:.1%}。"
+                   "指标是合成数据上的读数，不代表真实简历场景的泛化性能；"
+                   "shuffled_jd 塌到随机水平只说明排序依赖简历与 JD 的实际内容对应，"
+                   "不能证明对真实简历的语义理解。"),
         "elapsed_seconds": round(time.time() - started, 1),
     }
     # numpy 标量转原生类型
@@ -791,6 +961,18 @@ def main(argv: list[str] | None = None) -> int:
                 f"{scores[pos, val_block['_true_indices'][pos]]:.6f}",
                 f"{scores[pos, top]:.6f}",
             ])
+
+    if args.save_model:
+        model_dir = Path(args.save_model).expanduser().resolve()
+        save_model_artifacts(model_dir, clf_full, feature_vecs, jd_docs, resumes,
+                             codes, X_full, csv_path, split_path, jd_path,
+                             args.seed)
+        for name in ("predictions.csv", "val_predictions.csv"):
+            src = out_dir / name
+            if src.is_file():
+                shutil.copy2(src, model_dir / name)
+        print(f"\n模型已保存到 {model_dir}"
+              f"（model.pkl / vectorizers.pkl / jd_docs.json / feature_table.npz）")
 
     # ---- 控制台摘要
     def line(name, m):
