@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -9,35 +9,18 @@ import {
   RefreshCw,
   UserRound,
 } from 'lucide-react'
+import { runViewTransition } from '../components/layout/PageTransition'
 import { listCandidates } from '../api/candidates'
 import { listJobs } from '../api/jobs'
 import { createVoiceSession, listVoiceSessions } from '../api/voice'
 import { getApiErrorMessage } from '../lib/apiError'
-import { formatDateTime } from '../lib/format'
+import { formatDateTime, VOICE_STATUS_CLASS, VOICE_STATUS_LABELS } from '../lib/format'
 import type { VoiceSessionStatus, VoiceSessionSummary } from '../types'
-
-const STATUS_LABEL: Record<VoiceSessionStatus, string> = {
-  created: '待接通',
-  connecting: '连接中',
-  live: '进行中',
-  ended: '已结束',
-  failed: '失败',
-  revoked: '授权撤回',
-}
-
-const STATUS_CLASS: Record<VoiceSessionStatus, string> = {
-  created: 'ttc-badge-blue',
-  connecting: 'ttc-badge-blue',
-  live: 'ttc-badge-green',
-  ended: 'ttc-badge-amber',
-  failed: 'ttc-badge-red',
-  revoked: 'ttc-badge-red',
-}
 
 function StatusBadge({ status }: { status: VoiceSessionStatus }) {
   return (
-    <span className={`ttc-badge ${STATUS_CLASS[status] ?? 'ttc-badge-blue'}`}>
-      {STATUS_LABEL[status] ?? status}
+    <span className={`ttc-badge ${VOICE_STATUS_CLASS[status] ?? 'ttc-badge-blue'}`}>
+      {VOICE_STATUS_LABELS[status] ?? status}
     </span>
   )
 }
@@ -45,6 +28,7 @@ function StatusBadge({ status }: { status: VoiceSessionStatus }) {
 export default function SessionsPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const tableRef = useRef<HTMLDivElement>(null)
   const [filter, setFilter] = useState<'all' | VoiceSessionStatus>('all')
   const [candidateId, setCandidateId] = useState('')
   const [jobId, setJobId] = useState('')
@@ -202,7 +186,7 @@ export default function SessionsPage() {
         )}
       </section>
 
-      <div className="ttc-filter-chips">
+      <search className="ttc-filter-chips" aria-label="按语音会话状态筛选">
         {(
           [
             ['all', '全部'],
@@ -216,12 +200,12 @@ export default function SessionsPage() {
             key={value}
             type="button"
             className={`ttc-chip ${filter === value ? 'ttc-chip-blue' : ''}`}
-            onClick={() => setFilter(value)}
+            onClick={() => runViewTransition(() => setFilter(value), tableRef.current)}
           >
             {label}
           </button>
         ))}
-      </div>
+      </search>
 
       {sessionsQuery.isError && (
         <div className="ttc-error-panel">
@@ -244,8 +228,8 @@ export default function SessionsPage() {
       )}
 
       {sessions.length > 0 && (
-        <div className="ttc-table-card">
-          <div className="ttc-table-scroll">
+        <div ref={tableRef} className="ttc-table-card">
+          <div className="ttc-table-scroll ttc-table-container" tabIndex={0} role="region" aria-label="语音面试会话列表">
             <table className="ttc-result-table">
               <thead>
                 <tr>
@@ -261,20 +245,20 @@ export default function SessionsPage() {
               <tbody>
                 {sessions.map((session: VoiceSessionSummary) => (
                   <tr key={session.id}>
-                    <td>
+                    <td data-label="候选人">
                       <span className="ttc-result-person">
                         <UserRound size={15} />
                         {session.candidate_name}
                       </span>
                     </td>
-                    <td>{session.job_title ?? '—'}</td>
-                    <td>
+                    <td data-label="岗位">{session.job_title ?? '—'}</td>
+                    <td data-label="状态">
                       <StatusBadge status={session.status} />
                     </td>
-                    <td className="ttc-muted">{session.model}</td>
-                    <td className="ttc-muted">{formatDateTime(session.created_at)}</td>
-                    <td>{session.has_report ? '已生成' : '—'}</td>
-                    <td className="ttc-col-action">
+                    <td data-label="模型" className="ttc-muted">{session.model}</td>
+                    <td data-label="创建时间" className="ttc-muted">{formatDateTime(session.created_at)}</td>
+                    <td data-label="报告">{session.has_report ? '已生成' : '—'}</td>
+                    <td data-label="操作" className="ttc-col-action">
                       <Link className="ttc-text-link" to={`/sessions/${session.id}`}>
                         进入
                       </Link>

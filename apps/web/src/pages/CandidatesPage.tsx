@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertCircle, ArrowRight, Plus, RefreshCw, UserPlus, Users } from 'lucide-react'
+import { runViewTransition } from '../components/layout/PageTransition'
 import { createCandidate, listCandidates } from '../api/candidates'
 import { listJobs } from '../api/jobs'
 import { getApiErrorMessage } from '../lib/apiError'
@@ -9,6 +10,7 @@ import { formatDateTime } from '../lib/format'
 
 export default function CandidatesPage() {
   const queryClient = useQueryClient()
+  const tableRef = useRef<HTMLDivElement>(null)
   const [jobFilter, setJobFilter] = useState('')
   const [name, setName] = useState('')
   const [jobId, setJobId] = useState('')
@@ -109,11 +111,11 @@ export default function CandidatesPage() {
         )}
       </section>
 
-      <div className="ttc-filter-chips">
+      <search className="ttc-filter-chips" aria-label="按岗位筛选候选人">
         <button
           type="button"
           className={`ttc-chip ${jobFilter === '' ? 'ttc-chip-blue' : ''}`}
-          onClick={() => setJobFilter('')}
+          onClick={() => runViewTransition(() => setJobFilter(''), tableRef.current)}
         >
           全部
         </button>
@@ -122,12 +124,12 @@ export default function CandidatesPage() {
             key={job.id}
             type="button"
             className={`ttc-chip ${jobFilter === job.id ? 'ttc-chip-blue' : ''}`}
-            onClick={() => setJobFilter(job.id)}
+            onClick={() => runViewTransition(() => setJobFilter(job.id), tableRef.current)}
           >
             {job.title}
           </button>
         ))}
-      </div>
+      </search>
 
       {candidatesQuery.isError && (
         <div className="ttc-error-panel">
@@ -150,8 +152,8 @@ export default function CandidatesPage() {
       )}
 
       {candidates.length > 0 && (
-        <div className="ttc-table-card">
-          <div className="ttc-table-scroll">
+        <div ref={tableRef} className="ttc-table-card">
+          <div className="ttc-table-scroll ttc-table-container" tabIndex={0} role="region" aria-label="候选人列表">
             <table className="ttc-result-table">
               <thead>
                 <tr>
@@ -166,10 +168,10 @@ export default function CandidatesPage() {
               <tbody>
                 {candidates.map((candidate) => (
                   <tr key={candidate.id}>
-                    <td>{candidate.display_name}</td>
-                    <td>{jobTitle(candidate.job_id)}</td>
-                    <td className="ttc-muted">{candidate.source}</td>
-                    <td>
+                    <td data-label="姓名">{candidate.display_name}</td>
+                    <td data-label="岗位">{jobTitle(candidate.job_id)}</td>
+                    <td data-label="来源" className="ttc-muted">{candidate.source}</td>
+                    <td data-label="类型">
                       <span
                         className={`ttc-badge ${
                           candidate.is_synthetic ? 'ttc-badge-blue' : 'ttc-badge-amber'
@@ -178,8 +180,8 @@ export default function CandidatesPage() {
                         {candidate.is_synthetic ? '合成' : '真实'}
                       </span>
                     </td>
-                    <td className="ttc-muted">{formatDateTime(candidate.created_at)}</td>
-                    <td className="ttc-col-action">
+                    <td data-label="创建时间" className="ttc-muted">{formatDateTime(candidate.created_at)}</td>
+                    <td data-label="操作" className="ttc-col-action">
                       <Link className="ttc-text-link" to={`/candidates/${candidate.id}`}>
                         <ArrowRight size={15} />
                         详情
