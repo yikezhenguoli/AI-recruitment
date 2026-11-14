@@ -33,6 +33,17 @@ export async function getResumeClaims(resumeId: string): Promise<ResumeClaimsRes
   return response.data as ResumeClaimsResponse
 }
 
+export interface ResumeText {
+  version: number
+  extractor_model: string | null
+  text: string
+}
+
+export async function getResumeText(resumeId: string): Promise<ResumeText> {
+  const response = await api.get(`${P}/${resumeId}/text`)
+  return response.data as ResumeText
+}
+
 export async function getResumeTimeline(resumeId: string): Promise<{ items: unknown[] }> {
   const response = await api.get(`${P}/${resumeId}/timeline`)
   return response.data
