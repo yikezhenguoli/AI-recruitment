@@ -5,7 +5,7 @@ import { getApiErrorMessage } from '../lib/apiError'
 import type { GraduationYearFilterConfig, JDStructured, ScoringSchema } from '../types'
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024
-const ACCEPTED_EXTENSIONS = ['.pdf', '.docx']
+const ACCEPTED_EXTENSIONS = ['.pdf', '.docx', '.txt', '.png', '.jpg', '.jpeg', '.webp']
 
 interface Props {
   jdText: string
@@ -45,7 +45,7 @@ export const ResumeUpload: React.FC<Props> = ({
     Array.from(incoming).forEach((file) => {
       const lower = file.name.toLowerCase()
       if (!ACCEPTED_EXTENSIONS.some((ext) => lower.endsWith(ext))) {
-        nextRejected.push({ name: file.name, reason: '仅支持 PDF / DOCX' })
+        nextRejected.push({ name: file.name, reason: '仅支持 PDF / DOCX / TXT 与 PNG/JPEG/WebP' })
         return
       }
       if (file.size === 0) {
@@ -109,7 +109,7 @@ export const ResumeUpload: React.FC<Props> = ({
             <span>02 / 03</span>
           </div>
           <h2>上传简历</h2>
-          <p>支持 PDF / DOCX 批量上传，解析、信息提取与评分均由后端真实执行。</p>
+          <p>支持 PDF / DOCX / TXT 与图片批量上传；扫描件自动走视觉 OCR 转写。</p>
           <div className="ttc-upload-role">
             <span>当前岗位</span>
             <strong>{jdStructured.role_title}</strong>
@@ -145,7 +145,7 @@ export const ResumeUpload: React.FC<Props> = ({
           ref={inputRef}
           type="file"
           multiple
-          accept=".pdf,.docx"
+          accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.webp"
           className="hidden"
           onChange={(event) => {
             addFiles(event.target.files)
@@ -156,7 +156,7 @@ export const ResumeUpload: React.FC<Props> = ({
           <Upload size={24} />
         </span>
         <strong>拖拽简历到这里，或点击选择文件</strong>
-        <span>PDF · DOCX · 可批量上传 · 单文件不超过 20 MB</span>
+        <span>PDF · DOCX · TXT · PNG/JPEG/WebP · 单文件不超过 20 MB</span>
       </div>
 
       {files.length > 0 && (

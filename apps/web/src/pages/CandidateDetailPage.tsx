@@ -270,7 +270,7 @@ export default function CandidateDetailPage() {
             <input
               ref={fileRef}
               type="file"
-              accept=".pdf,.docx,.txt"
+              accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.webp"
               hidden
               onChange={(event) => {
                 const file = event.target.files?.[0]
@@ -287,7 +287,7 @@ export default function CandidateDetailPage() {
               <Upload size={15} />
               {upload.isPending ? '上传中…' : '上传简历'}
             </button>
-            <span className="ttc-muted">支持 PDF / DOCX / TXT，单个不超过 20 MB</span>
+            <span className="ttc-muted">支持 PDF / DOCX / TXT 与图片，单个不超过 20 MB</span>
           </div>
 
           {progress && (
