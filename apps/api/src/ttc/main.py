@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 from uuid import uuid4
 
 from fastapi import FastAPI, Request
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
@@ -40,12 +41,12 @@ async def handle_ttc_error(request: Request, exc: TTCError) -> JSONResponse:
     request_id = request_id_context.get()
     return JSONResponse(
         status_code=exc.status_code,
-        content={
+        content=jsonable_encoder({
             "code": exc.code,
             "message": exc.message,
             "request_id": request_id,
             "details": exc.details,
-        },
+        }),
         headers={"X-Request-Id": request_id},
     )
 

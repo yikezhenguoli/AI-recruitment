@@ -12,6 +12,10 @@ import CandidateReportPage from './pages/CandidateReportPage'
 import SessionsPage from './pages/SessionsPage'
 import SessionDetailPage from './pages/SessionDetailPage'
 import AdminPage from './pages/AdminPage'
+import OffersPage from './pages/OffersPage'
+import InterviewsPage from './pages/InterviewsPage'
+import TalentPage from './pages/TalentPage'
+import TeamPage from './pages/TeamPage'
 
 export default function App() {
   return (
@@ -33,6 +37,10 @@ export default function App() {
         <Route path="candidates/:id" element={<CandidateDetailPage />} />
         <Route path="sessions" element={<SessionsPage />} />
         <Route path="sessions/:id" element={<SessionDetailPage />} />
+        <Route path="offers" element={<OffersPage />} />
+        <Route path="interviews" element={<InterviewsPage />} />
+        <Route path="talent" element={<TalentPage />} />
+        <Route path="team" element={<TeamPage />} />
         <Route path="admin" element={<AdminPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

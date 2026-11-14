@@ -1,13 +1,26 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertCircle, Database, Plug, RefreshCw, ScrollText, Users } from 'lucide-react'
 import {
+  AlertCircle,
+  Database,
+  HardDriveDownload,
+  Plug,
+  RefreshCw,
+  ScrollText,
+  ShieldCheck,
+  Users,
+} from 'lucide-react'
+import {
+  createBackup,
   enableCrossref,
   getIntegrations,
   getMetrics,
   listAuditLogs,
+  listBackups,
   listDataSources,
+  restoreBackup,
   updateDataSource,
+  verifyBackup,
 } from '../api/admin'
 import { listCandidates } from '../api/candidates'
 import { listConsents } from '../api/consents'
@@ -48,6 +61,54 @@ export default function AdminPage() {
     queryKey: ['consents', candidateId],
     queryFn: () => listConsents(candidateId),
     enabled: Boolean(candidateId),
+  })
+  const backupsQuery = useQuery({
+    queryKey: ['backups'],
+    queryFn: listBackups,
+    retry: false,
+  })
+
+  const [backupNote, setBackupNote] = useState('')
+
+  const invalidateBackups = () => {
+    void queryClient.invalidateQueries({ queryKey: ['backups'] })
+  }
+
+  const createBackupMutation = useMutation({
+    mutationFn: createBackup,
+    onSuccess: (snapshot) => {
+      setBackupNote(
+        `快照已生成：${snapshot.id.slice(0, 8)}… · ` +
+          `${Object.values(snapshot.table_counts).reduce((sum, value) => sum + value, 0)} 行 · ` +
+          `${(snapshot.size_bytes / 1024).toFixed(1)} KB。${snapshot.note}`,
+      )
+      invalidateBackups()
+    },
+    onError: (err) => setBackupNote(getApiErrorMessage(err, '创建备份失败。')),
+  })
+
+  const verifyBackupMutation = useMutation({
+    mutationFn: verifyBackup,
+    onSuccess: (report) => {
+      setBackupNote(
+        report.ok
+          ? `校验一致：${Object.keys(report.tables).length} 张表，结构无差异。`
+          : `校验发现问题：${report.problems.join('；')}`,
+      )
+    },
+    onError: (err) => setBackupNote(getApiErrorMessage(err, '校验备份失败。')),
+  })
+
+  const restoreBackupMutation = useMutation({
+    mutationFn: (snapshotId: string) => restoreBackup(snapshotId, true),
+    onSuccess: (report) => {
+      setBackupNote(
+        report.ok
+          ? '恢复演练通过（dry_run，未写入数据库）。真实写入需要管理员二次确认。'
+          : `演练发现问题：${report.problems.join('；')}`,
+      )
+    },
+    onError: (err) => setBackupNote(getApiErrorMessage(err, '恢复演练失败。')),
   })
 
   const source = sourcesQuery.data?.[0]
@@ -234,6 +295,84 @@ export default function AdminPage() {
           {candidateId && (consentsQuery.data ?? []).length === 0 && (
             <p className="ttc-muted">该候选人没有授权记录。</p>
           )}
+        </div>
+      </article>
+
+      <article className="ttc-card">
+        <div className="ttc-card-header">
+          <div>
+            <h2 className="ttc-card-title">备份快照</h2>
+            <p className="ttc-card-sub">
+              租户级数据库逻辑快照；不含简历原件与录音，且只做 UPSERT 恢复。
+            </p>
+          </div>
+          <HardDriveDownload size={18} className="ttc-accent-icon" />
+        </div>
+        {backupNote && (
+          <p className="ttc-muted" style={{ fontSize: 10, marginBottom: 10 }}>
+            {backupNote}
+          </p>
+        )}
+        <div className="ttc-card-actions">
+          <button type="button" className="ttc-btn ttc-btn-primary ttc-btn-sm"
+            disabled={createBackupMutation.isPending}
+            onClick={() => createBackupMutation.mutate()}>
+            <ShieldCheck size={14} />
+            {createBackupMutation.isPending ? '生成中…' : '立即备份'}
+          </button>
+          <button type="button" className="ttc-btn ttc-btn-secondary ttc-btn-sm"
+            onClick={() => void backupsQuery.refetch()}>
+            <RefreshCw size={14} />
+            刷新
+          </button>
+        </div>
+        <div className="ttc-table-scroll" style={{ marginTop: 10 }}>
+          <table className="ttc-result-table">
+            <thead>
+              <tr>
+                <th>快照</th>
+                <th>行数</th>
+                <th>体积</th>
+                <th>创建时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(backupsQuery.data ?? []).map((snapshot) => (
+                <tr key={snapshot.id}>
+                  <td>
+                    <span className="ttc-muted">{snapshot.id.slice(0, 8)}…</span>
+                  </td>
+                  <td className="ttc-muted">
+                    {Object.values(snapshot.table_counts).reduce((sum, value) => sum + value, 0)}
+                  </td>
+                  <td className="ttc-muted">{(snapshot.size_bytes / 1024).toFixed(1)} KB</td>
+                  <td className="ttc-muted">{formatDateTime(snapshot.created_at)}</td>
+                  <td>
+                    <div className="ttc-card-actions">
+                      <button type="button" className="ttc-btn ttc-btn-secondary ttc-btn-sm"
+                        disabled={verifyBackupMutation.isPending}
+                        onClick={() => verifyBackupMutation.mutate(snapshot.id)}>
+                        校验
+                      </button>
+                      <button type="button" className="ttc-btn ttc-btn-secondary ttc-btn-sm"
+                        disabled={restoreBackupMutation.isPending}
+                        onClick={() => restoreBackupMutation.mutate(snapshot.id)}>
+                        恢复演练
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {!backupsQuery.isLoading && (backupsQuery.data ?? []).length === 0 && (
+                <tr>
+                  <td colSpan={5} className="ttc-muted">
+                    {backupsQuery.isError ? '没有备份管理权限或接口不可用。' : '还没有备份快照。'}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </article>
 

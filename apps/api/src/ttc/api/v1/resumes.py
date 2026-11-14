@@ -15,7 +15,7 @@ from ttc.core.audit import record_audit
 from ttc.core.db import get_session
 from ttc.core.errors import TTCError
 from ttc.core.security import uuid7
-from ttc.domains.resume.service import extract_text
+from ttc.domains.resume.service import validate_document
 from ttc.domains.resume.timeline import build_timeline
 
 router = APIRouter(tags=["resumes"])
@@ -24,6 +24,10 @@ MIMES = {
     ".pdf": "application/pdf",
     ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ".txt": "text/plain",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
 }
 MAX_FILE = 20 * 1024 * 1024
 
@@ -55,13 +59,13 @@ async def upload_resume(candidate_id: UUID = Form(), job_id: UUID | None = Form(
     name = Path(file.filename or "").name
     mime = MIMES.get(Path(name).suffix.lower())
     if not mime:
-        raise TTCError("TTC-3001", "仅支持 PDF、DOCX 和 TXT", 415)
+        raise TTCError("TTC-3001", "仅支持 PDF、DOCX、TXT 与 PNG/JPEG/WebP 图片", 415)
     if file.content_type != mime:
         raise TTCError("TTC-3004", "声明的 MIME 与扩展名不一致", 422)
     data = await file.read(MAX_FILE + 1)
     if len(data) > MAX_FILE:
         raise TTCError("TTC-3002", "简历超过 20 MB", 413)
-    extract_text(data, mime)
+    validate_document(data, mime)
     digest = hashlib.sha256(data).digest()
     existing = (await session.execute(
         text("SELECT id, parse_status FROM resume WHERE candidate_id = :candidate "
