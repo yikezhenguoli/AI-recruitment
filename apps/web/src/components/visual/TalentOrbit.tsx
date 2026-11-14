@@ -31,42 +31,42 @@ interface OrbitItem {
 
 const ORBIT_ITEMS: OrbitItem[] = [
   {
-    title: '岗位画像',
-    description: '粘贴岗位描述，生成结构化岗位画像与可复核的评分维度。',
-    tag: 'JD → 评分维度',
+    title: '岗位画像与权重',
+    description: '管理多版本 JD 与核心维度权重，生成结构化筛选标准。',
+    tag: 'JD → 权重维度',
     action: '新建岗位',
     to: '/jobs/new',
     icon: Search,
   },
   {
-    title: '简历筛选',
-    description: '批量上传 PDF / DOCX，对照岗位维度逐份评估，进度来自真实处理事件。',
-    tag: '批量解析 → 维度评分',
-    action: '进入筛选',
+    title: '简历核验与证据链',
+    description: '上传 PDF / DOCX 并追踪 WebSocket 处理进度，分级核验经历声明。',
+    tag: '声明 → 证据分级',
+    action: '查看候选人',
     to: '/candidates',
     icon: Filter,
   },
   {
-    title: '评估报告',
-    description: '汇总适配参考分与可复核的评分理由，由招聘人员完成最终判断。',
-    tag: '理由 → 人工复核',
-    action: '查看候选人',
-    to: '/candidates',
+    title: '语音初筛与双账本报告',
+    description: '实时语音访谈结合证据可信度、岗位匹配分，由人工完成最终复核。',
+    tag: '语音初筛 → 人工复核',
+    action: '语音初筛',
+    to: '/sessions',
     icon: FileText,
   },
 ]
 
 /** Fixed orbital slots: top, bottom-right, bottom-left (percent of the square stage). */
 const NODE_SLOTS = [
-  { left: '50%', top: '11%' },
-  { left: '82.4%', top: '69.5%' },
-  { left: '17.6%', top: '69.5%' },
+  { left: '50%', top: '16%' },
+  { left: '79.4%', top: '67%' },
+  { left: '20.6%', top: '67%' },
 ]
 
 const LINK_ENDS = [
-  { x: 50, y: 11 },
-  { x: 82.4, y: 69.5 },
-  { x: 17.6, y: 69.5 },
+  { x: 50, y: 16 },
+  { x: 79.4, y: 67 },
+  { x: 20.6, y: 67 },
 ]
 
 function useMediaQuery(query: string): boolean {
@@ -430,7 +430,6 @@ export function TalentOrbit() {
             type="button"
             className={`lg2-orbit2-control ${userPaused ? 'is-paused' : ''}`}
             onClick={() => setUserPaused((current) => !current)}
-            aria-pressed={userPaused}
             aria-label={userPaused ? '继续自动轮播' : '暂停自动轮播'}
             title={userPaused ? '继续自动轮播' : '暂停自动轮播'}
           >

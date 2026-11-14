@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  ArrowUpRight,
   Briefcase,
   CalendarClock,
   ChevronRight,
@@ -19,7 +20,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { getHealth } from '../../api/client'
-import { logout, roleLabel } from '../../api/auth'
+import { fetchMe, login, logout, roleLabel } from '../../api/auth'
 import { useAuthStore } from '../../store/authStore'
 import { CursorTrail } from '../visual/CursorTrail'
 import { NotificationBell } from './NotificationBell'
@@ -72,25 +73,124 @@ function resolvePageTitle(pathname: string): string {
 
 export function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [isDrawerViewport, setIsDrawerViewport] = useState<boolean>(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return false
+    }
+    return window.matchMedia('(max-width: 1023px)').matches
+  })
   const [scrolled, setScrolled] = useState(false)
   const scrolledRef = useRef(false)
+  const sidebarRef = useRef<HTMLElement>(null)
+  const mainShellRef = useRef<HTMLDivElement>(null)
+  const menuBtnRef = useRef<HTMLButtonElement>(null)
+  const closeBtnRef = useRef<HTMLButtonElement>(null)
   const location = useLocation()
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const user = useAuthStore((state) => state.user)
+  const setUser = useAuthStore((state) => state.setUser)
   const clearUser = useAuthStore((state) => state.clear)
+  const [switchingRole, setSwitchingRole] = useState<'admin' | 'hr' | null>(null)
   const title = resolvePageTitle(location.pathname)
   const displayName = user?.display_name || '招聘用户'
   const avatarText = displayName.slice(0, 1).toUpperCase()
+  const candidatePortalHref =
+    typeof window === 'undefined'
+      ? 'http://localhost:5175/login?autologin=1'
+      : `${window.location.protocol}//${window.location.hostname}:5175/login${import.meta.env.DEV ? '?autologin=1' : ''}`
 
   async function handleLogout() {
     await logout()
     clearUser()
     window.location.assign('/login')
   }
+
+  async function handleSwitchRole(targetRole: 'admin' | 'hr') {
+    if (!import.meta.env.DEV || switchingRole || user?.role === targetRole) return
+    const targetEmail = targetRole === 'admin' ? 'web.test.hr@ttc.local' : 'hr.demo@ttc.local'
+    setSwitchingRole(targetRole)
+    try {
+      await login('demo', targetEmail, 'SeedDemo#2026')
+      const me = await fetchMe()
+      setUser(me)
+      await queryClient.invalidateQueries()
+      if (targetRole === 'hr' && (location.pathname.startsWith('/team') || location.pathname.startsWith('/admin'))) {
+        navigate('/')
+      }
+    } catch {
+      navigate(`/login?role=${targetRole}`)
+    } finally {
+      setSwitchingRole(null)
+    }
+  }
   const isSessions = location.pathname === '/sessions' || location.pathname.startsWith('/sessions/')
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return
+    const query = window.matchMedia('(max-width: 1023px)')
+    const sync = () => {
+      setIsDrawerViewport(query.matches)
+      if (!query.matches) setMobileOpen(false)
+    }
+    sync()
+    if (typeof query.addEventListener === 'function') {
+      query.addEventListener('change', sync)
+      return () => query.removeEventListener('change', sync)
+    }
+    query.addListener(sync)
+    return () => query.removeListener(sync)
+  }, [])
+
+  useEffect(() => {
+    const sidebar = sidebarRef.current as (HTMLElement & { inert: boolean }) | null
+    const mainShell = mainShellRef.current as (HTMLDivElement & { inert: boolean }) | null
+    const drawerActive = isDrawerViewport && mobileOpen
+    if (mainShell) mainShell.inert = drawerActive
+    if (sidebar) sidebar.inert = isDrawerViewport && !mobileOpen
+    return () => {
+      if (mainShell) mainShell.inert = false
+      if (sidebar) sidebar.inert = false
+    }
+  }, [isDrawerViewport, mobileOpen])
+
+  useEffect(() => {
+    if (!isDrawerViewport || !mobileOpen) return
+    const frame = window.requestAnimationFrame(() => closeBtnRef.current?.focus())
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMobileOpen(false)
+        window.requestAnimationFrame(() => menuBtnRef.current?.focus())
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [isDrawerViewport, mobileOpen])
 
   // Passive scroll listener with rAF coalescing; only a boolean re-render.
   // Never intercepts or hijacks scrolling.
   useEffect(() => {
+    const prefersMotion =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: no-preference)').matches
+    const supportsNativeScrollHeader =
+      prefersMotion &&
+      typeof CSS !== 'undefined' &&
+      typeof CSS.supports === 'function' &&
+      CSS.supports('(animation-timeline: scroll()) and (animation-range: 0% 100%)')
+
+    if (supportsNativeScrollHeader) {
+      if (scrolledRef.current) {
+        scrolledRef.current = false
+        setScrolled(false)
+      }
+      return
+    }
+
     let frame = 0
     const sync = () => {
       frame = 0
@@ -127,6 +227,12 @@ export function AppLayout() {
         : { label: '后端异常', tone: 'warn' }
 
   const closeMobile = () => setMobileOpen(false)
+  const closeDrawerAndRestoreFocus = () => {
+    setMobileOpen(false)
+    if (isDrawerViewport) {
+      window.requestAnimationFrame(() => menuBtnRef.current?.focus())
+    }
+  }
 
   return (
     <div className="ttc-app">
@@ -135,11 +241,16 @@ export function AppLayout() {
           type="button"
           className="fixed inset-0 z-40 bg-slate-900/20 backdrop-blur-sm lg:hidden"
           aria-label="关闭导航"
-          onClick={closeMobile}
+          onClick={closeDrawerAndRestoreFocus}
         />
       )}
 
       <aside
+        ref={sidebarRef}
+        id="ttc-nav-drawer"
+        role={isDrawerViewport ? 'dialog' : undefined}
+        aria-modal={isDrawerViewport && mobileOpen ? true : undefined}
+        aria-label={isDrawerViewport ? '主导航菜单' : undefined}
         className={`ttc-sidebar fixed inset-y-0 left-0 z-50 w-[272px] transition-transform duration-300 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
@@ -153,7 +264,13 @@ export function AppLayout() {
               </div>
               <div className="ttc-brand-sub">TALENT TRUST & CONNECT</div>
             </div>
-            <button type="button" className="ttc-icon-btn lg:hidden" onClick={closeMobile} aria-label="关闭导航">
+            <button
+              ref={closeBtnRef}
+              type="button"
+              className="ttc-icon-btn lg:hidden"
+              onClick={closeDrawerAndRestoreFocus}
+              aria-label="关闭导航"
+            >
               <X size={18} />
             </button>
           </div>
@@ -195,6 +312,37 @@ export function AppLayout() {
                 <span>岗位解析 → 简历筛选 → 评估报告</span>
               </div>
             </div>
+            <div className="ttc-role-switcher" aria-label="视角与角色入口">
+              <div className="ttc-role-switcher-head">
+                <span>角色切换</span>
+                <span>{roleLabel(user?.role ?? '')}</span>
+              </div>
+              <div className="ttc-role-pills">
+                {import.meta.env.DEV && (
+                  <>
+                    <button
+                      type="button"
+                      className={`ttc-role-pill ${user?.role === 'admin' ? 'is-active' : ''}`}
+                      disabled={switchingRole !== null}
+                      onClick={() => void handleSwitchRole('admin')}
+                    >
+                      {switchingRole === 'admin' ? '切换中…' : '管理员'}
+                    </button>
+                    <button
+                      type="button"
+                      className={`ttc-role-pill ${user?.role === 'hr' ? 'is-active' : ''}`}
+                      disabled={switchingRole !== null}
+                      onClick={() => void handleSwitchRole('hr')}
+                    >
+                      {switchingRole === 'hr' ? '切换中…' : '招聘专员'}
+                    </button>
+                  </>
+                )}
+                <a className="ttc-role-pill" href={candidatePortalHref}>
+                  求职者 ↗
+                </a>
+              </div>
+            </div>
             <div className="ttc-profile">
               <span className="ttc-avatar">{avatarText}</span>
               <div>
@@ -210,14 +358,17 @@ export function AppLayout() {
         </div>
       </aside>
 
-      <div className="ttc-main">
+      <div ref={mainShellRef} className="ttc-main">
         <header className={`ttc-topbar ${scrolled ? 'is-scrolled' : ''}`}>
           <div className="ttc-topbar-inner">
             <div className="ttc-topbar-left">
               <button
+                ref={menuBtnRef}
                 type="button"
                 className="ttc-icon-btn lg:hidden"
                 onClick={() => setMobileOpen(true)}
+                aria-expanded={isDrawerViewport ? mobileOpen : undefined}
+                aria-controls="ttc-nav-drawer"
                 aria-label="打开导航"
               >
                 <Menu size={19} />
@@ -235,6 +386,14 @@ export function AppLayout() {
                 {healthState.label}
               </span>
               <NotificationBell />
+              <a
+                className="ttc-btn ttc-btn-ghost ttc-btn-sm"
+                href={candidatePortalHref}
+                title="切换至求职者中心"
+              >
+                <span>求职者端</span>
+                <ArrowUpRight size={14} aria-hidden="true" />
+              </a>
               <div className="ttc-topbar-divider" />
               <span className="ttc-avatar ttc-avatar-sm">{avatarText}</span>
               <div className="ttc-topbar-user">

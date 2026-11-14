@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from 'react'
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
+import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { AlertCircle, ArrowRight, Loader2, LogIn } from 'lucide-react'
 import { fetchMe, login } from '../api/auth'
 import { getApiErrorMessage } from '../lib/apiError'
@@ -8,6 +8,8 @@ import { useAuthStore } from '../store/auth'
 import { AuthShell } from '../components/AuthShell'
 
 const DEFAULT_TENANT = (import.meta.env.VITE_TENANT_SLUG as string | undefined) || 'demo'
+const DEV_CANDIDATE_EMAIL = import.meta.env.DEV ? 'demo.candidate@ttc.local' : ''
+const DEV_CANDIDATE_PASSWORD = import.meta.env.DEV ? 'SeedDemo#2026' : ''
 
 interface LoginState {
   from?: string
@@ -17,20 +19,63 @@ interface LoginState {
 export default function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
+  const [params] = useSearchParams()
   const user = useAuthStore((state) => state.user)
   const setUser = useAuthStore((state) => state.setUser)
   const clear = useAuthStore((state) => state.clear)
 
   const state = location.state as LoginState | null
   const from = state?.from
+  const autoLogin = params.get('autologin') === '1'
+  const autoLoginStarted = useRef(false)
+  const employerOrigin =
+    typeof window === 'undefined'
+      ? 'http://localhost:5174'
+      : `${window.location.protocol}//${window.location.hostname}:5174`
 
   const [tenantSlug, setTenantSlug] = useState(DEFAULT_TENANT)
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [email, setEmail] = useState(DEV_CANDIDATE_EMAIL)
+  const [password, setPassword] = useState(DEV_CANDIDATE_PASSWORD)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(
     state?.wrongRole ? '当前账号不是候选人账号。求职者中心仅向候选人开放，请更换账号登录。' : null,
   )
+
+  const performLogin = useCallback(
+    async (slug: string, userEmail: string, userPassword: string) => {
+      setLoading(true)
+      setError(null)
+      try {
+        const tokens = await login({
+          tenant_slug: slug.trim(),
+          email: userEmail.trim(),
+          password: userPassword,
+        })
+        setTokens(tokens.access_token, tokens.refresh_token)
+        const me = await fetchMe()
+        if (me.role !== 'candidate') {
+          clear()
+          setError('该账号是招聘方账号，请在企业招聘工作台登录；求职者中心仅支持候选人账号。')
+          return
+        }
+        const principal = { ...me, email: userEmail.trim() }
+        setStoredUser(principal)
+        setUser(principal)
+        navigate(from && from !== '/login' ? from : '/', { replace: true })
+      } catch (err: unknown) {
+        setError(getApiErrorMessage(err, '登录失败，请检查企业标识、邮箱与密码。'))
+      } finally {
+        setLoading(false)
+      }
+    },
+    [clear, from, navigate, setUser],
+  )
+
+  useEffect(() => {
+    if (!import.meta.env.DEV || !autoLogin || user || autoLoginStarted.current) return
+    autoLoginStarted.current = true
+    void performLogin(DEFAULT_TENANT, DEV_CANDIDATE_EMAIL, DEV_CANDIDATE_PASSWORD)
+  }, [autoLogin, performLogin, user])
 
   if (user) {
     return <Navigate to={from && from !== '/login' ? from : '/'} replace />
@@ -39,26 +84,7 @@ export default function LoginPage() {
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
     if (loading) return
-    setLoading(true)
-    setError(null)
-    try {
-      const tokens = await login({ tenant_slug: tenantSlug.trim(), email: email.trim(), password })
-      setTokens(tokens.access_token, tokens.refresh_token)
-      const me = await fetchMe()
-      if (me.role !== 'candidate') {
-        clear()
-        setError('该账号是招聘方账号，请在企业招聘工作台登录；求职者中心仅支持候选人账号。')
-        return
-      }
-      const principal = { ...me, email: email.trim() }
-      setStoredUser(principal)
-      setUser(principal)
-      navigate(from && from !== '/login' ? from : '/', { replace: true })
-    } catch (err: unknown) {
-      setError(getApiErrorMessage(err, '登录失败，请检查企业标识、邮箱与密码。'))
-    } finally {
-      setLoading(false)
-    }
+    await performLogin(tenantSlug, email, password)
   }
 
   return (
@@ -131,6 +157,28 @@ export default function LoginPage() {
             注册候选人账号
             <ArrowRight size={13} />
           </Link>
+        </div>
+
+        <div className="mt-5 border-t border-line/70 pt-4">
+          <div className="mb-2.5 text-[11px] font-bold tracking-wide text-muted">
+            {import.meta.env.DEV ? '多角色快速入口（切换至企业招聘工作台）' : '企业工作台入口'}
+          </div>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <a
+              href={`${employerOrigin}/login${import.meta.env.DEV ? '?role=admin&autologin=1' : ''}`}
+              className="flex flex-col rounded-xl border border-line bg-white/75 px-3 py-2.5 text-left transition hover:border-brand/50 hover:bg-white"
+            >
+              <span className="text-xs font-bold text-brand-deep">管理员工作台 ↗</span>
+              <span className="mt-0.5 text-[11px] text-muted">系统治理、团队与集成</span>
+            </a>
+            <a
+              href={`${employerOrigin}/login${import.meta.env.DEV ? '?role=hr&autologin=1' : '?role=hr'}`}
+              className="flex flex-col rounded-xl border border-line bg-white/75 px-3 py-2.5 text-left transition hover:border-brand/50 hover:bg-white"
+            >
+              <span className="text-xs font-bold text-brand-deep">招聘专员入口 ↗</span>
+              <span className="mt-0.5 text-[11px] text-muted">岗位解析与候选人推进</span>
+            </a>
+          </div>
         </div>
       </form>
 

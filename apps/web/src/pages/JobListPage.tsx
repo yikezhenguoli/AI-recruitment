@@ -1,18 +1,12 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { AlertCircle, ArrowRight, Briefcase, Plus, RefreshCw } from 'lucide-react'
 import { listJobs } from '../api/jobs'
+import { runViewTransition } from '../components/layout/PageTransition'
 import { getApiErrorMessage } from '../lib/apiError'
-import { formatDateTime } from '../lib/format'
+import { formatDateTime, JOB_STATUS_LABELS } from '../lib/format'
 import type { JobStatus } from '../types'
-
-const STATUS_LABEL: Record<JobStatus, string> = {
-  draft: '草稿',
-  published: '已发布',
-  locked: '已锁定',
-  archived: '已归档',
-}
 
 const STATUS_CLASS: Record<JobStatus, string> = {
   draft: 'ttc-badge-amber',
@@ -23,6 +17,7 @@ const STATUS_CLASS: Record<JobStatus, string> = {
 
 export default function JobListPage() {
   const [status, setStatus] = useState<'all' | JobStatus>('all')
+  const gridRef = useRef<HTMLDivElement>(null)
   const jobsQuery = useQuery({
     queryKey: ['jobs', status],
     queryFn: () => listJobs(status === 'all' ? {} : { status }),
@@ -59,7 +54,7 @@ export default function JobListPage() {
         </div>
       </section>
 
-      <div className="ttc-filter-chips">
+      <search className="ttc-filter-chips" aria-label="按岗位状态筛选">
         {(
           [
             ['all', '全部'],
@@ -73,12 +68,12 @@ export default function JobListPage() {
             key={value}
             type="button"
             className={`ttc-chip ${status === value ? 'ttc-chip-blue' : ''}`}
-            onClick={() => setStatus(value)}
+            onClick={() => runViewTransition(() => setStatus(value), gridRef.current)}
           >
             {label}
           </button>
         ))}
-      </div>
+      </search>
 
       {jobsQuery.isError && (
         <div className="ttc-error-panel">
@@ -118,7 +113,7 @@ export default function JobListPage() {
       )}
 
       {!jobsQuery.isLoading && !jobsQuery.isError && jobs.length > 0 && (
-        <div className="ttc-job-grid">
+        <div ref={gridRef} className="ttc-job-grid">
           {jobs.map((job) => (
             <Link key={job.id} to={`/jobs/${job.id}`} className="ttc-card ttc-job-card">
               <div className="ttc-job-card-top">
@@ -126,7 +121,7 @@ export default function JobListPage() {
                   <Briefcase size={18} />
                 </span>
                 <span className={`ttc-badge ${STATUS_CLASS[job.status]}`}>
-                  {STATUS_LABEL[job.status]}
+                  {JOB_STATUS_LABELS[job.status]}
                 </span>
               </div>
               <h3>{job.title}</h3>

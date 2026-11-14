@@ -1,3 +1,37 @@
+import type { EvidenceGrade, JobStatus, VoiceSessionStatus } from '../types'
+
+export const JOB_STATUS_LABELS: Record<JobStatus, string> = {
+  draft: '草稿',
+  published: '已发布',
+  locked: '已锁定',
+  archived: '已归档',
+}
+
+export const VOICE_STATUS_LABELS: Record<VoiceSessionStatus, string> = {
+  created: '待接通',
+  connecting: '连接中',
+  live: '进行中',
+  ended: '已结束',
+  failed: '失败',
+  revoked: '授权撤回',
+}
+
+export const VOICE_STATUS_CLASS: Record<VoiceSessionStatus, string> = {
+  created: 'ttc-badge-blue',
+  connecting: 'ttc-badge-blue',
+  live: 'ttc-badge-green',
+  ended: 'ttc-badge-amber',
+  failed: 'ttc-badge-red',
+  revoked: 'ttc-badge-red',
+}
+
+export const EVIDENCE_GRADE_CLASS: Record<EvidenceGrade, string> = {
+  A: 'ttc-badge-green',
+  B: 'ttc-badge-blue',
+  C: 'ttc-badge-amber',
+  D: 'ttc-badge-red',
+}
+
 export function formatDateTime(value?: string | null): string {
   if (!value) return '—'
   const date = new Date(value)

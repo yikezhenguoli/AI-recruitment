@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertCircle, CalendarClock, Plus, RefreshCw } from 'lucide-react'
+import { ModalDialog } from '../components/layout/ModalDialog'
 import { listApplications } from '../api/applications'
 import {
   createSchedule,
@@ -182,110 +183,132 @@ export default function InterviewsPage() {
         </div>
       )}
 
-      {formOpen && (
-        <article className="ttc-card">
-          <div className="ttc-card-header">
-            <div>
-              <h2 className="ttc-card-title">安排面试</h2>
-              <p className="ttc-card-sub">
-                时间必须带时区；与已有排期重叠会被拒绝并列出冲突项。
-              </p>
-            </div>
-            <CalendarClock size={18} className="ttc-accent-icon" />
-          </div>
-          <div className="ttc-launch-form">
-            <label className="ttc-login-field">
-              <span>投递</span>
-              <select value={applicationId} onChange={(event) => setApplicationId(event.target.value)}>
-                <option value="">请选择投递</option>
-                {applications.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.candidate_name} · {item.job_title}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="ttc-login-field">
-              <span>面试官</span>
-              <select value={interviewerId} onChange={(event) => setInterviewerId(event.target.value)}>
-                <option value="">暂不指定</option>
-                {interviewers.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.display_name}（{item.role}）
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="ttc-login-field">
-              <span>开始时间</span>
-              <input type="datetime-local" value={scheduledAt}
-                onChange={(event) => setScheduledAt(event.target.value)} />
-            </label>
-            <label className="ttc-login-field">
-              <span>时长（分钟）</span>
-              <input value={duration} inputMode="numeric"
-                onChange={(event) => setDuration(event.target.value)} />
-            </label>
-            <label className="ttc-login-field">
-              <span>形式</span>
-              <select value={mode} onChange={(event) => setMode(event.target.value as InterviewMode)}>
-                <option value="video">视频</option>
-                <option value="onsite">现场</option>
-                <option value="phone">电话</option>
-              </select>
-            </label>
-            <label className="ttc-login-field">
-              <span>地点 / 会议链接</span>
-              <input value={location} onChange={(event) => setLocation(event.target.value)}
-                placeholder="线上会议链接或会议室" />
-            </label>
-            <label className="ttc-login-field">
-              <span>备注</span>
-              <input value={note} onChange={(event) => setNote(event.target.value)} />
-            </label>
-          </div>
+      <ModalDialog
+        open={formOpen}
+        onClose={() => setFormOpen(false)}
+        title="安排面试"
+        subtitle="时间必须带时区；与已有排期重叠会被拒绝并列出冲突项。"
+        icon={<CalendarClock size={18} className="ttc-accent-icon" />}
+        maxWidth={760}
+      >
+        <div className="ttc-launch-form">
+          <label className="ttc-login-field">
+            <span>投递</span>
+            <select value={applicationId} onChange={(event) => setApplicationId(event.target.value)}>
+              <option value="">请选择投递</option>
+              {applications.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.candidate_name} · {item.job_title}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="ttc-login-field">
+            <span>面试官</span>
+            <select value={interviewerId} onChange={(event) => setInterviewerId(event.target.value)}>
+              <option value="">暂不指定</option>
+              {interviewers.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.display_name}（{item.role}）
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="ttc-login-field">
+            <span>开始时间</span>
+            <input
+              type="datetime-local"
+              value={scheduledAt}
+              onChange={(event) => setScheduledAt(event.target.value)}
+            />
+          </label>
+          <label className="ttc-login-field">
+            <span>时长（分钟）</span>
+            <input
+              value={duration}
+              inputMode="numeric"
+              onChange={(event) => setDuration(event.target.value)}
+            />
+          </label>
+          <label className="ttc-login-field">
+            <span>形式</span>
+            <select value={mode} onChange={(event) => setMode(event.target.value as InterviewMode)}>
+              <option value="video">视频</option>
+              <option value="onsite">现场</option>
+              <option value="phone">电话</option>
+            </select>
+          </label>
+          <label className="ttc-login-field">
+            <span>地点 / 会议链接</span>
+            <input
+              value={location}
+              onChange={(event) => setLocation(event.target.value)}
+              placeholder="线上会议链接或会议室"
+            />
+          </label>
+          <label className="ttc-login-field">
+            <span>备注</span>
+            <input value={note} onChange={(event) => setNote(event.target.value)} />
+          </label>
+        </div>
 
-          {interviewerId && (
-            <div className="ttc-slot-grid" style={{ marginTop: 12 }}>
-              <label className="ttc-login-field" style={{ flexBasis: 150 }}>
-                <span>查看面试官空闲日</span>
-                <input type="date" value={availabilityDay}
-                  onChange={(event) => setAvailabilityDay(event.target.value)} />
-              </label>
-              <div style={{ flex: 1 }}>
-                <span className="ttc-muted" style={{ fontSize: 10 }}>
-                  {availabilityQuery.isFetching
-                    ? '计算中…'
-                    : availability
-                      ? `${availability.date} 可用 ${availability.slots.length} 个时段（${availability.note}）`
-                      : '选择日期后显示可用时段'}
-                </span>
-                <div className="ttc-slot-grid" style={{ marginTop: 6 }}>
-                  {(availability?.slots ?? []).slice(0, 24).map((slot) => (
-                    <button key={slot.start} type="button" className="ttc-chip"
-                      onClick={() => setScheduledAt(toLocalInput(slot.start))}>
-                      {new Date(slot.start).toLocaleTimeString('zh-CN', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </button>
-                  ))}
-                </div>
+        {interviewerId && (
+          <div className="ttc-slot-grid" style={{ marginTop: 12 }}>
+            <label className="ttc-login-field" style={{ flexBasis: 150 }}>
+              <span>查看面试官空闲日</span>
+              <input
+                type="date"
+                value={availabilityDay}
+                onChange={(event) => setAvailabilityDay(event.target.value)}
+              />
+            </label>
+            <div style={{ flex: 1 }}>
+              <span className="ttc-muted" style={{ fontSize: 10 }}>
+                {availabilityQuery.isFetching
+                  ? '计算中…'
+                  : availability
+                    ? `${availability.date} 可用 ${availability.slots.length} 个时段（${availability.note}）`
+                    : '选择日期后显示可用时段'}
+              </span>
+              <div className="ttc-slot-grid" style={{ marginTop: 6 }}>
+                {(availability?.slots ?? []).slice(0, 24).map((slot) => (
+                  <button
+                    key={slot.start}
+                    type="button"
+                    className="ttc-chip"
+                    onClick={() => setScheduledAt(toLocalInput(slot.start))}
+                  >
+                    {new Date(slot.start).toLocaleTimeString('zh-CN', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </button>
+                ))}
               </div>
             </div>
-          )}
-
-          <div className="ttc-card-actions">
-            <button type="button" className="ttc-btn ttc-btn-primary"
-              disabled={!applicationId || !scheduledAt || createMutation.isPending}
-              onClick={() => createMutation.mutate()}>
-              {createMutation.isPending ? '提交中…' : '确认排期'}
-            </button>
           </div>
-        </article>
-      )}
+        )}
 
-      <div className="ttc-filter-chips">
+        <div className="ttc-card-actions ttc-dialog-actions">
+          <button
+            type="button"
+            className="ttc-btn ttc-btn-secondary"
+            onClick={() => setFormOpen(false)}
+          >
+            取消
+          </button>
+          <button
+            type="button"
+            className="ttc-btn ttc-btn-primary"
+            disabled={!applicationId || !scheduledAt || createMutation.isPending}
+            onClick={() => createMutation.mutate()}
+          >
+            {createMutation.isPending ? '提交中…' : '确认排期'}
+          </button>
+        </div>
+      </ModalDialog>
+
+      <search className="ttc-filter-chips" aria-label="按排期状态与范围筛选">
         {(
           [
             ['all', '全部'],
@@ -311,7 +334,7 @@ export default function InterviewsPage() {
           onClick={() => setScope('all')}>
           含历史
         </button>
-      </div>
+      </search>
 
       {schedulesQuery.isError && (
         <div className="ttc-error-panel">
@@ -323,7 +346,8 @@ export default function InterviewsPage() {
         </div>
       )}
 
-      <div className="ttc-table-scroll">
+      <div className="ttc-table-card">
+      <div className="ttc-table-scroll ttc-table-container" tabIndex={0} role="region" aria-label="面试排期列表">
         <table className="ttc-result-table">
           <thead>
             <tr>
@@ -338,29 +362,29 @@ export default function InterviewsPage() {
           <tbody>
             {schedules.map((slot) => (
               <tr key={slot.id}>
-                <td>
+                <td data-label="时间">
                   <strong>{formatDateTime(slot.scheduled_at)}</strong>
                   <span className="ttc-muted" style={{ display: 'block', fontSize: 10 }}>
                     {slot.duration_min} 分钟
                   </span>
                 </td>
-                <td>
+                <td data-label="候选人 / 岗位">
                   {slot.candidate_name}
                   <span className="ttc-muted" style={{ display: 'block', fontSize: 10 }}>
                     {slot.job_title}
                   </span>
                 </td>
-                <td className="ttc-muted">{slot.interviewer_name ?? '未指定'}</td>
-                <td className="ttc-muted">
+                <td data-label="面试官" className="ttc-muted">{slot.interviewer_name ?? '未指定'}</td>
+                <td data-label="形式" className="ttc-muted">
                   {MODE_LABEL[slot.mode]}
                   {slot.location ? ` · ${slot.location}` : ''}
                 </td>
-                <td>
+                <td data-label="状态">
                   <span className={`ttc-badge ${STATUS_CLASS[slot.status]}`}>
                     {STATUS_LABEL[slot.status]}
                   </span>
                 </td>
-                <td>
+                <td data-label="操作">
                   <div className="ttc-card-actions">
                     {(slot.status === 'scheduled' || slot.status === 'confirmed') && (
                       <>
@@ -419,6 +443,7 @@ export default function InterviewsPage() {
             )}
           </tbody>
         </table>
+      </div>
       </div>
     </div>
   )

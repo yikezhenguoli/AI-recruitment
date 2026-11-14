@@ -1470,6 +1470,28 @@
   transform: none;
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  @supports ((animation-timeline: view()) and (animation-range: entry)) {
+    @keyframes lg2-scroll-reveal {
+      from {
+        opacity: 0;
+        transform: translate3d(0, 18px, 0);
+      }
+      to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+      }
+    }
+
+    .lg2-reveal {
+      animation: lg2-scroll-reveal linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 24%;
+      transition: none;
+    }
+  }
+}
+
 /* ── Motion keyframes ──────────────────────────────────────────────────────── */
 
 @keyframes lg2-pulse {
@@ -2127,9 +2149,12 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  width: 120px;
+  width: max-content;
+  min-width: 148px;
+  max-width: 220px;
   min-height: 56px;
-  padding: 8px 10px;
+  padding: 9px 14px 9px 10px;
+  box-sizing: border-box;
   border: 1px solid rgba(255, 255, 255, .92);
   border-radius: 16px;
   background: linear-gradient(150deg, rgba(255, 255, 255, .92), rgba(236, 247, 255, .80));
@@ -2184,6 +2209,7 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  padding-right: 2px;
 }
 
 .lg2-orbit2-node-text strong {
@@ -2592,8 +2618,10 @@ main.ttc-content {
   animation: none;
 }
 
-.ttc-page-transition {
-  animation: lg2-page-in 360ms var(--lg2-ease) both;
+@media (prefers-reduced-motion: no-preference) {
+  .ttc-page-transition {
+    animation: lg2-page-in 360ms var(--lg2-ease) both;
+  }
 }
 
 @keyframes lg2-page-in {
@@ -2620,6 +2648,32 @@ main.ttc-content {
   box-shadow:
     0 12px 34px rgba(56, 112, 165, .10),
     inset 0 1px 0 rgba(255, 255, 255, .60);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @supports ((animation-timeline: scroll()) and (animation-range: 0% 100%)) {
+    @keyframes ttc-topbar-scroll {
+      from {
+        background-color: rgba(248, 252, 255, .72);
+        border-bottom-color: rgba(112, 161, 207, .18);
+        box-shadow: 0 8px 30px rgba(56, 112, 165, .05);
+      }
+      to {
+        background-color: rgba(247, 251, 255, .92);
+        border-bottom-color: rgba(63, 124, 177, .24);
+        box-shadow:
+          0 12px 34px rgba(56, 112, 165, .11),
+          inset 0 1px 0 rgba(255, 255, 255, .64);
+      }
+    }
+
+    .ttc-topbar {
+      animation: ttc-topbar-scroll linear both;
+      animation-timeline: scroll(root block);
+      animation-range: 0px 120px;
+      transition: none;
+    }
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -2698,9 +2752,6 @@ main.ttc-content {
     transition: none !important;
     transform: none !important;
     will-change: auto;
-  }
-  .ttc-page-transition {
-    animation-duration: 1ms !important;
   }
   .ttc-topbar {
     transition: none !important;

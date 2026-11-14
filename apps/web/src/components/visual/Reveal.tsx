@@ -22,6 +22,12 @@ export function Reveal({ children, className = '', delay = 0 }: RevealProps) {
     const element = ref.current
     if (!element) return
 
+    const supportsScrollView =
+      typeof CSS !== 'undefined' &&
+      typeof CSS.supports === 'function' &&
+      CSS.supports('(animation-timeline: view()) and (animation-range: entry)')
+    if (supportsScrollView) return
+
     if (typeof IntersectionObserver === 'undefined') return
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
     if (window.matchMedia('print').matches) return
@@ -47,7 +53,7 @@ export function Reveal({ children, className = '', delay = 0 }: RevealProps) {
     <div
       ref={ref}
       className={`lg2-reveal ${ready ? 'lg2-reveal--ready' : ''} ${visible ? 'is-visible' : ''} ${className}`.trim()}
-      style={delay ? { transitionDelay: `${delay}ms` } : undefined}
+      style={delay && ready ? { transitionDelay: `${delay}ms` } : undefined}
     >
       {children}
     </div>
