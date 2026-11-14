@@ -20,7 +20,7 @@
 }
 
 * { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; scroll-padding-top: 84px; }
 body {
   margin: 0;
   min-width: 320px;
@@ -87,7 +87,10 @@ button { -webkit-tap-highlight-color: transparent; }
 .header-status { display: flex; align-items: center; gap: 7px; color: #7793ac; font-size: 11px; white-space: nowrap; }
 .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #4ebba5; box-shadow: 0 0 0 4px rgba(78,187,165,.12); }
 
-main { flex: 1; position: relative; z-index: 1; animation: page-enter .55s cubic-bezier(.2,.7,.2,1) both; }
+main { flex: 1; position: relative; z-index: 1; }
+@media (prefers-reduced-motion: no-preference) {
+  main { animation: page-enter .55s cubic-bezier(.2,.7,.2,1) both; }
+}
 @keyframes page-enter { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: translateY(0); } }
 footer { position: relative; z-index: 1; margin-top: 36px; border-top: 1px solid rgba(115, 162, 207, .16) !important; background: rgba(255,255,255,.34) !important; backdrop-filter: blur(16px); }
 footer span { color: #8ba2b9 !important; letter-spacing: .02em; }
@@ -159,11 +162,14 @@ main .fixed.inset-0 { backdrop-filter: blur(9px); }
 
 /* Animated light accents */
 @keyframes float-soft { 0%,100% { transform: translate3d(0,0,0); } 50% { transform: translate3d(0,-7px,0); } }
-.brand-mark { animation: float-soft 6s ease-in-out infinite; }
 @keyframes shimmer-line { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }
-.animate-gradient { background-size: 200% 200%; animation: shimmer-line 5s linear infinite; }
-.pulse-ring { animation: pulse-ring 1.8s ease-in-out infinite; }
 @keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 rgba(67, 151, 226, .32); } 70% { box-shadow: 0 0 0 7px rgba(67, 151, 226, 0); } 100% { box-shadow: 0 0 0 0 rgba(67, 151, 226, 0); } }
+.animate-gradient { background-size: 200% 200%; }
+@media (prefers-reduced-motion: no-preference) {
+  .brand-mark { animation: float-soft 6s ease-in-out infinite; }
+  .animate-gradient { animation: shimmer-line 5s linear infinite; }
+  .pulse-ring { animation: pulse-ring 1.8s ease-in-out infinite; }
+}
 .scrollbar-thin { scrollbar-width: thin; scrollbar-color: rgba(91, 157, 215, .42) rgba(219, 236, 251, .45); }
 .scrollbar-thin::-webkit-scrollbar { width: 7px; height: 7px; }
 .scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(91,157,215,.38); border-radius: 99px; }
@@ -191,7 +197,7 @@ main .fixed.inset-0 { backdrop-filter: blur(9px); }
   .hero-eyebrow { font-size: 8px; letter-spacing: .11em; gap: 7px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  html { scroll-behavior: auto; }
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -1237,10 +1243,12 @@ main .fixed.inset-0 { backdrop-filter: blur(9px); }
    Targeted micro-interactions: subtle type jitter + mouse trail
    ───────────────────────────────────────────────────────────────────────────── */
 
-.ttc-brand-name,
-.ttc-page-head h1 {
-  animation: ttc-type-jitter 9s steps(1, end) infinite;
-  will-change: transform;
+@media (prefers-reduced-motion: no-preference) {
+  .ttc-brand-name,
+  .ttc-page-head h1 {
+    animation: ttc-type-jitter 9s steps(1, end) infinite;
+    will-change: transform;
+  }
 }
 
 .ttc-report-page .ttc-page-head h1,

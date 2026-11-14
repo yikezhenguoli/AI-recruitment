@@ -1,3 +1,21 @@
+import type { JobStatus, VoiceSessionStatus } from '../types'
+
+export const JOB_STATUS_LABELS: Record<JobStatus, string> = {
+  draft: '草稿',
+  published: '已发布',
+  locked: '已锁定',
+  archived: '已归档',
+}
+
+export const VOICE_STATUS_LABELS: Record<VoiceSessionStatus, string> = {
+  created: '待接通',
+  connecting: '连接中',
+  live: '进行中',
+  ended: '已结束',
+  failed: '失败',
+  revoked: '授权撤回',
+}
+
 export function formatDateTime(value?: string | null): string {
   if (!value) return '—'
   const date = new Date(value)
