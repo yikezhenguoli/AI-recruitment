@@ -166,6 +166,7 @@ def test_synthetic_resume_assessment_and_tenant_access(monkeypatch):
                 call_index += 1
                 assert offer.startswith(b"v=0")
                 assert "招聘" in instructions
+                assert "应聘岗位：后端工程师" in instructions
                 return b"v=0\r\nsynthetic-answer", f"rtc_synthetic_test_{call_index}"
 
             monkeypatch.setattr("ttc.api.v1.voice.create_call", synthetic_call)

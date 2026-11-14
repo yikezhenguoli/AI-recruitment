@@ -53,6 +53,34 @@ def test_session_instructions_rejects_bad_plan_input():
     assert FALLBACK_PLAN["questions"][0]["text"] in text
 
 
+def test_session_instructions_carry_job_title():
+    """语音系统指令必须显式带上应聘岗位名，且放在长文本之前。"""
+    text = session_instructions({
+        "profile": "两年 Java 后端，做过订单服务。",
+        "questions": [{"id": "q1", "section": "experience",
+                       "text": "你做的订单服务用了哪些技术？", "focus": "技术栈"}],
+    }, job_title="Java 后端工程师")
+    assert "应聘岗位：Java 后端工程师" in text
+    assert text.index("应聘岗位：") < text.index("候选人简历要点")
+
+
+def test_session_instructions_omit_blank_job_title():
+    """岗位名缺失（job 删除/标题为空）时整行不注入，也不报错。"""
+    for missing in (None, "", "   "):
+        text = session_instructions({
+            "questions": [{"id": "q1", "section": "experience",
+                           "text": "请介绍一段项目经历。", "focus": "经历"}],
+        }, job_title=missing)
+        assert "应聘岗位：" not in text
+
+
+def test_session_instructions_fallback_keeps_job_title():
+    """回退固定清单时岗位名不能丢。"""
+    text = session_instructions({"questions": []}, job_title="测试开发工程师")
+    assert FALLBACK_PLAN["questions"][0]["text"] in text
+    assert "应聘岗位：测试开发工程师" in text
+
+
 def test_build_interview_plan_calls_model(monkeypatch):
     settings = get_settings()
     monkeypatch.setattr(settings, "llm_api_key", "synthetic-test-key")
@@ -136,3 +164,50 @@ def test_plan_from_db_falls_back_on_garbage():
     assert plan_from_db("{not json") is FALLBACK_PLAN
     assert plan_from_db(None) is FALLBACK_PLAN
     assert plan_from_db({"questions": []}) is FALLBACK_PLAN
+
+
+def test_summarize_interview_includes_job_title(monkeypatch):
+    """纪要模型也要看到应聘岗位名（HR 端按岗位核对）。"""
+    settings = get_settings()
+    monkeypatch.setattr(settings, "llm_api_key", "synthetic-test-key")
+    monkeypatch.setattr(settings, "llm_base_url", "https://llm.invalid/v1")
+    monkeypatch.setattr(settings, "llm_model", "synthetic-model")
+    seen = {}
+
+    def handle(request):
+        seen["body"] = json.loads(request.content)
+        return httpx.Response(200, json={"choices": [{"message": {"content": json.dumps({
+            "overview": "合成纪要", "qa": [], "followups": [], "limitations": [],
+        }, ensure_ascii=False)}}]})
+
+    transport = httpx.MockTransport(handle)
+    original_client = httpx.AsyncClient
+    monkeypatch.setattr("ttc.adapters.llm.httpx.AsyncClient",
+                        lambda **kwargs: original_client(transport=transport, **kwargs))
+
+    asyncio.run(LLMAdapter().summarize_interview({"questions": []}, [], "Java 后端工程师"))
+    payload = seen["body"]["messages"][1]["content"]
+    assert "应聘岗位：Java 后端工程师" in payload
+
+
+def test_summarize_interview_omits_blank_job_title(monkeypatch):
+    settings = get_settings()
+    monkeypatch.setattr(settings, "llm_api_key", "synthetic-test-key")
+    monkeypatch.setattr(settings, "llm_base_url", "https://llm.invalid/v1")
+    monkeypatch.setattr(settings, "llm_model", "synthetic-model")
+    seen = {}
+
+    def handle(request):
+        seen["body"] = json.loads(request.content)
+        return httpx.Response(200, json={"choices": [{"message": {"content": json.dumps({
+            "overview": "合成纪要", "qa": [], "followups": [], "limitations": [],
+        }, ensure_ascii=False)}}]})
+
+    transport = httpx.MockTransport(handle)
+    original_client = httpx.AsyncClient
+    monkeypatch.setattr("ttc.adapters.llm.httpx.AsyncClient",
+                        lambda **kwargs: original_client(transport=transport, **kwargs))
+
+    asyncio.run(LLMAdapter().summarize_interview({"questions": []}, [], "   "))
+    payload = seen["body"]["messages"][1]["content"]
+    assert "应聘岗位：" not in payload

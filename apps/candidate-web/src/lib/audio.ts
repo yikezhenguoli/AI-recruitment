@@ -210,6 +210,12 @@ export class PcmPlayer {
 
   enqueue(base64: string, sampleRate = OUTPUT_RATE): void {
     if (!base64) return
+    // 设备切换（插拔耳机、切蓝牙）或页面被挂到后台后，某些浏览器的
+    // AudioContext 会变成 suspended，之后所有分片都排进了一条不会走的
+    // 时间轴：界面仍在转写，但一点声音都没有。这里顺手拉回来。
+    if (this.context.state !== 'running') {
+      void this.context.resume()
+    }
     const samples = pcm16ToFloat(base64ToBytes(base64))
     if (samples.length === 0) return
     const buffer = this.context.createBuffer(1, samples.length, sampleRate)

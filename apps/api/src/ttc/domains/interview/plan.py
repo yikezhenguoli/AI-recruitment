@@ -84,20 +84,26 @@ def plan_from_db(value) -> dict:
     return plan if plan.get("questions") else FALLBACK_PLAN
 
 
-def session_instructions(plan: dict) -> str:
+def session_instructions(plan: dict, job_title: str | None = None) -> str:
     """把清单拼成实时语音的系统指令。"""
     if not isinstance(plan, dict):
         plan = FALLBACK_PLAN
     questions = [item for item in plan.get("questions", [])
                  if isinstance(item, dict) and str(item.get("text", "")).strip()]
     if not questions:
-        return session_instructions(FALLBACK_PLAN)
+        return session_instructions(FALLBACK_PLAN, job_title)
     lines = [
         "你是招聘初筛沟通助手。开场用一句话说明这是一轮初步沟通，不做录用决定。",
         "只按顺序询问下面的问题；每题问完可以追问一次细节，但不要引入清单之外的新主题。",
+        "每次开口都要把一个问题完整说完，不要只说「那我问第二个问题」就停下等回应；"
+        "候选人沉默时，主动重复或换个说法再问一次。",
+        "候选人中断或说没听清时，直接重述当前问题，不要跳过。",
         "不要要求身份证、住址等敏感信息，也不要询问性别、年龄、婚育、民族、宗教、残障。",
         "候选人说的内容与简历不一致时记为待核实，不要当场下结论。",
     ]
+    title = job_title.strip() if isinstance(job_title, str) else ""
+    if title:
+        lines.append(f"应聘岗位：{title}")
     profile = plan.get("profile")
     if isinstance(profile, str) and profile.strip():
         lines.append(f"候选人简历要点（仅供你组织提问，不要逐字念出）：{profile.strip()}")

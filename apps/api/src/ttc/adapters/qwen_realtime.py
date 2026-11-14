@@ -31,6 +31,20 @@ from ttc.core.config import get_settings
 INPUT_FORMAT = "pcm16"
 OUTPUT_FORMAT = "pcm24"
 
+# 显式声明的 VAD 参数（上游默认 threshold 0.5 / silence 800ms）。
+# 默认阈值对笔记本外放的回声与键盘声偏敏感：AI 播报时麦克风收到自己的声音，
+# 会被判成「候选人插话」并取消当前回复，听起来就是「说着说着就不说话了」。
+# threshold 提到 0.65 让误触发明显变少；silence 缩到 600ms 让正常轮次更跟手。
+TURN_DETECTION: dict[str, Any] = {
+    "type": "server_vad",
+    "threshold": 0.65,
+    "prefix_padding_ms": 300,
+    "silence_duration_ms": 600,
+    "create_response": True,
+    "interrupt_response": True,
+}
+
+
 # 模型 -> (默认音色)。仅包含本账号实测可用的实时模型。
 MODEL_PROFILES: dict[str, str] = {
     "qwen3-omni-flash-realtime": "Cherry",
@@ -73,6 +87,7 @@ def session_update(instructions: str, voice: str) -> dict[str, Any]:
             "instructions": instructions,
             "input_audio_format": INPUT_FORMAT,
             "output_audio_format": OUTPUT_FORMAT,
+            "turn_detection": TURN_DETECTION,
         },
     }
 

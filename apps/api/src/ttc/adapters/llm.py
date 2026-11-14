@@ -158,7 +158,8 @@ class LLMAdapter:
             raise TTCError("TTC-5002", "问题生成模型输出不符合契约", 502) from exc
         return data
 
-    async def summarize_interview(self, plan: dict, turns: list[dict]) -> dict:
+    async def summarize_interview(self, plan: dict, turns: list[dict],
+                                  job_title: str | None = None) -> dict:
         """把一场面试的转写整理成纪要；只允许复述转写里出现的内容。"""
         settings = get_settings()
         if not all((settings.llm_base_url, settings.llm_api_key, settings.llm_model)):
@@ -182,7 +183,9 @@ class LLMAdapter:
             speaker = "AI 面试官" if role == "interviewer" else (
                 "候选人" if role == "candidate" else "系统")
             lines.append(f"{speaker}：{turn.get('text', '')}")
+        title = job_title.strip() if isinstance(job_title, str) else ""
         payload = (
+            (f"应聘岗位：{title}\n\n" if title else "") +
             "【问题清单】\n" + "\n".join(f"- {text}" for text in questions) +
             "\n\n【通话转写】\n" + "\n".join(lines)
         )

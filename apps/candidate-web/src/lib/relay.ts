@@ -48,6 +48,14 @@ export class RelayInterview {
   private started = false
   private opened = false
   private cancelled = false
+  private lastActivity = 0
+  private watchdog: number | null = null
+  private responding = false
+
+  /** 上游与浏览器都没有新事件多久之后，主动请面试官接着说。 */
+  private static readonly IDLE_MS = 15_000
+  /** 回复已经开始但这么久没有任何分片，认为上游卡住，取消后重来。 */
+  private static readonly STALL_MS = 20_000
 
   constructor(
     private readonly sessionId: string,
@@ -103,6 +111,7 @@ export class RelayInterview {
         return
       }
       const type = payload.type ?? ''
+      this.lastActivity = Date.now()
 
       if (type === 'relay.ready') {
         this.handlers.onRelay({
@@ -122,11 +131,15 @@ export class RelayInterview {
           },
         })
         this.send({ type: 'response.create' })
+        this.startWatchdog()
         return
       }
 
       if (type === 'error') {
-        this.handlers.onState('error', payload.error?.message ?? payload.message ?? '实时语音返回错误')
+        const message = payload.error?.message ?? payload.message ?? ''
+        // 兜底重试会和上游的进行中状态撞车，这类拒绝不是通话故障。
+        if (/already in progress|not active|no active response/i.test(message)) return
+        this.handlers.onState('error', message || '实时语音返回错误')
         return
       }
 
@@ -163,7 +176,11 @@ export class RelayInterview {
         case 'response.audio.delta':
           if (payload.delta) this.player?.enqueue(payload.delta)
           break
+        case 'response.created':
+          this.responding = true
+          break
         case 'response.done':
+          this.responding = false
           for (const line of this.lines.values()) {
             if (line.role === 'interviewer' && line.pending) {
               this.upsert(line.id, line.role, line.text, false)
@@ -180,6 +197,7 @@ export class RelayInterview {
     }
 
     socket.onclose = (event) => {
+      this.stopWatchdog()
       this.teardownAudio()
       this.socket = null
       if (this.closing) {
@@ -191,6 +209,57 @@ export class RelayInterview {
       } else {
         this.handlers.onState('error', describeSocketClose(event.code))
       }
+    }
+  }
+
+  /**
+   * 兜底：AI 说完一句后就等着，若上游的 VAD 没再触发（被回声/噪声误判后卡住，
+   * 或 response 被取消后没有新的输入），通话会长时间没人说话。这里在双方都
+   * 安静超过 15 秒时主动递一条提示，请面试官重述当前问题。
+   *
+   * 只在连接正常、麦克风没有电平（候选人确实没在说话）时触发，
+   * 候选人在思考或回答时不会被打断。
+   */
+  private startWatchdog(): void {
+    this.stopWatchdog()
+    this.lastActivity = Date.now()
+    this.watchdog = window.setInterval(() => {
+      const socket = this.socket
+      if (this.closing || !socket || socket.readyState !== WebSocket.OPEN) return
+      const idle = Date.now() - this.lastActivity
+      if (this.responding) {
+        // 回复进行中就别再插一条 response.create（上游会回
+        // "response already in progress"）；但长时间没有任何分片时，
+        // 取消掉这轮，让下面的空闲逻辑重新把话筒交回给面试官。
+        if (idle > RelayInterview.STALL_MS) {
+          this.send({ type: 'response.cancel' })
+          this.responding = false
+          this.lastActivity = Date.now()
+        }
+        return
+      }
+      if (idle < RelayInterview.IDLE_MS) return
+      if ((this.mic?.getLevel() ?? 0) > 0.05) {
+        this.lastActivity = Date.now()
+        return
+      }
+      this.send({
+        type: 'conversation.item.create',
+        item: {
+          type: 'message',
+          role: 'user',
+          content: [{ type: 'input_text', text: '（候选人这边一直没有声音，请重述当前问题并邀请他回答）' }],
+        },
+      })
+      this.send({ type: 'response.create' })
+      this.lastActivity = Date.now()
+    }, 3000)
+  }
+
+  private stopWatchdog(): void {
+    if (this.watchdog !== null) {
+      window.clearInterval(this.watchdog)
+      this.watchdog = null
     }
   }
 
@@ -244,6 +313,7 @@ export class RelayInterview {
     }
     this.socket?.close(1000)
     this.socket = null
+    this.stopWatchdog()
     this.teardownAudio()
     this.handlers.onState('closed')
   }
