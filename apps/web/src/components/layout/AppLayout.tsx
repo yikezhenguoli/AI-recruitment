@@ -91,6 +91,24 @@ export function AppLayout() {
   // Passive scroll listener with rAF coalescing; only a boolean re-render.
   // Never intercepts or hijacks scrolling.
   useEffect(() => {
+    const prefersMotion =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: no-preference)').matches
+    const supportsNativeScrollHeader =
+      prefersMotion &&
+      typeof CSS !== 'undefined' &&
+      typeof CSS.supports === 'function' &&
+      CSS.supports('(animation-timeline: scroll()) and (animation-range: 0% 100%)')
+
+    if (supportsNativeScrollHeader) {
+      if (scrolledRef.current) {
+        scrolledRef.current = false
+        setScrolled(false)
+      }
+      return
+    }
+
     let frame = 0
     const sync = () => {
       frame = 0
