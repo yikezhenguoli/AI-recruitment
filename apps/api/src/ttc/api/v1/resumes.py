@@ -130,6 +130,24 @@ async def claims(resume_id: UUID, user: Principal = Depends(hr),
             "status": version["status"], "claims": [dict(row) for row in rows]}
 
 
+@router.get("/resumes/{resume_id}/text")
+async def resume_text(resume_id: UUID, user: Principal = Depends(hr),
+                      session: AsyncSession = Depends(get_session)):
+    """返回最近一版的纯文本（扫描件即 OCR 转写结果），供 HR 对照原件核对。"""
+    await require_resume(session, user, resume_id)
+    version = (await session.execute(
+        text("SELECT version_no, extractor_model, text_uri FROM resume_version "
+             "WHERE resume_id = :id ORDER BY version_no DESC LIMIT 1"),
+        {"id": resume_id},
+    )).mappings().one_or_none()
+    if version is None or not version["text_uri"]:
+        raise TTCError("TTC-2001", "还没有可查看的转写文本", 404)
+    data = await Storage().get(version["text_uri"])
+    return {"version": version["version_no"],
+            "extractor_model": version["extractor_model"],
+            "text": data.decode("utf-8", errors="replace")}
+
+
 @router.get("/resumes/{resume_id}/timeline")
 async def timeline(resume_id: UUID, user: Principal = Depends(hr),
                    session: AsyncSession = Depends(get_session)):

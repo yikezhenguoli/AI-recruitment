@@ -111,6 +111,53 @@ class LLMAdapter:
                 "gaps": texts("gaps"), "suggestions": texts("suggestions"),
                 "risk_notes": texts("risk_notes")}
 
+    async def build_interview_plan(self, resume_text: str, jd_text: str,
+                                   scenario: str = "screen") -> dict:
+        """按简历与岗位生成面试问题；只允许锚定简历里出现过的事实。"""
+        settings = get_settings()
+        if not all((settings.llm_base_url, settings.llm_api_key, settings.llm_model)):
+            raise TTCError("TTC-5004", "尚未配置面试问题生成模型", 503)
+        prompt = (
+            "你是面试提纲设计助手，只依据给出的【简历】与【岗位描述】出初筛问题。"
+            "硬性规则：1) 每个问题都必须锚定简历里的具体事实（点名项目、技术、职责、"
+            "公司或成果），不得询问简历中完全没有出现过的主题，不得编造经历；"
+            "2) 不问性别、年龄、婚育、民族、宗教、残障、身份证与住址等敏感信息；"
+            "3) 题目是给语音面试官口头念的，一句话，不超过 40 个字，不要 Markdown；"
+            "4) 出 3 到 5 题，顺序为：先深挖简历里最相关的一段经历（具体做了什么、"
+            "怎么做的、结果如何），再核实一项与该岗位要求直接相关的技术或职责，"
+            "最后一题问动机或与岗位要求的差距（可以问期望薪资范围）。"
+            "5) 只输出 JSON 对象，字段为 profile(不超过 80 字的候选人画像，"
+            "只写简历里明确出现的技术栈、年限、代表经历)、"
+            "questions(数组，元素为 {id, section, text, focus}，"
+            "section 取 experience|skill|gap|motivation，focus 是这题想核实什么，"
+            "不超过 20 字)。"
+        )
+        payload = (f"【面试类型】{scenario}\n\n"
+                   f"【岗位描述】\n{jd_text[:20000]}\n\n"
+                   f"【简历】\n{resume_text[:40000]}")
+        try:
+            async with llm_client(settings.llm_timeout_seconds) as client:
+                response = await client.post(
+                    f"{settings.llm_base_url.rstrip('/')}/chat/completions",
+                    headers={"Authorization": f"Bearer {settings.llm_api_key}"},
+                    json={"model": settings.llm_model, "temperature": 0.2,
+                          "response_format": {"type": "json_object"},
+                          "messages": [{"role": "system", "content": prompt},
+                                       {"role": "user", "content": payload}]},
+                )
+                response.raise_for_status()
+        except httpx.TimeoutException as exc:
+            raise TTCError("TTC-5001", "面试问题生成模型超时", 504) from exc
+        except httpx.HTTPError as exc:
+            raise TTCError("TTC-5004", "面试问题生成模型不可用", 503) from exc
+        try:
+            data = json.loads(response.json()["choices"][0]["message"]["content"])
+            if not isinstance(data, dict) or not isinstance(data.get("questions"), list):
+                raise ValueError("questions is not a list")
+        except (KeyError, IndexError, ValueError, TypeError) as exc:
+            raise TTCError("TTC-5002", "问题生成模型输出不符合契约", 502) from exc
+        return data
+
     async def summarize_interview(self, plan: dict, turns: list[dict]) -> dict:
         """把一场面试的转写整理成纪要；只允许复述转写里出现的内容。"""
         settings = get_settings()

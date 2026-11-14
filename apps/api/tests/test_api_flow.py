@@ -156,7 +156,9 @@ def test_synthetic_resume_assessment_and_tenant_access(monkeypatch):
                                        {"index": 0, "role": "candidate", "text": "合成回答"}]})
             assert finished.status_code == 202, finished.text
             assert client.get(f"/api/v1/voice-sessions/{voice_id}/report",
-                              headers=candidate_headers).json()["quotes"][0]["text"] == "合成回答"
+                              headers=candidate_headers).status_code == 403
+            assert client.get(f"/api/v1/voice-sessions/{voice_id}/report",
+                              headers=headers).json()["quotes"][0]["text"] == "合成回答"
             call_index = 0
 
             async def synthetic_call(offer, instructions):

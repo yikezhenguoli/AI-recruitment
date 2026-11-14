@@ -28,6 +28,7 @@ from ttc.core.config import get_settings
 from ttc.core.db import get_session
 from ttc.core.errors import TTCError
 from ttc.core.security import hash_password, uuid7
+from ttc.domains.interview.plan import parse_plan
 
 router = APIRouter(tags=["portal"])
 candidate_role = require_roles("candidate")
@@ -370,7 +371,8 @@ async def interview_detail(session_id: UUID, user: Principal = Depends(candidate
         live_transport = None
     return {
         "id": row["id"], "job_id": row["job_id"], "scenario": row["scenario"],
-        "status": row["status"], "plan": row["plan_json"], "max_seconds": row["max_seconds"],
+        "status": row["status"], "plan": parse_plan(row["plan_json"]),
+        "max_seconds": row["max_seconds"],
         "created_at": row["created_at"], "started_at": row["started_at"],
         "ended_at": row["ended_at"], "end_reason": row["end_reason"],
         "live_ready": live_transport is not None,
