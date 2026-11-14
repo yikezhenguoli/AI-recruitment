@@ -558,6 +558,18 @@ main .fixed.inset-0 { backdrop-filter: blur(9px); }
 .ttc-file-status.is-submitted { color: #287c66; background: rgba(229,249,243,.9); }
 .ttc-file-row .ttc-file-block { flex: 1; min-width: 0; margin-top: 0; text-align: left; }
 .ttc-file-row .ttc-file-block-head { justify-content: flex-start; }
+.ttc-transcript-block { margin-top: 12px; }
+.ttc-transcript-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin-bottom: 6px; padding: 0 4px; color: #6d8499; font-size: 10px;
+}
+.ttc-transcript {
+  margin: 0; padding: 12px 14px; max-height: 300px; overflow: auto;
+  white-space: pre-wrap; word-break: break-word;
+  border: 1px solid rgba(255,255,255,.9); border-radius: 12px;
+  background: rgba(255,255,255,.72); color: #3c5875;
+  font-size: 11px; line-height: 1.7; font-family: inherit;
+}
 .ttc-rejected-block {
   margin-top: 12px; padding: 11px 13px; border: 1px solid rgba(224,168,77,.3); border-radius: 13px;
   background: rgba(255,248,235,.72); color: #8a6a2f;

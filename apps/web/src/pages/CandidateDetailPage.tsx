@@ -16,7 +16,7 @@ import { listConsents } from '../api/consents'
 import { confirmEvidence, listEvidence, searchEvidence } from '../api/evidence'
 import { getJob } from '../api/jobs'
 import { watchTask } from '../api/progress'
-import { getResumeClaims, reparseResume, uploadResume } from '../api/resumes'
+import { getResumeClaims, getResumeText, reparseResume, uploadResume } from '../api/resumes'
 import { createAssessment } from '../api/assessments'
 import { getVoiceSummary, listVoiceSessions } from '../api/voice'
 import { getApiErrorMessage } from '../lib/apiError'
@@ -62,6 +62,12 @@ export default function CandidateDetailPage() {
   const [task, setTask] = useState<{ id: string; label: string } | null>(null)
   const [progress, setProgress] = useState<TaskProgressMessage | null>(null)
   const [error, setError] = useState('')
+  const [resumeText, setResumeText] = useState<{
+    version: number
+    extractor_model: string | null
+    text: string
+  } | null>(null)
+  const [textLoading, setTextLoading] = useState(false)
   const [message, setMessage] = useState('')
   const fileRef = useRef<HTMLInputElement | null>(null)
 
@@ -211,6 +217,31 @@ export default function CandidateDetailPage() {
   )
   const selectedResume = resumes.find((item) => item.id === resumeId)
 
+  const toggleText = async () => {
+    if (resumeText) {
+      setResumeText(null)
+      return
+    }
+    if (!resumeId) return
+    setTextLoading(true)
+    try {
+      setResumeText(await getResumeText(resumeId))
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, '读取转写文本失败。'))
+    } finally {
+      setTextLoading(false)
+    }
+  }
+
+  const downloadText = (text: string, fileName: string) => {
+    const url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }))
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${fileName.replace(/\.[^.]+$/, '')}.txt`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div className="ttc-page">
       <section className="ttc-page-head">
@@ -324,7 +355,10 @@ export default function CandidateDetailPage() {
                 <button
                   type="button"
                   className="ttc-file-block"
-                  onClick={() => setResumeId(resume.id)}
+                  onClick={() => {
+                  setResumeId(resume.id)
+                  setResumeText(null)
+                }}
                 >
                   <span className="ttc-file-block-head">
                     <FileText size={15} />
@@ -399,8 +433,37 @@ export default function CandidateDetailPage() {
                 {claims?.status ?? '—'}）
               </p>
             </div>
-            <FileText size={18} className="ttc-accent-icon" />
+            <div className="ttc-card-actions">
+              <button
+                type="button"
+                className="ttc-btn ttc-btn-secondary ttc-btn-sm"
+                disabled={textLoading}
+                onClick={() => void toggleText()}
+              >
+                <FileText size={14} />
+                {resumeText ? '收起转写文本' : textLoading ? '读取中…' : '查看转写文本'}
+              </button>
+              <FileText size={18} className="ttc-accent-icon" />
+            </div>
           </div>
+          {resumeText && (
+            <div className="ttc-transcript-block">
+              <div className="ttc-transcript-head">
+                <span>
+                  第 {resumeText.version} 版 · {resumeText.extractor_model ?? '未知模型'} ·{' '}
+                  {resumeText.text.length} 字符
+                </span>
+                <button
+                  type="button"
+                  className="ttc-text-link"
+                  onClick={() => downloadText(resumeText.text, selectedResume?.file_name ?? 'resume')}
+                >
+                  下载 .txt
+                </button>
+              </div>
+              <pre className="ttc-transcript">{resumeText.text}</pre>
+            </div>
+          )}
           <div className="ttc-claim-groups">
             {Object.entries(
               (claims?.claims ?? []).reduce<Record<string, ResumeClaim[]>>((groups, claim) => {
