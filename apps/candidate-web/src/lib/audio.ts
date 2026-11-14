@@ -72,22 +72,39 @@ export class MicStreamer {
   private levelData: Uint8Array<ArrayBuffer> | null = null
   private muted = false
 
-  async start(onChunk: (base64: string) => void): Promise<void> {
-    if (!navigator.mediaDevices?.getUserMedia) {
-      throw new Error('当前浏览器不支持麦克风采集')
+  /**
+   * 在用户点击的同一个任务里先建好 AudioContext。
+   * iOS 只允许在用户手势中启动音频上下文，而 getUserMedia 的权限弹窗会把
+   * 手势链打断，等它返回再创建的上下文会一直是 suspended（表现为录不到声音）。
+   */
+  prepare(): void {
+    if (this.context) return
+    const Ctor = audioContextCtor()
+    try {
+      this.context = new Ctor({ sampleRate: INPUT_RATE })
+    } catch {
+      this.context = new Ctor()
     }
+    void this.context.resume()
+  }
+
+  async start(onChunk: (base64: string) => void): Promise<void> {
+    if (!window.isSecureContext) {
+      throw new Error('浏览器只在 localhost 或 HTTPS 下允许录音，请改用 https:// 打开本页。')
+    }
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error('当前浏览器不支持麦克风采集，请升级浏览器后重试。')
+    }
+    // 先于权限弹窗建上下文，保证还处在用户手势里。
+    this.prepare()
     this.stream = await navigator.mediaDevices.getUserMedia({
       audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
     })
-    const Ctor = audioContextCtor()
-    let context: AudioContext
-    try {
-      context = new Ctor({ sampleRate: INPUT_RATE })
-    } catch {
-      context = new Ctor()
-    }
-    this.context = context
+    const context = this.context as AudioContext
     await context.resume()
+    if (context.state !== 'running') {
+      throw new Error('浏览器拦截了音频启动，请点击页面后重试。')
+    }
 
     this.source = context.createMediaStreamSource(this.stream)
     const processor = context.createScriptProcessor(2048, 1, 1)
