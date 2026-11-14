@@ -33,7 +33,7 @@ ANN/
 *.csv
 *.zip
 
-# resume-match：只收录源码、JD 与数据划分；模型权重和生成数据不进仓库
+# resume-match：收录源码、JD、数据划分与合成训练数据；模型权重和大数据集不进仓库
 resume-match/*
 !resume-match/*.py
 !resume-match/*.md
@@ -44,7 +44,9 @@ resume-match/*
 !resume-match/splits/
 resume-match/data/
 resume-match/runs/
-resume-match/synth/
+# synth：train_gbdt.py 默认读取的合成简历数据（无隐私、体积小），随仓库分发
+!resume-match/synth/
+!resume-match/synth/*.csv
 resume-match/synth_hard/
 resume-match/gbdt/
 resume-match/gbdt_hard/
