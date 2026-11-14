@@ -1,6 +1,7 @@
 ﻿# Node dependencies
 **/node_modules/
 **/dist/
+**/.vite/
 
 # Environment variables
 .env
@@ -44,3 +45,7 @@ resume-match/**/__pycache__/
 # Local backend runtime data
 apps/api/cache/
 apps/api/uploads/
+
+# 本地开发 HTTPS 证书（候选人端手机录音需要）
+apps/candidate-web/.certs/
+apps/candidate-web/public/ttc-dev-ca.crt
