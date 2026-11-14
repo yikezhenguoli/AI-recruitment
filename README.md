@@ -537,6 +537,47 @@ alembic upgrade head
 前端、候选人端应分别按各自目录中的依赖管理文件安装依赖并启动。具体命令以仓库
 `README`、`pyproject.toml`、`package.json` 和脚本定义为准。
 
+本机实测可用的三进程启动方式（三个终端，均在仓库根目录执行）：
+
+``` bash
+# 1) 后端：必须监听 0.0.0.0，否则手机/同网段设备访问不到
+cd apps/api && .venv/bin/uvicorn ttc.main:app --app-dir src --host 0.0.0.0 --port 8000
+
+# 2) HR 工作台（http://<本机IP>:5174）
+cd apps/web && npx vite --port 5174 --strictPort
+
+# 3) 候选人端（有证书时自动走 https，见下节）
+cd apps/candidate-web && npx vite --port 5175 --strictPort
+```
+
+两个前端的 `vite.config.ts` 已设 `server.host = true`，命令行不再需要 `--host`；
+后端仍须自己传 `--host 0.0.0.0`。前端把 `/api`、`/ws`、`/health` 代理到
+`http://localhost:8000`，因此手机直接访问前端端口即可，不需要单独记后端地址。
+
+#### 手机上录音（候选人端必须 HTTPS）
+
+浏览器只在**安全上下文**里暴露麦克风：`localhost`、或用 HTTPS 打开的非本机地址。
+手机用 `http://<本机IP>:5175` 打开时 `navigator.mediaDevices` 直接是 `undefined`，
+表现就是「录不进去音」，且面试会话会被后端记成一次「候选人已结束」。所以候选人端
+用局域网 IP 访问时必须是 HTTPS：
+
+``` bash
+# 生成本机开发证书（默认取本机第一个局域网 IP，也可显式传入）
+cd apps/candidate-web && ./scripts/make-dev-cert.sh 172.30.11.140
+```
+
+生成后重启 vite，`vite.config.ts` 检测到 `.certs/` 就自动启用 https，地址变成
+`https://<本机IP>:5175`。**证书必须被手机信任**，仅在警告页点「继续前往」不够：
+Chrome 把带证书错误的页面仍判为非安全上下文，麦克风依旧拿不到。
+
+- Android：手机打开 `https://<本机IP>:5175/ttc-dev-ca.crt` 下载，
+  「设置 → 安全 → 加密与凭据 → 安装证书 → CA 证书」选择该文件安装。
+- iOS：同上地址下载，装描述文件后在「设置 → 通用 → 关于本机 → 证书信任设置」
+  里对 `TTC Dev CA` 打开完全信任。
+
+热点重连后本机 IP 可能变化，重跑 `make-dev-cert.sh` 并重新安装 CA 即可。
+证书与 CA 文件都在 `.gitignore` 里，不进仓库。
+
 ### 演示模式
 
 演示数据应明确标记为合成数据（例如 `is_synthetic` /

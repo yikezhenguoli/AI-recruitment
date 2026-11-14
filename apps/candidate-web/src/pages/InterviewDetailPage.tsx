@@ -113,7 +113,7 @@ export default function InterviewDetailPage() {
         onRelay: setRelayInfo,
       })
       relayRef.current = relay
-      relay.start()
+      void relay.start()
       return
     }
 

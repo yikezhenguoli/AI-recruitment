@@ -46,14 +46,21 @@ export class RelayInterview {
   private lines = new Map<string, RelayLine>()
   private closing = false
   private started = false
+  private opened = false
+  private cancelled = false
 
   constructor(
     private readonly sessionId: string,
     private readonly handlers: RelayHandlers,
   ) {}
 
-  start(): void {
-    if (this.socket) return
+  /**
+   * 顺序是「先取麦克风，再连服务端」：后端一收到连接就把会话置为 live，
+   * 断开即记一次「候选人结束」且无法重连。麦克风拿不到就不要连，
+   * 这样候选人换个浏览器或改用 HTTPS 后还能重来。
+   */
+  async start(): Promise<void> {
+    if (this.socket || this.started) return
     this.started = true
     this.closing = false
     this.lines.clear()
@@ -61,6 +68,29 @@ export class RelayInterview {
 
     // 必须在用户点击的同一个任务里创建，否则浏览器会拦下自动播放。
     this.player = new PcmPlayer()
+
+    const mic = new MicStreamer()
+    try {
+      await mic.start((base64) => this.send({ type: 'input_audio_buffer.append', audio: base64 }))
+    } catch (error) {
+      mic.stop()
+      this.player?.close()
+      this.player = null
+      this.started = false
+      this.handlers.onState(
+        'error',
+        error instanceof Error ? error.message : '无法开启麦克风',
+      )
+      return
+    }
+    if (this.cancelled) {
+      mic.stop()
+      this.player?.close()
+      this.player = null
+      return
+    }
+    this.mic = mic
+    this.opened = true
 
     const socket = openAuthedSocket(`/voice-sessions/${this.sessionId}/realtime`)
     this.socket = socket
@@ -81,7 +111,6 @@ export class RelayInterview {
           maxSeconds: payload.maxSeconds ?? 0,
         })
         this.handlers.onState('connected')
-        this.startMic()
         // 上游不接受「没有输入条目」的 response.create，先放一条开场条目再触发；
         // 这条是纯文本、没有音频，不会出现在候选人转写里。
         this.send({
@@ -165,20 +194,6 @@ export class RelayInterview {
     }
   }
 
-  private startMic(): void {
-    if (this.mic) return
-    const mic = new MicStreamer()
-    this.mic = mic
-    mic
-      .start((base64) => this.send({ type: 'input_audio_buffer.append', audio: base64 }))
-      .catch((error: unknown) => {
-        this.handlers.onState(
-          'error',
-          error instanceof Error ? error.message : '无法开启麦克风',
-        )
-      })
-  }
-
   private send(payload: unknown): void {
     const socket = this.socket
     if (socket && socket.readyState === WebSocket.OPEN) {
@@ -209,9 +224,10 @@ export class RelayInterview {
   async stop(): Promise<void> {
     if (!this.started) return
     this.closing = true
-    this.mic?.stop()
-    this.mic = null
-    this.player?.interrupt()
+    this.cancelled = true
+    this.started = false
+    const opened = this.opened
+    this.opened = false
     const turns = [...this.lines.values()]
       .filter((line) => line.role !== 'system' && line.text.trim().length > 0)
       .map((line, index) => ({
@@ -219,15 +235,16 @@ export class RelayInterview {
         role: line.role,
         text: line.text.trim(),
       }))
-    try {
-      await finishInterview(this.sessionId, turns)
-    } catch {
-      // 会话可能已被后端按超时或撤回结束，轮次落盘失败不影响关闭连接。
+    if (opened) {
+      try {
+        await finishInterview(this.sessionId, turns)
+      } catch {
+        // 会话可能已被后端按超时或撤回结束，轮次落盘失败不影响关闭连接。
+      }
     }
     this.socket?.close(1000)
     this.socket = null
-    this.player?.close()
-    this.player = null
+    this.teardownAudio()
     this.handlers.onState('closed')
   }
 
