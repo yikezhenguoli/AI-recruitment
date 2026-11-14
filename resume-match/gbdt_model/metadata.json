@@ -1,0 +1,179 @@
+{
+  "model": "sklearn.ensemble.HistGradientBoostingClassifier",
+  "gbdt_params": {
+    "max_iter": 400,
+    "learning_rate": 0.06,
+    "max_leaf_nodes": 31,
+    "l2_regularization": 1.0,
+    "class_weight": "balanced",
+    "random_state": 42,
+    "early_stopping": false
+  },
+  "feature_names": [
+    "cos_char2_4",
+    "cos_char1_2",
+    "latin_jaccard",
+    "latin_coverage",
+    "skill_hit_ratio",
+    "skill_hit_count",
+    "years_diff",
+    "years_ok",
+    "edu_diff",
+    "intent_title_cos",
+    "intent_hit_title",
+    "log_resume_len",
+    "log_jd_len",
+    "len_ratio"
+  ],
+  "jd_variant": "full",
+  "seed": 42,
+  "paths": {
+    "csv": "synth/resumes.csv",
+    "split": "synth/split.csv",
+    "jd": "jd/jobs_24.yaml"
+  },
+  "training_summary": {
+    "n_resumes": 500,
+    "n_classes": 24,
+    "split_counts": {
+      "test": 100,
+      "train": 300,
+      "val": 100
+    },
+    "per_class_counts": {
+      "FITNESS": {
+        "test": 5,
+        "train": 12,
+        "val": 4
+      },
+      "DIGITAL-MEDIA": {
+        "train": 12,
+        "test": 5,
+        "val": 4
+      },
+      "HEALTHCARE": {
+        "train": 12,
+        "val": 4,
+        "test": 5
+      },
+      "HR": {
+        "train": 12,
+        "val": 4,
+        "test": 5
+      },
+      "APPAREL": {
+        "train": 13,
+        "val": 5,
+        "test": 3
+      },
+      "ARTS": {
+        "train": 13,
+        "test": 4,
+        "val": 4
+      },
+      "INFORMATION-TECHNOLOGY": {
+        "val": 4,
+        "train": 12,
+        "test": 4
+      },
+      "CONSULTANT": {
+        "train": 12,
+        "val": 4,
+        "test": 5
+      },
+      "BANKING": {
+        "train": 13,
+        "test": 4,
+        "val": 4
+      },
+      "DESIGNER": {
+        "test": 5,
+        "val": 4,
+        "train": 12
+      },
+      "ACCOUNTANT": {
+        "train": 13,
+        "test": 3,
+        "val": 5
+      },
+      "AVIATION": {
+        "test": 4,
+        "val": 4,
+        "train": 13
+      },
+      "FINANCE": {
+        "test": 5,
+        "train": 12,
+        "val": 4
+      },
+      "CONSTRUCTION": {
+        "test": 4,
+        "val": 4,
+        "train": 13
+      },
+      "BPO": {
+        "train": 13,
+        "val": 4,
+        "test": 4
+      },
+      "AUTOMOBILE": {
+        "val": 4,
+        "train": 13,
+        "test": 4
+      },
+      "SALES": {
+        "test": 4,
+        "val": 4,
+        "train": 12
+      },
+      "ENGINEERING": {
+        "train": 12,
+        "val": 4,
+        "test": 5
+      },
+      "PUBLIC-RELATIONS": {
+        "test": 4,
+        "train": 12,
+        "val": 4
+      },
+      "AGRICULTURE": {
+        "train": 13,
+        "val": 5,
+        "test": 3
+      },
+      "CHEF": {
+        "train": 13,
+        "test": 4,
+        "val": 4
+      },
+      "BUSINESS-DEVELOPMENT": {
+        "train": 13,
+        "val": 4,
+        "test": 4
+      },
+      "ADVOCATE": {
+        "train": 13,
+        "val": 5,
+        "test": 3
+      },
+      "TEACHER": {
+        "test": 4,
+        "val": 4,
+        "train": 12
+      }
+    },
+    "n_train_pairs": 7200,
+    "n_negative_per_positive": 23
+  },
+  "environment": {
+    "python": "3.10.12",
+    "sklearn": "1.7.2",
+    "numpy": "2.2.6"
+  },
+  "artifacts": {
+    "model": "model.pkl",
+    "vectorizers": "vectorizers.pkl",
+    "jd_docs": "jd_docs.json",
+    "feature_table": "feature_table.npz（X 为全部简历 × 24 JD 的 14 维特征）"
+  }
+}

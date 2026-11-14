@@ -47,6 +47,9 @@ resume-match/runs/
 # synth：train_gbdt.py 默认读取的合成简历数据（无隐私、体积小），随仓库分发
 !resume-match/synth/
 !resume-match/synth/*.csv
+# gbdt_model：GBDT 训练产出的模型（约 1 MB），随仓库分发
+!resume-match/gbdt_model/
+!resume-match/gbdt_model/*.csv
 resume-match/synth_hard/
 resume-match/gbdt/
 resume-match/gbdt_hard/
