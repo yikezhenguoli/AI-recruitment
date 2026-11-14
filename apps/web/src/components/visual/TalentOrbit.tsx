@@ -58,15 +58,15 @@ const ORBIT_ITEMS: OrbitItem[] = [
 
 /** Fixed orbital slots: top, bottom-right, bottom-left (percent of the square stage). */
 const NODE_SLOTS = [
-  { left: '50%', top: '11%' },
-  { left: '82.4%', top: '69.5%' },
-  { left: '17.6%', top: '69.5%' },
+  { left: '50%', top: '16%' },
+  { left: '79.4%', top: '67%' },
+  { left: '20.6%', top: '67%' },
 ]
 
 const LINK_ENDS = [
-  { x: 50, y: 11 },
-  { x: 82.4, y: 69.5 },
-  { x: 17.6, y: 69.5 },
+  { x: 50, y: 16 },
+  { x: 79.4, y: 67 },
+  { x: 20.6, y: 67 },
 ]
 
 function useMediaQuery(query: string): boolean {

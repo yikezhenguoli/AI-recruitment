@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  ArrowUpRight,
   Briefcase,
   CalendarClock,
   ChevronRight,
@@ -19,7 +20,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { getHealth } from '../../api/client'
-import { logout, roleLabel } from '../../api/auth'
+import { fetchMe, login, logout, roleLabel } from '../../api/auth'
 import { useAuthStore } from '../../store/authStore'
 import { CursorTrail } from '../visual/CursorTrail'
 import { NotificationBell } from './NotificationBell'
@@ -85,16 +86,43 @@ export function AppLayout() {
   const menuBtnRef = useRef<HTMLButtonElement>(null)
   const closeBtnRef = useRef<HTMLButtonElement>(null)
   const location = useLocation()
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const user = useAuthStore((state) => state.user)
+  const setUser = useAuthStore((state) => state.setUser)
   const clearUser = useAuthStore((state) => state.clear)
+  const [switchingRole, setSwitchingRole] = useState<'admin' | 'hr' | null>(null)
   const title = resolvePageTitle(location.pathname)
   const displayName = user?.display_name || '招聘用户'
   const avatarText = displayName.slice(0, 1).toUpperCase()
+  const candidatePortalHref =
+    typeof window === 'undefined'
+      ? 'http://localhost:5175/login?autologin=1'
+      : `${window.location.protocol}//${window.location.hostname}:5175/login${import.meta.env.DEV ? '?autologin=1' : ''}`
 
   async function handleLogout() {
     await logout()
     clearUser()
     window.location.assign('/login')
+  }
+
+  async function handleSwitchRole(targetRole: 'admin' | 'hr') {
+    if (!import.meta.env.DEV || switchingRole || user?.role === targetRole) return
+    const targetEmail = targetRole === 'admin' ? 'web.test.hr@ttc.local' : 'hr.demo@ttc.local'
+    setSwitchingRole(targetRole)
+    try {
+      await login('demo', targetEmail, 'SeedDemo#2026')
+      const me = await fetchMe()
+      setUser(me)
+      await queryClient.invalidateQueries()
+      if (targetRole === 'hr' && (location.pathname.startsWith('/team') || location.pathname.startsWith('/admin'))) {
+        navigate('/')
+      }
+    } catch {
+      navigate(`/login?role=${targetRole}`)
+    } finally {
+      setSwitchingRole(null)
+    }
   }
   const isSessions = location.pathname === '/sessions' || location.pathname.startsWith('/sessions/')
 
@@ -284,6 +312,37 @@ export function AppLayout() {
                 <span>岗位解析 → 简历筛选 → 评估报告</span>
               </div>
             </div>
+            <div className="ttc-role-switcher" aria-label="视角与角色入口">
+              <div className="ttc-role-switcher-head">
+                <span>角色切换</span>
+                <span>{roleLabel(user?.role ?? '')}</span>
+              </div>
+              <div className="ttc-role-pills">
+                {import.meta.env.DEV && (
+                  <>
+                    <button
+                      type="button"
+                      className={`ttc-role-pill ${user?.role === 'admin' ? 'is-active' : ''}`}
+                      disabled={switchingRole !== null}
+                      onClick={() => void handleSwitchRole('admin')}
+                    >
+                      {switchingRole === 'admin' ? '切换中…' : '管理员'}
+                    </button>
+                    <button
+                      type="button"
+                      className={`ttc-role-pill ${user?.role === 'hr' ? 'is-active' : ''}`}
+                      disabled={switchingRole !== null}
+                      onClick={() => void handleSwitchRole('hr')}
+                    >
+                      {switchingRole === 'hr' ? '切换中…' : '招聘专员'}
+                    </button>
+                  </>
+                )}
+                <a className="ttc-role-pill" href={candidatePortalHref}>
+                  求职者 ↗
+                </a>
+              </div>
+            </div>
             <div className="ttc-profile">
               <span className="ttc-avatar">{avatarText}</span>
               <div>
@@ -327,6 +386,14 @@ export function AppLayout() {
                 {healthState.label}
               </span>
               <NotificationBell />
+              <a
+                className="ttc-btn ttc-btn-ghost ttc-btn-sm"
+                href={candidatePortalHref}
+                title="切换至求职者中心"
+              >
+                <span>求职者端</span>
+                <ArrowUpRight size={14} aria-hidden="true" />
+              </a>
               <div className="ttc-topbar-divider" />
               <span className="ttc-avatar ttc-avatar-sm">{avatarText}</span>
               <div className="ttc-topbar-user">
