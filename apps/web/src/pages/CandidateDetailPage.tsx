@@ -19,7 +19,7 @@ import { listConsents } from '../api/consents'
 import { confirmEvidence, listEvidence, searchEvidence } from '../api/evidence'
 import { getJob } from '../api/jobs'
 import { watchTask } from '../api/progress'
-import { getResumeClaims, reparseResume, uploadResume } from '../api/resumes'
+import { getResumeClaims, getResumeText, reparseResume, uploadResume } from '../api/resumes'
 import { createAssessment } from '../api/assessments'
 import { getVoiceSummary, listVoiceSessions } from '../api/voice'
 import { getApiErrorMessage } from '../lib/apiError'
@@ -66,6 +66,13 @@ function getStageIndex(progress: TaskProgressMessage | null): number {
   return 0
 }
 
+const ACCEPTED_RESUME_EXTENSIONS = ['.pdf', '.docx', '.txt', '.png', '.jpg', '.jpeg', '.webp']
+
+function ocrLabel(model?: string | null): string {
+  const raw = model?.split('+ocr:')[1]
+  return raw ? `OCR · ${raw.replace(/^vlm:/, '')}` : ''
+}
+
 export default function CandidateDetailPage() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
@@ -78,6 +85,12 @@ export default function CandidateDetailPage() {
   const [task, setTask] = useState<{ id: string; label: string } | null>(null)
   const [progress, setProgress] = useState<TaskProgressMessage | null>(null)
   const [error, setError] = useState('')
+  const [resumeText, setResumeText] = useState<{
+    version: number
+    extractor_model: string | null
+    text: string
+  } | null>(null)
+  const [textLoading, setTextLoading] = useState(false)
   const [message, setMessage] = useState('')
   const fileRef = useRef<HTMLInputElement | null>(null)
 
@@ -246,11 +259,36 @@ export default function CandidateDetailPage() {
   function handleSelectedFile(file?: File) {
     if (!file) return
     const lower = file.name.toLowerCase()
-    if (!lower.endsWith('.pdf') && !lower.endsWith('.docx')) {
-      setError('仅支持上传 PDF 或 DOCX 格式的简历文件。')
+    if (!ACCEPTED_RESUME_EXTENSIONS.some((ext) => lower.endsWith(ext))) {
+      setError('仅支持上传 PDF、DOCX、TXT 或 PNG/JPEG/WebP 图片简历。')
       return
     }
     upload.mutate(file)
+  }
+
+  async function toggleText() {
+    if (resumeText) {
+      setResumeText(null)
+      return
+    }
+    if (!resumeId) return
+    setTextLoading(true)
+    try {
+      setResumeText(await getResumeText(resumeId))
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, '读取转写文本失败。'))
+    } finally {
+      setTextLoading(false)
+    }
+  }
+
+  function downloadText(text: string, fileName: string) {
+    const url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }))
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${fileName.replace(/\.[^.]+$/, '')}.txt`
+    link.click()
+    URL.revokeObjectURL(url)
   }
 
   if (candidateQuery.isLoading) {
@@ -381,12 +419,12 @@ export default function CandidateDetailPage() {
             <div className="ttc-card-head">
               <div>
                 <h2>简历版本与解析</h2>
-                <p className="ttc-card-sub">拖拽或选择 PDF / DOCX 文件触发真实解析流水线</p>
+                <p className="ttc-card-sub">拖拽或选择 PDF / DOCX / TXT / 图片触发真实解析流水线；扫描件自动视觉 OCR 转写</p>
               </div>
               <input
                 ref={fileRef}
                 type="file"
-                accept=".pdf,.docx"
+                accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.webp"
                 hidden
                 onChange={(event) => {
                   handleSelectedFile(event.target.files?.[0])
@@ -410,7 +448,7 @@ export default function CandidateDetailPage() {
             >
               <UploadCloud size={24} className="ttc-accent-icon" aria-hidden="true" />
               <div>
-                <strong>拖拽 PDF / DOCX 简历到此处，或点击按钮上传</strong>
+                <strong>拖拽 PDF / DOCX / TXT / 图片简历到此处，或点击按钮上传</strong>
                 <span>文件直传后端队列，通过 WebSocket 实时推回解析与声明落库阶段</span>
               </div>
               <button
@@ -433,11 +471,15 @@ export default function CandidateDetailPage() {
                   <button
                     type="button"
                     className="ttc-resume-select"
-                    onClick={() => setResumeId(resume.id)}
+                    onClick={() => {
+                      setResumeId(resume.id)
+                      setResumeText(null)
+                    }}
                   >
                     <strong>{resume.file_name}</strong>
                     <span className="ttc-muted">
                       解析状态：{resume.parse_status} · 上传于 {formatDate(resume.created_at)}
+                      {ocrLabel(resume.extractor_model) && ` · ${ocrLabel(resume.extractor_model)}`}
                     </span>
                   </button>
                   <button
@@ -465,8 +507,38 @@ export default function CandidateDetailPage() {
                     : '选择上方简历以查看解析出的声明'}
                 </p>
               </div>
-              <span className="ttc-badge ttc-badge-blue">{claimList.length} 条</span>
+              <div className="ttc-card-actions">
+                <button
+                  type="button"
+                  className="ttc-btn ttc-btn-secondary ttc-btn-sm"
+                  disabled={!resumeId || textLoading}
+                  onClick={() => void toggleText()}
+                >
+                  <FileText size={14} />
+                  {resumeText ? '收起转写文本' : textLoading ? '读取中…' : '查看转写文本'}
+                </button>
+                <span className="ttc-badge ttc-badge-blue">{claimList.length} 条</span>
+              </div>
             </div>
+
+            {resumeText && (
+              <div className="ttc-transcript-block">
+                <div className="ttc-transcript-head">
+                  <span>
+                    第 {resumeText.version} 版 · {resumeText.extractor_model ?? '未知模型'} ·{' '}
+                    {resumeText.text.length} 字符
+                  </span>
+                  <button
+                    type="button"
+                    className="ttc-btn ttc-btn-ghost ttc-btn-sm"
+                    onClick={() => downloadText(resumeText.text, selectedResume?.file_name ?? 'resume')}
+                  >
+                    下载 .txt
+                  </button>
+                </div>
+                <pre className="ttc-transcript">{resumeText.text}</pre>
+              </div>
+            )}
 
             {claimList.length > 0 && (
               <div className="ttc-chip-row ttc-chip-row-spaced" role="group" aria-label="按类型筛选声明">
