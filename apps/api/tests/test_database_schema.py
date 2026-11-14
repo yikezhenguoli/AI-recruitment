@@ -1,10 +1,18 @@
 import asyncio
+from pathlib import Path
 
 import pytest
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from ttc.core.config import get_settings
+
+
+def alembic_head() -> str:
+    config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
+    return ScriptDirectory.from_config(config).get_current_head()
 
 
 def test_postgresql_schema_matches_initial_design() -> None:
@@ -22,7 +30,7 @@ def test_postgresql_schema_matches_initial_design() -> None:
                     text("SELECT count(*) FROM information_schema.tables "
                          "WHERE table_schema = 'public' AND table_name <> 'alembic_version'")
                 )
-                assert tables == 28
+                assert tables == 36
                 enums = await connection.scalar(
                     text("SELECT count(*) FROM pg_type WHERE typtype = 'e' "
                          "AND typnamespace = 'public'::regnamespace")
@@ -32,8 +40,9 @@ def test_postgresql_schema_matches_initial_design() -> None:
                     text("SELECT extname FROM pg_extension WHERE extname IN ('citext', 'pg_trgm')")
                 )
                 assert {row[0] for row in extensions} == {"citext", "pg_trgm"}
+                # 迁移头由 ScriptDirectory 读出，避免每加一版迁移就要手改字面量。
                 assert await connection.scalar(text("SELECT version_num FROM alembic_version")) == (
-                    "0004_realtime_call"
+                    alembic_head()
                 )
         finally:
             await engine.dispose()
