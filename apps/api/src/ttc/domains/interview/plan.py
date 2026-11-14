@@ -18,7 +18,9 @@ from ttc.adapters.llm import LLMAdapter
 from ttc.adapters.storage import Storage
 from ttc.core.errors import TTCError
 from ttc.domains.interview.question_guard import (
+    QuestionLedger,
     deduplicate_questions,
+    extract_questions,
     questions_equivalent,
 )
 
@@ -279,15 +281,23 @@ def session_instructions(plan: dict, job_title: str | None = None) -> str:
             "4. 回答中出现矛盾、模糊指标或无法确认的事实时应继续核实；结论记为待核实，"
             "不要当场指控或推断动机。",
             f"5. 每道初始问题，包括 HR 指定问题，都最多追问 "
+            f"{MAX_FOLLOWUPS_PER_TOPIC} 个，追问深度最多 "
             f"{MAX_FOLLOWUPS_PER_TOPIC} 层；初始问题和追问合计不超过 "
             f"{MAX_TOTAL_QUESTIONS} 个。",
-            "6. 信息已经充分、追问预算用尽或通话接近时限时，简短总结并礼貌收尾。",
+            "6. 信息已经充分、追问预算用尽、没有新的必要问题或通话接近时限时，"
+            "必须主动总结并礼貌结束，不得等待 HR 手动结束。",
+            "7. 初始问题只是候选问题池，不要求全部问完，也不得为了凑够数量提问；"
+            "没有必要时立即收尾。",
             "硬性边界：",
             "- 每次开口只提出一个问题，把问题完整说完，不要只报题号或停在半句。",
             "- 严禁提出已经问过的问题，也严禁通过换同义词、改写句式、缩小或扩大范围"
             "再次提出语义相同的问题；不得以“再具体说说”等方式变相重问。",
-            "- 初始问题之间已经做过去重；实际提出的问题会自动进入去重清单，"
-            "必须始终遵守去重清单。",
+            "- 已提出问题进入服务端问题账本并成为硬禁止项。模型不能通过“忘记”"
+            "绕过该账本；如果无法提出新的必要问题，就总结并结束。",
+            "- 每个初始问题最多派出 2 个衍生问题，衍生问题深度不超过 2 层。"
+            "达到预算后只能切换未问过的初始主题或总结结束。",
+            "- 每次回应必须满足以下之一：只提出一个新的必要问题，或直接进行最终总结并结束。"
+            "不得在最终总结后继续提问。",
             "- 不虚构简历和回答中不存在的事实。",
             "- 不要求身份证、住址等敏感信息，不询问性别、年龄、婚育、民族、宗教、残障。",
             "- 只围绕当前岗位和候选人经历开展追问，不做录用决定，表达流畅度不能替代能力判断。",
@@ -426,3 +436,86 @@ async def build_plan(
     plan["source"] = "llm"
     plan["job_context"] = job_context
     return plan
+
+
+FINISH_SUMMARY = (
+    "感谢你的时间。本轮沟通到此结束，后续由 HR 结合本次回答和岗位要求进行人工复核。"
+)
+
+
+async def plan_next_directed_turn(
+    plan: dict,
+    ledger: QuestionLedger,
+    answer_text: str,
+) -> dict:
+    """Choose and validate the exact next utterance before TTS is generated."""
+    remaining = ledger.remaining_initial_questions()
+    context = {
+        "job_title": _text((plan.get("job_context") or {}).get("title"), 160),
+        "profile": _text(plan.get("profile"), 200),
+        "latest_candidate_answer": _text(answer_text, 6000),
+        "asked_questions": ledger.questions[-20:],
+        "current_initial_question": (
+            ledger.current_initial_question() or {}
+        ).get("text"),
+        "current_followups": ledger.current_followups,
+        "max_followups_per_initial": 2,
+        "remaining_initial_questions": remaining[:10],
+    }
+    try:
+        data = await LLMAdapter().plan_interview_turn(context)
+    except TTCError as exc:
+        logger.warning("Directed interview planning failed: %s", exc.message)
+        data = {}
+    except Exception as exc:
+        logger.warning(
+            "Directed interview planning crashed: %s: %s",
+            type(exc).__name__,
+            exc,
+        )
+        data = {}
+
+    action = data.get("action")
+    if action == "initial":
+        requested = _text(data.get("initial_question_id"), 80)
+        selected = next(
+            (item for item in remaining if item["id"] == requested),
+            remaining[0] if remaining else None,
+        )
+        if selected is not None:
+            return {
+                "action": "initial",
+                "question": selected["text"],
+                "initial_question_id": selected["id"],
+                "reason": _text(data.get("reason"), 200),
+            }
+    if action == "followup":
+        question = _text(data.get("question"), 240)
+        questions = extract_questions(question)
+        inspection = ledger.inspect_response(question) if question else {}
+        if (
+            len(questions) == 1
+            and inspection.get("kind") == "followup"
+            and ledger.can_ask_followup()
+        ):
+            return {
+                "action": "followup",
+                "question": questions[0],
+                "initial_question_id": ledger.current_initial_id,
+                "reason": _text(data.get("reason"), 200),
+            }
+    if action == "finish":
+        summary = _text(data.get("summary"), 1200)
+        if not summary or extract_questions(summary):
+            summary = FINISH_SUMMARY
+        return {"action": "finish", "summary": summary}
+
+    if remaining:
+        selected = remaining[0]
+        return {
+            "action": "initial",
+            "question": selected["text"],
+            "initial_question_id": selected["id"],
+            "reason": "规划结果不可用，安全切换到尚未问过的初始问题。",
+        }
+    return {"action": "finish", "summary": FINISH_SUMMARY}

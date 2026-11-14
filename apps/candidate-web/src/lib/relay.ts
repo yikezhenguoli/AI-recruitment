@@ -32,6 +32,7 @@ interface UpstreamEvent {
   type?: string
   delta?: string
   transcript?: string
+  text?: string
   item_id?: string
   response_id?: string
   message?: string
@@ -167,12 +168,26 @@ export class RelayInterview {
         if (this.terminationAudioTimer !== null) {
           window.clearTimeout(this.terminationAudioTimer)
         }
-        // Keep already queued audio long enough to finish the AI's final warning.
-        this.terminationAudioTimer = window.setTimeout(() => {
-          this.player?.close()
-          this.player = null
-          this.terminationAudioTimer = null
-        }, 1500)
+        const player = this.player
+        let playbackFinished = false
+        const finishPlayback = () => {
+          if (playbackFinished) return
+          playbackFinished = true
+          if (this.terminationAudioTimer !== null) {
+            window.clearTimeout(this.terminationAudioTimer)
+            this.terminationAudioTimer = null
+          }
+          player?.close()
+          if (this.player === player) this.player = null
+        }
+        if (player) {
+          // The backend terminates as soon as response.done arrives. Wait until
+          // every already-forwarded audio chunk is actually played.
+          this.terminationAudioTimer = window.setTimeout(finishPlayback, 30_000)
+          void player.waitUntilIdle(30_000).then(finishPlayback)
+        } else {
+          finishPlayback()
+        }
         this.handlers.onTerminated?.({
           reason: payload.reason ?? 'conduct_violation',
           message: payload.message ?? '检测到严重不当言行，通话已由系统终止并记录。',
@@ -212,16 +227,20 @@ export class RelayInterview {
           break
         }
         case 'response.audio_transcript.delta':
-        case 'response.text.delta': {
+        case 'response.text.delta':
+        case 'response.output_audio_transcript.delta':
+        case 'response.output_text.delta': {
           const key = `interviewer:${payload.item_id ?? payload.response_id ?? 'current'}`
           const existing = this.lines.get(key)
           this.upsert(key, 'interviewer', (existing?.text ?? '') + (payload.delta ?? ''), true)
           break
         }
         case 'response.audio_transcript.done':
-        case 'response.text.done': {
+        case 'response.text.done':
+        case 'response.output_audio_transcript.done':
+        case 'response.output_text.done': {
           const key = `interviewer:${payload.item_id ?? payload.response_id ?? 'current'}`
-          const text = (payload.transcript ?? '').trim()
+          const text = (payload.transcript ?? payload.text ?? '').trim()
           if (text) this.upsert(key, 'interviewer', text, false)
           break
         }

@@ -5,6 +5,7 @@ import {
   AlertCircle,
   Bot,
   Clock,
+  Download,
   FileText,
   Hand,
   Headphones,
@@ -19,6 +20,7 @@ import {
 import { getCandidate } from '../api/candidates'
 import {
   controlVoiceInterview,
+  downloadVoiceMarkdown,
   getVoiceReport,
   getVoiceSession,
   listVoiceTurns,
@@ -35,12 +37,16 @@ import type { CallReport } from '../types'
 
 function ReportPanel({
   report,
+  onDownloadMarkdown,
   onRegenerate,
   regenerating,
+  downloadingMarkdown,
 }: {
   report: CallReport
+  onDownloadMarkdown?: () => void
   onRegenerate?: () => void
   regenerating?: boolean
+  downloadingMarkdown?: boolean
 }) {
   return (
     <article className="ttc-card ttc-report-card">
@@ -52,17 +58,34 @@ function ReportPanel({
           </div>
           <h2>沟通纪要</h2>
         </div>
-        {onRegenerate && (
-          <button
-            type="button"
-            className="ttc-btn ttc-btn-secondary ttc-btn-sm"
-            disabled={regenerating}
-            onClick={onRegenerate}
-          >
-            <RefreshCw size={14} />
-            {regenerating ? '生成中…' : '重新整理'}
-          </button>
-        )}
+        <div className="ttc-heading-actions">
+          {onDownloadMarkdown && (
+            <button
+              type="button"
+              className="ttc-btn ttc-btn-primary ttc-btn-sm"
+              disabled={downloadingMarkdown}
+              onClick={onDownloadMarkdown}
+            >
+              <Download size={14} />
+              {downloadingMarkdown
+                ? '下载中…'
+                : report.markdown_ready
+                  ? '下载报告'
+                  : '生成报告'}
+            </button>
+          )}
+          {onRegenerate && (
+            <button
+              type="button"
+              className="ttc-btn ttc-btn-secondary ttc-btn-sm"
+              disabled={regenerating}
+              onClick={onRegenerate}
+            >
+              <RefreshCw size={14} />
+              {regenerating ? '生成中…' : '重新整理'}
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="ttc-report-meta">
@@ -169,6 +192,18 @@ export default function SessionDetailPage() {
     mutationFn: () => regenerateVoiceReport(id),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['voiceReport', id] })
+    },
+  })
+
+  const downloadMarkdown = useMutation({
+    mutationFn: () => downloadVoiceMarkdown(id),
+    onSuccess: (blob) => {
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = `interview-report-${id}.md`
+      anchor.click()
+      URL.revokeObjectURL(url)
     },
   })
 
@@ -594,8 +629,10 @@ export default function SessionDetailPage() {
           {reportQuery.data ? (
             <ReportPanel
               report={reportQuery.data}
+              onDownloadMarkdown={() => downloadMarkdown.mutate()}
               onRegenerate={() => regenerate.mutate()}
               regenerating={regenerate.isPending}
+              downloadingMarkdown={downloadMarkdown.isPending}
             />
           ) : (
             isEnded && (

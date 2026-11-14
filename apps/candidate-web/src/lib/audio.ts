@@ -243,6 +243,28 @@ export class PcmPlayer {
     this.playhead = this.context.currentTime
   }
 
+  /**
+   * Wait for all audio already queued by the server to finish playing.
+   * The timeout only protects against a suspended or broken AudioContext.
+   */
+  async waitUntilIdle(timeoutMs = 30_000): Promise<void> {
+    const deadline = Date.now() + Math.max(0, timeoutMs)
+    while (
+      this.context.state !== 'closed'
+      && (this.sources.size > 0 || this.playhead > this.context.currentTime + 0.03)
+    ) {
+      if (this.context.state === 'suspended') {
+        try {
+          await this.context.resume()
+        } catch {
+          return
+        }
+      }
+      if (Date.now() >= deadline) return
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 100))
+    }
+  }
+
   close(): void {
     this.interrupt()
     void this.context.close()

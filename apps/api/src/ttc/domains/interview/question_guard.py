@@ -10,6 +10,9 @@ _PUNCTUATION_RE = re.compile(r"[^\w\u3400-\u9fff]+", re.UNICODE)
 _LATIN_RE = re.compile(r"[a-z0-9][a-z0-9+#._-]*", re.IGNORECASE)
 _CJK_SEQUENCE_RE = re.compile(r"[\u3400-\u9fff]+")
 _SENTENCE_SPLIT_RE = re.compile(r"(?<=[。！？!?；;\n])")
+_REPEAT_REQUEST_RE = re.compile(
+    r"(没听清|没有听清|再说一遍|重复一遍|重复一下|请重复|听不清)"
+)
 
 _GENERIC_PHRASES = tuple(
     sorted(
@@ -276,6 +279,11 @@ def questions_equivalent(left: str, right: str) -> bool:
     return semantic_similarity(left, right) >= 0.78
 
 
+def asks_to_repeat(text: str) -> bool:
+    """Allow only an explicit request to replay the immediately previous question."""
+    return bool(_REPEAT_REQUEST_RE.search(str(text or "")))
+
+
 def _looks_like_question(sentence: str) -> bool:
     value = _SPACE_RE.sub("", sentence)
     if not value:
@@ -336,23 +344,170 @@ def deduplicate_questions(items: Iterable[dict]) -> list[dict]:
 class QuestionLedger:
     """Track questions actually spoken during one live interview."""
 
-    def __init__(self, limit: int = 20):
+    def __init__(self, limit: int = 20, initial_questions: Iterable[dict] | None = None):
         self.limit = limit
         self.questions: list[str] = []
+        self.initial_questions: list[dict] = []
+        self.asked_initial_ids: set[str] = set()
+        self.current_initial_id: str | None = None
+        self.current_followups = 0
+        self.duplicate_attempts = 0
+        self.multiple_question_attempts = 0
+        self.budget_violations = 0
+        self.configure_initial_questions(initial_questions or ())
+
+    def configure_initial_questions(self, questions: Iterable[dict]) -> None:
+        configured: list[dict] = []
+        seen: set[str] = set()
+        for index, item in enumerate(questions, start=1):
+            if not isinstance(item, dict):
+                continue
+            text = str(item.get("text") or "").strip()[:240]
+            if not text:
+                continue
+            question_id = str(item.get("id") or f"q{index}").strip()[:80]
+            if not question_id or question_id in seen:
+                question_id = f"q{index}"
+            if any(questions_equivalent(text, existing["text"]) for existing in configured):
+                continue
+            seen.add(question_id)
+            configured.append({
+                "id": question_id,
+                "text": text,
+                "source": str(item.get("source") or "ai")[:40],
+                "required": bool(item.get("required")),
+            })
+        self.initial_questions = configured
+
+    def remaining_initial_questions(self) -> list[dict]:
+        return [
+            item for item in self.initial_questions
+            if item["id"] not in self.asked_initial_ids
+        ]
+
+    def next_initial_question(self) -> dict | None:
+        remaining = self.remaining_initial_questions()
+        return remaining[0] if remaining else None
+
+    def current_initial_question(self) -> dict | None:
+        return next(
+            (
+                item for item in self.initial_questions
+                if item["id"] == self.current_initial_id
+            ),
+            None,
+        )
+
+    def can_ask_followup(self) -> bool:
+        return self.current_initial_id is not None and self.current_followups < 2
+
+    def _matching_initial(self, text: str) -> dict | None:
+        return next(
+            (
+                item for item in self.initial_questions
+                if questions_equivalent(text, item["text"])
+            ),
+            None,
+        )
+
+    def _record(self, question: str) -> dict:
+        if any(questions_equivalent(question, asked) for asked in self.questions):
+            self.duplicate_attempts += 1
+            return {"kind": "duplicate", "question": question}
+        initial = self._matching_initial(question)
+        if initial is not None:
+            self.asked_initial_ids.add(initial["id"])
+            self.current_initial_id = initial["id"]
+            self.current_followups = 0
+            self.questions.append(question)
+            return {
+                "kind": "initial",
+                "question": question,
+                "initial_question_id": initial["id"],
+            }
+        if not self.initial_questions:
+            self.questions.append(question)
+            return {"kind": "legacy", "question": question}
+        if self.initial_questions and self.current_initial_id is None:
+            self.budget_violations += 1
+            return {"kind": "unbound_followup", "question": question}
+        if not self.can_ask_followup():
+            self.budget_violations += 1
+            return {"kind": "followup_limit", "question": question}
+        self.current_followups += 1
+        self.questions.append(question)
+        return {
+            "kind": "followup",
+            "question": question,
+            "initial_question_id": self.current_initial_id,
+            "depth": self.current_followups,
+        }
 
     def add(self, text: str) -> bool:
+        questions = extract_questions(text)
+        if len(questions) > 1:
+            self.multiple_question_attempts += 1
+            return False
         added = False
-        for question in extract_questions(text):
+        for question in questions:
             cleaned = question.strip()[:240]
             if not cleaned:
                 continue
-            if any(questions_equivalent(cleaned, asked) for asked in self.questions):
+            result = self._record(cleaned)
+            if result["kind"] in (
+                "duplicate",
+                "unbound_followup",
+                "followup_limit",
+            ):
                 continue
-            self.questions.append(cleaned)
             added = True
             if len(self.questions) >= self.limit:
                 del self.questions[: len(self.questions) - self.limit]
         return added
+
+    def inspect_response(self, text: str) -> dict:
+        """Classify a completed interviewer response without changing the ledger."""
+        questions = extract_questions(text)
+        if not questions:
+            return {"kind": "no_question", "questions": []}
+        if len(questions) > 1:
+            return {"kind": "multiple_questions", "questions": questions}
+        question = questions[0][:240]
+        if any(questions_equivalent(question, asked) for asked in self.questions):
+            return {"kind": "duplicate", "question": question}
+        initial = self._matching_initial(question)
+        if initial is not None:
+            return {
+                "kind": "initial",
+                "question": question,
+                "initial_question_id": initial["id"],
+            }
+        if not self.initial_questions:
+            return {"kind": "legacy", "question": question}
+        if self.initial_questions and self.current_initial_id is None:
+            return {"kind": "unbound_followup", "question": question}
+        if not self.can_ask_followup():
+            return {"kind": "followup_limit", "question": question}
+        return {
+            "kind": "followup",
+            "question": question,
+            "initial_question_id": self.current_initial_id,
+            "depth": self.current_followups + 1,
+        }
+
+    def commit_response(self, text: str) -> dict:
+        """Validate and commit the one question contained in an AI response."""
+        result = self.inspect_response(text)
+        kind = result["kind"]
+        if kind == "multiple_questions":
+            self.multiple_question_attempts += 1
+        elif kind == "duplicate":
+            self.duplicate_attempts += 1
+        elif kind in ("unbound_followup", "followup_limit"):
+            self.budget_violations += 1
+        elif kind in ("initial", "followup"):
+            self._record(result["question"])
+        return result
 
     def render(self) -> str:
         lines = [
@@ -373,6 +528,27 @@ class QuestionLedger:
             "如果回答不足，只能询问该回答中尚未出现的新细节，不得重问原题。"
             "唯一例外是候选人明确说“没听清/请再说一遍”时，可原样复述刚才那道题一次。"
         )
+        if self.initial_questions:
+            current = self.current_initial_question()
+            lines.extend([
+                "",
+                "【服务端追问预算】",
+                "每个初始问题最多引出 2 个追问，追问深度最多 2 层。"
+                "新的初始问题会重置该预算，但已问问题永远不能再次出现。",
+                (
+                    f"当前初始主题：{current['text']}；已追问 "
+                    f"{self.current_followups}/2。"
+                    if current
+                    else "当前尚未建立初始主题。"
+                ),
+                "尚未覆盖的初始问题：",
+                *(
+                    f"- [{item['id']}] {item['text']}"
+                    for item in self.remaining_initial_questions()
+                ),
+                "如果没有任何有必要的下一问，不得为了凑题继续提问；"
+                "必须直接总结并礼貌结束通话。",
+            ])
         return "\n".join(lines)
 
 

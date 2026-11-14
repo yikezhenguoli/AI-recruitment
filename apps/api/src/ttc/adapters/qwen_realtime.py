@@ -35,12 +35,14 @@ OUTPUT_FORMAT = "pcm24"
 # 默认阈值对笔记本外放的回声与键盘声偏敏感：AI 播报时麦克风收到自己的声音，
 # 会被判成「候选人插话」并取消当前回复，听起来就是「说着说着就不说话了」。
 # threshold 提到 0.65 让误触发明显变少；silence 缩到 600ms 让正常轮次更跟手。
+# create_response=False：由服务端在候选人回答完成后统一创建下一轮，
+# 保证创建前已写入最新问题账本和追问预算，避免 VAD 绕过服务端约束。
 TURN_DETECTION: dict[str, Any] = {
     "type": "server_vad",
     "threshold": 0.65,
     "prefix_padding_ms": 300,
     "silence_duration_ms": 600,
-    "create_response": True,
+    "create_response": False,
     "interrupt_response": True,
 }
 

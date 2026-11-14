@@ -62,6 +62,13 @@ export async function getVoiceReport(sessionId: string): Promise<CallReport> {
   return response.data as CallReport
 }
 
+export async function downloadVoiceMarkdown(sessionId: string): Promise<Blob> {
+  const response = await api.get(`${P}/${sessionId}/report/markdown`, {
+    responseType: 'blob',
+  })
+  return response.data as Blob
+}
+
 export async function controlVoiceInterview(
   sessionId: string,
   action: 'pause' | 'resume',

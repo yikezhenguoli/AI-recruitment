@@ -192,6 +192,21 @@ def test_synthetic_resume_assessment_and_tenant_access(monkeypatch):
                 call_report["capability_score"] is None
                 or 0 <= call_report["capability_score"] <= 100
             )
+            assert call_report["markdown_ready"] is True
+            markdown = client.get(
+                f"/api/v1/voice-sessions/{voice_id}/report/markdown",
+                headers=headers,
+            )
+            assert markdown.status_code == 200, markdown.text
+            assert markdown.headers["content-type"].startswith("text/markdown")
+            assert "## 1. 报告信息" in markdown.text
+            assert "## 5. 亮点、重点与疑点" in markdown.text
+            assert "## 8. 参考结论与其他岗位建议" in markdown.text
+            assert "合成回答" in markdown.text
+            assert client.get(
+                f"/api/v1/voice-sessions/{voice_id}/report/markdown",
+                headers=candidate_headers,
+            ).status_code == 403
             call_index = 0
 
             async def synthetic_call(offer, instructions):

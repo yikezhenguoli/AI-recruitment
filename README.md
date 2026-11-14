@@ -305,8 +305,13 @@ uv run python scripts/reset_demo_database.py --dry-run
 uv run python scripts/reset_demo_database.py --yes
 ```
 
-恢复脚本保留数据库结构和迁移版本，重建 `demo` 租户、1 个 HR 和 5 个候选人账号，
-并清除测试产生的登录会话。执行前应先停止正在处理任务的 Worker。
+恢复脚本保留数据库结构和迁移版本，重建 `demo` 租户、默认管理员、HR 和候选人账号，
+并清除测试产生的登录会话。默认开发账号为：管理员 `web.test.hr@ttc.local`、
+招聘专员 `hr.demo@ttc.local`、候选人 `demo.candidate@ttc.local`，密码均为
+`SeedDemo#2026`。重置还会预置 5 个已发布岗位：高级后端工程师、
+机器学习工程师、AI 产品经理、内容营销经理和供应链运营专员。每个岗位都包含
+JD 版本、评估权重和面试方案；重复执行岗位预置逻辑不会产生同名重复岗位。
+执行前应先停止正在处理任务的 Worker。
 
 ### 5. 启动 HR 工作台
 

@@ -284,6 +284,62 @@ class LLMAdapter:
             "limitations": texts("limitations"),
         }
 
+    async def plan_interview_turn(self, context: dict) -> dict:
+        """Choose one validated next move before the realtime model speaks."""
+        settings = get_settings()
+        if not all((settings.llm_base_url, settings.llm_api_key, settings.llm_model)):
+            raise TTCError("TTC-5004", "尚未配置面试对话规划模型", 503)
+        prompt = (
+            "你是面试对话规划器，不直接对候选人说话。只依据给定的候选人最新回答、"
+            "当前初始主题、已问问题账本和尚未覆盖的初始问题，决定下一步。\n"
+            "硬性规则："
+            "1) 每个初始问题最多派生出 2 个追问，追问深度最多 2 层；"
+            "2) 不得重复任何已问问题，也不得换同义词、改写句式或缩小/扩大范围重问；"
+            "3) 不需要凑够问题数，没有新的必要问题时必须选择 finish；"
+            "4) 候选人最新回答已经充分时优先切换初始问题或结束，不得为了追问而追问；"
+            "5) 不得询问敏感属性或简历/回答中不存在的事实。\n"
+            "只输出 JSON 对象，字段为："
+            "action，取值 followup|initial|finish；"
+            "initial_question_id，仅 initial 时填写；"
+            "question，仅 followup 或 initial 时填写，必须是单个中文问题；"
+            "summary，仅 finish 时填写，2 至 3 句话，不得包含任何问题；"
+            "reason，不超过 120 字。"
+        )
+        try:
+            async with llm_client(settings.llm_timeout_seconds) as client:
+                response = await client.post(
+                    f"{settings.llm_base_url.rstrip('/')}/chat/completions",
+                    headers={"Authorization": f"Bearer {settings.llm_api_key}"},
+                    json={
+                        "model": settings.llm_model,
+                        "temperature": 0,
+                        "response_format": {"type": "json_object"},
+                        "messages": [
+                            {"role": "system", "content": prompt},
+                            {
+                                "role": "user",
+                                "content": json.dumps(
+                                    context,
+                                    ensure_ascii=False,
+                                    default=str,
+                                )[:30000],
+                            },
+                        ],
+                    },
+                )
+                response.raise_for_status()
+        except httpx.TimeoutException as exc:
+            raise TTCError("TTC-5001", "面试对话规划模型超时", 504) from exc
+        except httpx.HTTPError as exc:
+            raise TTCError("TTC-5004", "面试对话规划模型不可用", 503) from exc
+        try:
+            data = json.loads(response.json()["choices"][0]["message"]["content"])
+            if not isinstance(data, dict):
+                raise ValueError("turn plan is not an object")
+        except (KeyError, IndexError, ValueError, TypeError) as exc:
+            raise TTCError("TTC-5002", "面试对话规划模型输出不符合契约", 502) from exc
+        return data
+
     async def assess_interview_capability(
         self,
         plan: dict,

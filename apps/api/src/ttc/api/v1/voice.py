@@ -36,11 +36,13 @@ from ttc.domains.interview.conduct import (
     interviewer_announces_conduct_termination,
     normalize_conduct,
 )
+from ttc.domains.interview.markdown_report import render_interview_markdown
 from ttc.domains.interview.plan import (
     build_plan,
     merge_custom_questions,
     parse_plan,
     plan_from_db,
+    plan_next_directed_turn,
     session_instructions,
 )
 
@@ -305,6 +307,28 @@ def _pcm16_level(audio: str) -> float:
     return math.sqrt(total / max(1, count))
 
 
+def response_text(payload: dict) -> str:
+    """Extract assistant text across Realtime API event-version variants."""
+    for key in ("transcript", "text", "delta"):
+        value = payload.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    response = payload.get("response")
+    if not isinstance(response, dict):
+        return ""
+    for item in response.get("output", []) if isinstance(response.get("output"), list) else []:
+        if not isinstance(item, dict):
+            continue
+        for content in item.get("content", []) if isinstance(item.get("content"), list) else []:
+            if not isinstance(content, dict):
+                continue
+            for key in ("transcript", "text"):
+                value = content.get(key)
+                if isinstance(value, str) and value.strip():
+                    return value.strip()
+    return ""
+
+
 class LiveInterviewRoom:
     """Single-process audio room shared by the candidate and an HR observer."""
 
@@ -316,11 +340,21 @@ class LiveInterviewRoom:
         self.model = "unconfigured"
         self.voice = ""
         self.instructions = ""
+        self.plan: dict = {}
         self.max_seconds = 1200
         self.hr_control = False
         self.hr_mic_open = False
         self.interview_paused = False
         self.question_ledger = question_guard.QuestionLedger()
+        self.awaiting_candidate_answer = False
+        self.response_purpose = "idle"
+        self.final_after_response = False
+        self.opening_attempts = 0
+        self.last_candidate_text = ""
+        self.pending_question = ""
+        self.pending_initial_id: str | None = None
+        self.pending_question_kind: str | None = None
+        self.next_turn_task: asyncio.Task | None = None
         self.last_voice_source = "candidate"
         self.last_voice_at = 0.0
         self.candidate_send_lock = asyncio.Lock()
@@ -387,12 +421,147 @@ class LiveInterviewRoom:
             extra,
         )
 
+    def configure_plan(self, plan: dict) -> None:
+        self.plan = plan if isinstance(plan, dict) else {}
+        self.question_ledger.configure_initial_questions(
+            self.plan.get("questions", [])
+        )
+
     async def refresh_question_guard(self) -> None:
         """Apply the updated ledger to VAD-created as well as explicit responses."""
         await self.send_upstream({
             "type": "session.update",
             "session": {"instructions": self.response_instructions()},
         })
+
+    async def send_question_response(
+        self,
+        instruction: str,
+        *,
+        purpose: str = "question",
+        final: bool = False,
+    ) -> None:
+        self.response_purpose = purpose
+        self.final_after_response = final
+        await self.send_upstream({
+            "type": "response.create",
+            "response": {
+                "instructions": self.response_instructions(instruction),
+            },
+        })
+
+    def prepare_directed_question(
+        self,
+        question: str,
+        *,
+        initial_id: str | None,
+        kind: str,
+    ) -> None:
+        self.pending_question = question.strip()[:240]
+        self.pending_initial_id = initial_id
+        self.pending_question_kind = kind
+
+    async def start_interview(self) -> None:
+        self.opening_attempts += 1
+        first = self.question_ledger.next_initial_question()
+        if first is None:
+            await self.send_final_summary()
+            return
+        self.prepare_directed_question(
+            first["text"],
+            initial_id=first["id"],
+            kind="initial",
+        )
+        await self.send_question_response(
+            "请用一句话开场说明这是初步沟通，不做录用决定。"
+            "随后只原样询问下面这一道初始问题，不要改写、不要补充、不要提出其他问题："
+            f"{first['text']}"
+        )
+
+    async def continue_interview(self) -> None:
+        if self.hr_control or self.interview_paused or self.upstream is None:
+            return
+        move = await plan_next_directed_turn(
+            self.plan,
+            self.question_ledger,
+            self.last_candidate_text,
+        )
+        if move["action"] == "finish":
+            await self.send_final_summary(summary=move.get("summary"))
+            return
+        question = str(move.get("question") or "").strip()
+        if not question:
+            await self.send_final_summary()
+            return
+        self.prepare_directed_question(
+            question,
+            initial_id=move.get("initial_question_id"),
+            kind=move["action"],
+        )
+        await self.send_question_response(
+            "只原样朗读下面这一道已经通过服务端校验的问题。"
+            "不要改写、不要补充、不要总结、不要提出任何其他问题："
+            f"{question}"
+        )
+
+    async def send_final_summary(self, summary: str | None = None) -> None:
+        if self.upstream is None:
+            return
+        final_summary = (
+            summary.strip()[:1200]
+            if isinstance(summary, str) and summary.strip()
+            else "感谢你的时间。本轮沟通到此结束，后续由 HR 结合本次回答和岗位要求进行人工复核。"
+        )
+        await self.send_question_response(
+            "只原样朗读下面这段最终总结，不要提出任何问题，不要邀请候选人继续回答，"
+            f"读完后结束通话：{final_summary}",
+            purpose="final",
+            final=True,
+        )
+
+    def repeat_last_question(self) -> str | None:
+        if not self.question_ledger.questions:
+            return None
+        self.response_purpose = "repeat"
+        self.final_after_response = False
+        return self.question_ledger.questions[-1]
+
+    def schedule_continuation(self) -> None:
+        if self.next_turn_task is not None and not self.next_turn_task.done():
+            self.next_turn_task.cancel()
+
+        async def run() -> None:
+            await asyncio.sleep(0.9)
+            await self.continue_interview()
+
+        self.next_turn_task = asyncio.create_task(run())
+
+    async def resolve_completed_response(self, transcript: str) -> str | None:
+        """Validate one completed AI response and decide whether the call ends."""
+        purpose = self.response_purpose
+        if purpose not in ("question", "repeat", "final"):
+            self.response_purpose = "idle"
+            if not self.interview_paused and not self.hr_control:
+                self.schedule_continuation()
+            return None
+        if purpose == "repeat":
+            self.awaiting_candidate_answer = True
+            self.response_purpose = "idle"
+            return None
+        if self.final_after_response:
+            self.response_purpose = "idle"
+            self.final_after_response = False
+            return "ai_completed"
+        if self.pending_question:
+            self.question_ledger.commit_response(self.pending_question)
+        else:
+            logger.warning(
+                "Directed question response completed without pending question: %s",
+                self.session_id,
+            )
+        self.awaiting_candidate_answer = True
+        self.response_purpose = "idle"
+        return None
 
     async def control_state(self) -> None:
         await self.broadcast({
@@ -408,6 +577,7 @@ class LiveInterviewRoom:
             await self.control_state()
             return
         self.hr_control = True
+        self.response_purpose = "control"
         await self.send_upstream({"type": "response.cancel"})
         turn_detection = dict(qwen.TURN_DETECTION)
         turn_detection["create_response"] = False
@@ -424,7 +594,7 @@ class LiveInterviewRoom:
         self.hr_mic_open = False
         self.hr_control = False
         turn_detection = dict(qwen.TURN_DETECTION)
-        turn_detection["create_response"] = not self.interview_paused
+        turn_detection["create_response"] = False
         await self.send_upstream({
             "type": "session.update",
             "session": {"turn_detection": turn_detection},
@@ -439,15 +609,7 @@ class LiveInterviewRoom:
         if self.hr_control or self.interview_paused or self.upstream is None:
             return
         try:
-            await self.send_upstream({
-                "type": "response.create",
-                "response": {
-                    "instructions": self.response_instructions(
-                        "HR 与候选人的直接沟通已经结束。请基于刚才完整记录的双向对话，"
-                        "承接已有逻辑和未解决问题继续深入追问；不要重复已经确认的内容。"
-                    )
-                },
-            })
+            await self.continue_interview()
         except Exception:
             pass
 
@@ -456,6 +618,7 @@ class LiveInterviewRoom:
             await self.control_state()
             return
         self.interview_paused = True
+        self.response_purpose = "control"
         await self.send_upstream({"type": "response.cancel"})
         turn_detection = dict(qwen.TURN_DETECTION)
         turn_detection["create_response"] = False
@@ -464,41 +627,30 @@ class LiveInterviewRoom:
             "session": {"turn_detection": turn_detection},
         })
         await self.control_state()
-        await self.send_upstream({
-            "type": "response.create",
-            "response": {
-                "instructions": (
-                    "请原样朗读下面这句话，不要提问，不要补充，不要继续面试："
-                    "面试流程被HR暂停，请等待面试流程恢复进行。"
-                )
-            },
-        })
+        await self.send_question_response(
+            "请原样朗读下面这句话，不要提问，不要补充，不要继续面试："
+            "面试流程被HR暂停，请等待面试流程恢复进行。",
+            purpose="control",
+        )
 
     async def resume_interview(self) -> None:
         if not self.interview_paused:
             await self.control_state()
             return
         self.interview_paused = False
+        self.response_purpose = "control"
         turn_detection = dict(qwen.TURN_DETECTION)
-        turn_detection["create_response"] = True
+        turn_detection["create_response"] = False
         await self.send_upstream({
             "type": "session.update",
             "session": {"turn_detection": turn_detection},
         })
         await self.control_state()
-        continuation = (
-            ""
-            if self.hr_control
-            else "\n随后根据完整对话上下文继续之前尚未完成的面试，不要重新开始。"
+        await self.send_question_response(
+            "请只原样朗读：面试流程已恢复，可以继续进行交流。"
+            "本轮不要提问，也不要总结，读出后停止。",
+            purpose="control",
         )
-        await self.send_upstream({
-            "type": "response.create",
-            "response": {
-                "instructions": self.response_instructions(
-                    "请先原样朗读：面试流程已恢复，可以继续进行交流。" + continuation
-                )
-            },
-        })
 
 
 ROOMS: dict[UUID, LiveInterviewRoom] = {}
@@ -565,6 +717,27 @@ async def persist_conduct_termination(session_id: UUID, live_turns: list[dict]) 
             "  AND resource_id = :id AND status IN ('queued', 'running')"
             ")"
         ), {"task": uuid7(), "id": session_id})
+        await session.commit()
+
+
+def live_turn_inputs(live_turns: list[dict]) -> list[TurnInput]:
+    """Convert server-observed live turns into stable persisted turn indexes."""
+    return [
+        TurnInput(index=index, role=turn["role"], text=turn["text"])
+        for index, turn in enumerate(live_turns[:200])
+        if turn.get("role") in ("interviewer", "candidate", "hr")
+        and isinstance(turn.get("text"), str)
+        and turn["text"].strip()
+    ]
+
+
+async def persist_live_transcript(session_id: UUID, live_turns: list[dict]) -> None:
+    """Persist every completed live turn before a normal call is finalized."""
+    turns = live_turn_inputs(live_turns)
+    if not turns:
+        return
+    async for session in get_session():
+        await save_turns(session, session_id, turns)
         await session.commit()
 
 
@@ -649,6 +822,7 @@ async def realtime_relay(websocket: WebSocket, session_id: UUID):
     room.model = model
     room.voice = voice
     room.instructions = instructions
+    room.configure_plan(plan_from_db(plan))
     room.max_seconds = max_seconds
     room.interview_paused = initially_paused
 
@@ -726,22 +900,19 @@ async def realtime_relay(websocket: WebSocket, session_id: UUID):
                         })
                         if room.hr_control and level < HR_AUDIO_ACTIVITY_THRESHOLD:
                             continue
-                # 上游只认 response.create 里自带的 instructions：握手时
-                # session.update 的 instructions 不会让开场响应生效，缺了它
-                # 直接回 "Cannot create response without input, history, or
-                # instructions"。面试计划不下发浏览器，因此在这里补。
                 if payload.get("type") == "response.create":
                     if room.hr_control:
                         continue
-                    response = payload.get("response")
-                    response = dict(response) if isinstance(response, dict) else {}
-                    response["instructions"] = room.response_instructions()
-                    payload["response"] = response
-                    raw = json.dumps(payload, ensure_ascii=False)
+                    if not room.question_ledger.questions and room.response_purpose == "idle":
+                        await room.start_interview()
+                    # 后续轮次只能由服务端在候选人回答完成后创建。浏览器的
+                    # 空闲兜底 response.create 不允许绕过问题账本和追问预算。
+                    continue
                 await room.send_upstream(raw)
 
         async def upstream_to_client():
             nonlocal last_candidate_text
+            end_after_response = False
             async for message in upstream:
                 try:
                     payload = json.loads(message)
@@ -758,6 +929,19 @@ async def realtime_relay(websocket: WebSocket, session_id: UUID):
                         role = "hr" if speaker == "hr" else "candidate"
                         if role == "candidate":
                             last_candidate_text = transcript
+                            room.last_candidate_text = transcript
+                            if question_guard.asks_to_repeat(transcript):
+                                previous = room.repeat_last_question()
+                                if previous:
+                                    await room.send_question_response(
+                                        "候选人明确请求重复上一题。请只原样重复下面问题一次，"
+                                        "不要改写、不要追问、不要补充其他问题："
+                                        f"{previous}",
+                                        purpose="repeat",
+                                    )
+                            elif room.awaiting_candidate_answer:
+                                room.awaiting_candidate_answer = False
+                                room.schedule_continuation()
                         item_id = payload.get("item_id") or len(live_turns)
                         upsert_live_turn(f"{role}:{item_id}", role, transcript)
                         if role == "candidate" and has_live_candidate_violation(transcript):
@@ -768,6 +952,8 @@ async def realtime_relay(websocket: WebSocket, session_id: UUID):
                 elif event_type in (
                     "response.audio_transcript.delta",
                     "response.text.delta",
+                    "response.output_audio_transcript.delta",
+                    "response.output_text.delta",
                 ):
                     response_key = str(
                         payload.get("response_id")
@@ -776,7 +962,7 @@ async def realtime_relay(websocket: WebSocket, session_id: UUID):
                     )
                     stream_mode = (
                         "audio"
-                        if event_type == "response.audio_transcript.delta"
+                        if event_type.endswith("audio_transcript.delta")
                         else "text"
                     )
                     existing_mode = interviewer_stream_modes.get(response_key)
@@ -801,18 +987,19 @@ async def realtime_relay(websocket: WebSocket, session_id: UUID):
                 elif event_type in (
                     "response.audio_transcript.done",
                     "response.text.done",
+                    "response.output_audio_transcript.done",
+                    "response.output_text.done",
                 ):
                     response_key = str(
                         payload.get("response_id")
                         or payload.get("item_id")
                         or "current"
                     )
-                    transcript = str(payload.get("transcript") or "").strip()
+                    transcript = response_text(payload)
                     if transcript:
                         upsert_live_turn(
                             f"interviewer:{response_key}", "interviewer", transcript
                         )
-                        room.question_ledger.add(transcript)
                         if (
                             last_candidate_text
                             and interviewer_announces_conduct_termination(transcript)
@@ -825,11 +1012,14 @@ async def realtime_relay(websocket: WebSocket, session_id: UUID):
                         or "current"
                     )
                     index = live_turn_index.get(f"interviewer:{response_key}")
-                    if index is not None:
-                        room.question_ledger.add(live_turns[index]["text"])
-                    # VAD can create the next response without a browser
-                    # response.create event, so update the live session too.
-                    await room.refresh_question_guard()
+                    transcript = (
+                        live_turns[index]["text"]
+                        if index is not None
+                        else response_text(payload)
+                    )
+                    resolved = await room.resolve_completed_response(transcript)
+                    if resolved == "ai_completed":
+                        end_after_response = True
                 if RELAY_TRACE:
                     if any(f'"type":"{skip}"' in message for skip in TRACE_SKIP):
                         logger.info("relay %s upstream audio chunk %d bytes",
@@ -841,6 +1031,8 @@ async def realtime_relay(websocket: WebSocket, session_id: UUID):
                 await room.send_hr(outbound)
                 if event_type == "response.done" and conduct_signal.is_set():
                     return "conduct_violation"
+                if end_after_response:
+                    return "ai_completed"
             return "upstream_gone"
 
         async def watch():
@@ -898,6 +1090,8 @@ async def realtime_relay(websocket: WebSocket, session_id: UUID):
                     result = task.result()
                     if result == "conduct_violation":
                         reason = "conduct_violation"
+                    elif result == "ai_completed":
+                        reason = "completed"
                     elif result == "client_gone":
                         reason = "candidate_end"
                     else:
@@ -917,6 +1111,9 @@ async def realtime_relay(websocket: WebSocket, session_id: UUID):
                 task.cancel()
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
+        if room.next_turn_task is not None and not room.next_turn_task.done():
+            room.next_turn_task.cancel()
+            await asyncio.gather(room.next_turn_task, return_exceptions=True)
         try:
             await upstream.close()
         except Exception:
@@ -932,6 +1129,14 @@ async def realtime_relay(websocket: WebSocket, session_id: UUID):
                 "message": "检测到严重不当言行，通话已由系统终止并记录。",
             })
         else:
+            if reason != "revoked":
+                try:
+                    await persist_live_transcript(session_id, live_turns)
+                except Exception:
+                    logger.exception(
+                        "Failed to persist live transcript for %s",
+                        session_id,
+                    )
             await room.broadcast({
                 "type": "session.terminated",
                 "reason": reason,
@@ -1222,12 +1427,101 @@ def legacy_capability() -> dict:
     return result
 
 
+async def generate_interview_markdown(
+    session: AsyncSession,
+    session_id: UUID,
+    *,
+    force: bool = False,
+) -> dict:
+    """Render and persist the portable Markdown report for one interview."""
+    row = (await session.execute(text(
+        "SELECT r.id AS report_id, r.status AS report_status, r.summary, "
+        "r.dimensions, r.quotes, r.crosscheck, r.followups, r.model_version, "
+        "r.conduct_status, r.conduct_score, r.conduct_veto, r.conduct_json, "
+        "r.conduct_model_version, r.capability_status, r.capability_score, "
+        "r.capability_json, r.capability_model_version, r.markdown_content, "
+        "r.markdown_hash, r.markdown_generated_at, "
+        "s.id AS session_id, s.status AS session_status, s.scenario, s.provider, "
+        "s.model, s.created_at, s.started_at, s.ended_at, s.end_reason, "
+        "s.max_seconds, s.plan_json, "
+        "c.id AS candidate_id, c.display_name AS candidate_name, "
+        "j.id AS job_id, j.title AS job_title "
+        "FROM call_report r "
+        "JOIN voice_session s ON s.id = r.session_id "
+        "JOIN candidate c ON c.id = s.candidate_id "
+        "LEFT JOIN job j ON j.id = s.job_id "
+        "WHERE r.session_id = :id AND c.tenant_id IS NOT NULL"
+    ), {"id": session_id})).mappings().one_or_none()
+    if row is None:
+        raise TTCError("TTC-2001", "报告尚未生成", 404)
+    if row["markdown_content"] and not force:
+        return {
+            "markdown_ready": True,
+            "markdown_generated_at": row["markdown_generated_at"],
+            "markdown_sha256": row["markdown_hash"],
+        }
+    turns = (await session.execute(text(
+        "SELECT id, turn_index, role::text AS role, text, question_id, started_at "
+        "FROM voice_turn WHERE session_id = :id ORDER BY turn_index"
+    ), {"id": session_id})).mappings().all()
+    report = {
+        "id": row["report_id"],
+        "status": row["report_status"],
+        "summary": row["summary"] or {},
+        "dimensions": row["dimensions"] or [],
+        "quotes": row["quotes"] or [],
+        "crosscheck": row["crosscheck"] or {},
+        "followups": row["followups"] or [],
+        "model_version": row["model_version"],
+        "conduct_status": row["conduct_status"],
+        "conduct_score": row["conduct_score"],
+        "conduct_veto": row["conduct_veto"],
+        "conduct": row["conduct_json"] or legacy_conduct(),
+        "conduct_model_version": row["conduct_model_version"],
+        "capability_status": row["capability_status"],
+        "capability_score": row["capability_score"],
+        "capability": row["capability_json"] or legacy_capability(),
+        "capability_model_version": row["capability_model_version"],
+    }
+    generated_at = datetime.now(UTC)
+    markdown, digest = render_interview_markdown(
+        session={
+            "id": row["session_id"],
+            "status": row["session_status"],
+            "scenario": row["scenario"],
+            "provider": row["provider"],
+            "model": row["model"],
+            "created_at": row["created_at"],
+            "started_at": row["started_at"],
+            "ended_at": row["ended_at"],
+            "end_reason": row["end_reason"],
+            "max_seconds": row["max_seconds"],
+        },
+        candidate={"id": row["candidate_id"], "display_name": row["candidate_name"]},
+        job={"id": row["job_id"], "title": row["job_title"]},
+        plan=plan_from_db(row["plan_json"]),
+        report=report,
+        turns=[dict(turn) for turn in turns],
+        generated_at=generated_at,
+    )
+    await session.execute(text(
+        "UPDATE call_report SET markdown_content = :content, markdown_hash = :hash, "
+        "markdown_generated_at = :generated, updated_at = now() WHERE session_id = :id"
+    ), {"content": markdown, "hash": digest, "generated": generated_at, "id": session_id})
+    return {
+        "markdown_ready": True,
+        "markdown_generated_at": generated_at,
+        "markdown_sha256": digest,
+    }
+
+
 async def create_transcript_report(session: AsyncSession, session_id: UUID) -> UUID:
     existing = (await session.execute(text(
-        "SELECT id FROM call_report WHERE session_id = :id"
-    ), {"id": session_id})).scalar_one_or_none()
+        "SELECT id, markdown_content FROM call_report WHERE session_id = :id"
+    ), {"id": session_id})).mappings().one_or_none()
     if existing is not None:
-        return existing
+        await generate_interview_markdown(session, session_id)
+        return existing["id"]
     turns = (await session.execute(text(
         "SELECT id, turn_index, role, text, question_id FROM voice_turn "
         "WHERE session_id = :id ORDER BY turn_index"
@@ -1272,9 +1566,11 @@ async def create_transcript_report(session: AsyncSession, session_id: UUID) -> U
         "capability_model_version": capability_model_version,
         "crosscheck": json.dumps({"consistent": [], "supplemented": [],
                                   "inconsistent": [], "unverified": []})})
-    return inserted.scalar_one_or_none() or (await session.execute(text(
+    report_id = inserted.scalar_one_or_none() or (await session.execute(text(
         "SELECT id FROM call_report WHERE session_id = :id"
     ), {"id": session_id})).scalar_one()
+    await generate_interview_markdown(session, session_id)
+    return report_id
 
 
 @router.post("/voice-sessions/{session_id}/finish", status_code=202)
@@ -1297,7 +1593,12 @@ async def finish_session(session_id: UUID, body: FinishInput,
             await enqueue_hangup(session, user.tenant_id, session_id, row["provider_call_id"])
     report_id = await create_transcript_report(session, session_id)
     await session.commit()
-    return {"report_id": report_id, "status": "ready", "completed_at": datetime.now(UTC)}
+    return {
+        "report_id": report_id,
+        "status": "ready",
+        "markdown_ready": True,
+        "completed_at": datetime.now(UTC),
+    }
 
 
 @router.get("/voice-sessions/{session_id}/turns")
@@ -1319,7 +1620,8 @@ async def report(session_id: UUID, user: Principal = Depends(hr),
     result = (await session.execute(text(
         "SELECT status, summary, dimensions, quotes, crosscheck, followups, model_version, "
         "conduct_status, conduct_score, conduct_veto, conduct_json, conduct_model_version, "
-        "capability_status, capability_score, capability_json, capability_model_version "
+        "capability_status, capability_score, capability_json, capability_model_version, "
+        "markdown_generated_at, markdown_hash "
         "FROM call_report WHERE session_id = :id"
     ), {"id": session_id})).mappings().one_or_none()
     if result is None:
@@ -1327,9 +1629,45 @@ async def report(session_id: UUID, user: Principal = Depends(hr),
     payload = dict(result)
     payload["conduct"] = payload.pop("conduct_json") or legacy_conduct()
     payload["capability"] = payload.pop("capability_json") or legacy_capability()
+    payload["markdown_ready"] = bool(payload.get("markdown_generated_at"))
     return {"session": {"id": session_id, "scenario": row["scenario"],
                         "status": row["status"], "provider": row["provider"]},
             **payload}
+
+
+@router.get("/voice-sessions/{session_id}/report/markdown")
+async def download_report_markdown(
+    session_id: UUID,
+    user: Principal = Depends(hr),
+    session: AsyncSession = Depends(get_session),
+):
+    """Download the HR-only Markdown report for a completed interview."""
+    await require_session(session, user, session_id)
+    markdown = (await session.execute(text(
+        "SELECT markdown_content FROM call_report WHERE session_id = :id"
+    ), {"id": session_id})).scalar_one_or_none()
+    if markdown is None:
+        exists = (await session.execute(text(
+            "SELECT 1 FROM call_report WHERE session_id = :id"
+        ), {"id": session_id})).scalar_one_or_none()
+        if exists is None:
+            raise TTCError("TTC-2001", "报告尚未生成", 404)
+        await generate_interview_markdown(session, session_id)
+        await session.commit()
+        markdown = (await session.execute(text(
+            "SELECT markdown_content FROM call_report WHERE session_id = :id"
+        ), {"id": session_id})).scalar_one_or_none()
+    if not markdown:
+        raise TTCError("TTC-5004", "Markdown 报告不可用", 503)
+    return Response(
+        content=markdown.encode("utf-8"),
+        media_type="text/markdown; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="interview-report-{session_id}.md"',
+            "Cache-Control": "private, no-store",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
 
 
 @router.get("/voice-sessions/{session_id}/summary")
@@ -1340,7 +1678,8 @@ async def call_summary(session_id: UUID, user: Principal = Depends(hr),
     result = (await session.execute(text(
         "SELECT status, summary, followups, model_version, updated_at, conduct_json, "
         "conduct_status, conduct_score, conduct_veto, conduct_model_version, "
-        "capability_status, capability_score, capability_json, capability_model_version "
+        "capability_status, capability_score, capability_json, capability_model_version, "
+        "markdown_generated_at, markdown_hash "
         "FROM call_report WHERE session_id = :id"
     ), {"id": session_id})).mappings().one_or_none()
     if result is None:
@@ -1366,7 +1705,10 @@ async def call_summary(session_id: UUID, user: Principal = Depends(hr),
             "capability": result["capability_json"] or legacy_capability(),
             "capability_status": result["capability_status"],
             "capability_score": result["capability_score"],
-            "capability_model_version": result["capability_model_version"]}
+            "capability_model_version": result["capability_model_version"],
+            "markdown_ready": bool(result["markdown_generated_at"]),
+            "markdown_generated_at": result["markdown_generated_at"],
+            "markdown_sha256": result["markdown_hash"]}
 
 
 @router.post("/voice-sessions/{session_id}/report/regenerate", status_code=202)
@@ -1431,5 +1773,6 @@ async def regenerate_report(session_id: UUID, user: Principal = Depends(hr),
         "capability_model_version": capability_model_version,
         "crosscheck": json.dumps({"consistent": [], "supplemented": [],
                                   "inconsistent": [], "unverified": []})})
+    await generate_interview_markdown(session, session_id, force=True)
     await session.commit()
     return {"session_id": session_id, "status": "ready", "model_version": model_version}

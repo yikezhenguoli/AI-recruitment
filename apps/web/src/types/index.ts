@@ -343,6 +343,9 @@ export interface CallReport {
   capability_status: CapabilityStatus
   capability_score: number | null
   capability_model_version: string | null
+  markdown_ready: boolean
+  markdown_generated_at: string | null
+  markdown_sha256: string | null
 }
 
 /** HR 端沟通纪要：/voice-sessions/{id}/summary。 */
@@ -368,6 +371,9 @@ export interface VoiceSummary {
   capability_status: CapabilityStatus
   capability_score: number | null
   capability_model_version: string | null
+  markdown_ready: boolean
+  markdown_generated_at: string | null
+  markdown_sha256: string | null
 }
 
 export interface DataSource {

@@ -46,7 +46,7 @@ const NAV_GROUPS: {
     items: [
       { label: '语音会话', path: '/sessions', icon: Mic },
       { label: '团队与权限', path: '/team', icon: ShieldCheck, adminOnly: true },
-      { label: '管理后台', path: '/admin', icon: Settings },
+      { label: '管理后台', path: '/admin', icon: Settings, adminOnly: true },
     ],
   },
 ]
@@ -141,6 +141,16 @@ export function AppLayout() {
     query.addListener(sync)
     return () => query.removeListener(sync)
   }, [])
+
+  useEffect(() => {
+    if (
+      user &&
+      user.role !== 'admin' &&
+      (location.pathname === '/admin' || location.pathname === '/team')
+    ) {
+      navigate('/', { replace: true })
+    }
+  }, [location.pathname, navigate, user])
 
   useEffect(() => {
     const sidebar = sidebarRef.current as (HTMLElement & { inert: boolean }) | null

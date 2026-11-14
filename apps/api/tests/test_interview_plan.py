@@ -3,6 +3,7 @@ import json
 
 import httpx
 
+from ttc.adapters import qwen_realtime
 from ttc.adapters.llm import LLMAdapter
 from ttc.core.config import get_settings
 from ttc.core.errors import TTCError
@@ -13,10 +14,13 @@ from ttc.domains.interview.plan import (
     merge_custom_questions,
     normalize_plan,
     plan_from_db,
+    plan_next_directed_turn,
     session_instructions,
 )
 from ttc.domains.interview.question_guard import (
     QuestionLedger,
+    asks_to_repeat,
+    extract_questions,
     questions_equivalent,
     response_instructions,
 )
@@ -85,6 +89,14 @@ def test_session_instructions_carry_profile_and_focus():
     assert "敏感信息" in text
     assert "相关言行将被如实记录" in text
     assert "不得据此推断故意不配合" in text
+    assert "追问深度最多 2 层" in text
+    assert "不得为了凑够数量提问" in text
+    assert "不得等待 HR 手动结束" in text
+
+
+def test_server_controls_next_response_instead_of_vad():
+    assert qwen_realtime.TURN_DETECTION["create_response"] is False
+    assert qwen_realtime.TURN_DETECTION["interrupt_response"] is True
 
 
 def test_session_instructions_include_job_context_and_followup_budget():
@@ -115,7 +127,8 @@ def test_session_instructions_include_job_context_and_followup_budget():
     assert "岗位核心职责：服务架构设计；稳定性建设" in text
     assert "岗位原文快照" in text
     assert "岗位关联：高并发后端服务" in text
-    assert f"最多追问 {plan_module.MAX_FOLLOWUPS_PER_TOPIC} 层" in text
+    assert f"最多追问 {plan_module.MAX_FOLLOWUPS_PER_TOPIC} 个" in text
+    assert f"追问深度最多 {plan_module.MAX_FOLLOWUPS_PER_TOPIC} 层" in text
     assert f"合计不超过 {plan_module.MAX_TOTAL_QUESTIONS} 个" in text
 
 
@@ -461,6 +474,124 @@ def test_question_ledger_tracks_semantic_repeats_and_builds_guard_instructions()
     assert "订单系统遇到困难时你怎么处理？" in text
     assert "换同义词、改写句式" in text
     assert text.index("基础面试指令。") < text.index("问题去重硬约束")
+
+
+def test_question_ledger_enforces_two_followups_per_initial_question():
+    ledger = QuestionLedger(initial_questions=[
+        {"id": "q1", "text": "请介绍一个订单系统项目。"},
+        {"id": "q2", "text": "你如何定位线上性能问题？"},
+    ])
+
+    initial = ledger.commit_response("请介绍一个订单系统项目。")
+    assert initial["kind"] == "initial"
+    assert ledger.current_initial_id == "q1"
+    assert ledger.can_ask_followup()
+
+    first = ledger.commit_response("这个项目中你亲自负责哪一部分？")
+    second = ledger.commit_response("刚才那部分最终产生了什么可验证结果？")
+    assert first["kind"] == "followup" and first["depth"] == 1
+    assert second["kind"] == "followup" and second["depth"] == 2
+    assert ledger.can_ask_followup() is False
+    assert ledger.inspect_response("为什么选择这个技术方案？")["kind"] == "followup_limit"
+
+    next_initial = ledger.commit_response("你如何定位线上性能问题？")
+    assert next_initial["kind"] == "initial"
+    assert ledger.current_initial_id == "q2"
+    assert ledger.current_followups == 0
+
+
+def test_question_ledger_rejects_repeats_and_detects_no_question_end():
+    ledger = QuestionLedger(initial_questions=[
+        {"id": "q1", "text": "请介绍一个订单系统项目。"},
+    ])
+    ledger.commit_response("请介绍一个订单系统项目。")
+
+    repeated = ledger.inspect_response("订单系统那个项目你能具体介绍一下吗？")
+    assert repeated["kind"] == "duplicate"
+    assert ledger.inspect_response("感谢你的时间，今天先交流到这里。")["kind"] == "no_question"
+
+
+def test_only_explicit_repeat_requests_are_recognized():
+    assert asks_to_repeat("不好意思，刚才没听清，请再说一遍。")
+    assert not asks_to_repeat("我想了解一下这个岗位的团队情况。")
+
+
+def test_question_extraction_rejects_multi_question_responses():
+    questions = extract_questions("你负责哪一部分？\n这个方案有什么结果？")
+    assert len(questions) == 2
+    ledger = QuestionLedger(initial_questions=[
+        {"id": "q1", "text": "请介绍一个订单系统项目。"},
+    ])
+    ledger.commit_response("请介绍一个订单系统项目。")
+    assert ledger.inspect_response(
+        "你负责哪一部分？\n这个方案有什么结果？"
+    )["kind"] == "multiple_questions"
+
+
+def test_directed_planner_accepts_one_new_followup(monkeypatch):
+    async def fake_plan(self, context):
+        assert context["current_followups"] == 0
+        return {
+            "action": "followup",
+            "question": "你亲自负责了其中哪一部分？",
+            "reason": "补充个人贡献",
+        }
+
+    monkeypatch.setattr(LLMAdapter, "plan_interview_turn", fake_plan)
+    ledger = QuestionLedger(initial_questions=[
+        {"id": "q1", "text": "请介绍一个订单系统项目。"},
+        {"id": "q2", "text": "你如何定位线上性能问题？"},
+    ])
+    ledger.commit_response("请介绍一个订单系统项目。")
+
+    move = asyncio.run(plan_next_directed_turn(
+        {"questions": ledger.initial_questions},
+        ledger,
+        "我负责订单服务。",
+    ))
+
+    assert move["action"] == "followup"
+    assert move["question"] == "你亲自负责了其中哪一部分？"
+
+
+def test_directed_planner_rejects_duplicate_and_uses_safe_initial(monkeypatch):
+    async def fake_plan(self, context):
+        return {
+            "action": "followup",
+            "question": "订单系统那个项目你能具体介绍一下吗？",
+        }
+
+    monkeypatch.setattr(LLMAdapter, "plan_interview_turn", fake_plan)
+    ledger = QuestionLedger(initial_questions=[
+        {"id": "q1", "text": "请介绍一个订单系统项目。"},
+        {"id": "q2", "text": "你如何定位线上性能问题？"},
+    ])
+    ledger.commit_response("请介绍一个订单系统项目。")
+
+    move = asyncio.run(plan_next_directed_turn({}, ledger, "我负责订单服务。"))
+
+    assert move["action"] == "initial"
+    assert move["question"] == "你如何定位线上性能问题？"
+
+
+def test_directed_planner_ends_when_no_safe_question_remains(monkeypatch):
+    async def fake_plan(self, context):
+        return {"action": "finish", "summary": "感谢时间，沟通到此结束。"}
+
+    monkeypatch.setattr(LLMAdapter, "plan_interview_turn", fake_plan)
+    ledger = QuestionLedger(initial_questions=[
+        {"id": "q1", "text": "请介绍一个订单系统项目。"},
+    ])
+    ledger.commit_response("请介绍一个订单系统项目。")
+    ledger.commit_response("这个项目中你亲自负责哪一部分？")
+    ledger.commit_response("刚才那部分最终产生了什么可验证结果？")
+
+    move = asyncio.run(plan_next_directed_turn({}, ledger, "我负责交付。"))
+
+    assert move == {
+        "action": "finish",
+        "summary": "感谢时间，沟通到此结束。",
+    }
 
 
 def test_plan_from_db_parses_jsonb_string():
