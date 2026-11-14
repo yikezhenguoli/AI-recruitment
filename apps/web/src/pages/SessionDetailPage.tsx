@@ -4,29 +4,23 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   AlertCircle,
   Bot,
+  Clock,
   FileText,
   Mic,
   MicOff,
   PhoneOff,
   PlayCircle,
+  Radio,
   RefreshCw,
   UserRound,
 } from 'lucide-react'
 import { getCandidate } from '../api/candidates'
 import { getVoiceReport, getVoiceSession, listVoiceTurns, regenerateVoiceReport } from '../api/voice'
+import { PremiumWaveform } from '../components/visual/PremiumWaveform'
 import { useRealtimeInterview } from '../hooks/useRealtimeInterview'
 import { getApiErrorMessage, isApiNotFound } from '../lib/apiError'
-import { formatDateTime } from '../lib/format'
-import type { CallReport, VoiceSessionStatus } from '../types'
-
-const STATUS_LABEL: Record<VoiceSessionStatus, string> = {
-  created: '待接通',
-  connecting: '连接中',
-  live: '进行中',
-  ended: '已结束',
-  failed: '失败',
-  revoked: '授权撤回',
-}
+import { formatDateTime, VOICE_STATUS_LABELS } from '../lib/format'
+import type { CallReport } from '../types'
 
 function formatClock(seconds: number): string {
   const minutes = Math.floor(seconds / 60).toString().padStart(2, '0')
@@ -43,29 +37,41 @@ function ReportPanel({
   onRegenerate?: () => void
   regenerating?: boolean
 }) {
-  const qa = report.summary.qa ?? []
   return (
-    <div className="ttc-report-card">
-      <div className="ttc-mini-heading">
-        <FileText size={14} />
-        CALL REPORT
+    <article className="ttc-card ttc-report-card">
+      <div className="ttc-card-head">
+        <div>
+          <div className="ttc-mini-heading">
+            <FileText size={14} />
+            <span>CALL SUMMARY</span>
+          </div>
+          <h2>沟通纪要</h2>
+        </div>
+        {onRegenerate && (
+          <button
+            type="button"
+            className="ttc-btn ttc-btn-secondary ttc-btn-sm"
+            disabled={regenerating}
+            onClick={onRegenerate}
+          >
+            <RefreshCw size={14} />
+            {regenerating ? '生成中…' : '重新整理'}
+          </button>
+        )}
       </div>
-      <h2>通话纪要</h2>
+
       <div className="ttc-report-meta">
-        <span>状态：{report.summary.status === 'unassessed' ? '未做能力评分' : report.summary.status}</span>
-        <span>轮次：{report.summary.turn_count ?? 0}</span>
-        <span>模型：{report.model_version}</span>
+        <span>共 {report.summary.turn_count ?? 0} 轮发言</span>
+        <span>模型 {report.model_version}</span>
       </div>
 
-      {report.summary.overview && (
-        <p className="ttc-report-overview">{report.summary.overview}</p>
-      )}
+      {report.summary.overview && <p className="ttc-report-overview">{report.summary.overview}</p>}
 
-      {qa.length > 0 && (
+      {report.summary.qa && report.summary.qa.length > 0 && (
         <>
-          <h3 className="ttc-report-subhead">问答要点</h3>
+          <h3 className="ttc-report-subhead">问答整理</h3>
           <ul className="ttc-plain-list">
-            {qa.map((item) => (
+            {report.summary.qa.map((item) => (
               <li key={item.question}>
                 <strong>{item.question}</strong>
                 <br />
@@ -78,7 +84,7 @@ function ReportPanel({
 
       {report.followups.length > 0 && (
         <>
-          <h3 className="ttc-report-subhead">建议进一步确认</h3>
+          <h3 className="ttc-report-subhead">建议后续面试官确认</h3>
           <ul className="ttc-plain-list">
             {report.followups.map((item) => (
               <li key={item}>{item}</li>
@@ -88,39 +94,16 @@ function ReportPanel({
       )}
 
       {report.summary.limitations && report.summary.limitations.length > 0 && (
-        <ul className="ttc-plain-list ttc-report-limits">
-          {report.summary.limitations.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      )}
-
-      {report.quotes.length > 0 && (
         <>
-          <h3 className="ttc-report-subhead">候选人原话</h3>
-          <ul className="ttc-quote-list">
-            {report.quotes.map((quote) => (
-              <li key={quote.turn_id}>{quote.text}</li>
+          <h3 className="ttc-report-subhead">记录边界</h3>
+          <ul className="ttc-plain-list ttc-report-limits">
+            {report.summary.limitations.map((item) => (
+              <li key={item}>{item}</li>
             ))}
           </ul>
         </>
       )}
-
-      {report.model_version === 'transcript-v1' && report.summary.turn_count ? (
-        <button
-          type="button"
-          className="ttc-btn ttc-btn-secondary ttc-btn-sm"
-          disabled={regenerating}
-          onClick={onRegenerate}
-        >
-          {regenerating ? '生成纪要中…' : '用现有转写生成 AI 纪要'}
-        </button>
-      ) : null}
-
-      <p className="ttc-report-disclaimer">
-        纪要由模型按转写整理，不做录用建议；跨来源核验结果见候选人详情页。
-      </p>
-    </div>
+    </article>
   )
 }
 
@@ -167,7 +150,7 @@ export default function SessionDetailPage() {
       void queryClient.invalidateQueries({ queryKey: ['voiceSession', id] })
       void queryClient.invalidateQueries({ queryKey: ['voiceTurns', id] })
       void queryClient.invalidateQueries({ queryKey: ['voiceSessions'] })
-      window.setTimeout(() => void queryClient.invalidateQueries({ queryKey: ['voiceReport', id] }), 600)
+      void queryClient.invalidateQueries({ queryKey: ['voiceReport', id] })
     },
   })
 
@@ -182,14 +165,23 @@ export default function SessionDetailPage() {
   const persistedTurns = turnsQuery.data ?? []
   const showLiveTranscript = liveLines.length > 0
   const questions = session?.plan_json?.questions ?? []
+  const hasAcousticMotion = isLive && !interview.muted
 
-  if (sessionQuery.isError) {
+  if (sessionQuery.isLoading) {
+    return (
+      <div className="ttc-page">
+        <div className="ttc-card ttc-skeleton-card" />
+      </div>
+    )
+  }
+
+  if (sessionQuery.isError || !session) {
     return (
       <div className="ttc-page">
         <div className="ttc-error-panel">
           <AlertCircle size={18} />
           <div>
-            <strong>无法读取会话</strong>
+            <strong>无法打开语音会话</strong>
             <span>{getApiErrorMessage(sessionQuery.error)}</span>
           </div>
           <Link to="/sessions" className="ttc-btn ttc-btn-secondary ttc-btn-sm">
@@ -204,16 +196,14 @@ export default function SessionDetailPage() {
     <div className="ttc-page">
       <section className="ttc-page-head">
         <div>
-          <div className="hero-eyebrow">
-            <span className="hero-eyebrow-dot" />
-            SESSION
-            <span className="hero-eyebrow-line" />
-            <span>{session?.scenario?.toUpperCase() ?? 'SCREEN'}</span>
+          <div className="ttc-mini-heading">
+            <Radio size={14} />
+            <span>{session.scenario?.toUpperCase() ?? 'SCREEN'} · VOICE STAGE</span>
           </div>
           <h1>{candidateQuery.data?.display_name ?? '语音会话'}</h1>
           <p>
-            {session?.status ? STATUS_LABEL[session.status] : '加载中'} · 创建于{' '}
-            {formatDateTime(session?.created_at)}
+            {VOICE_STATUS_LABELS[session.status] ?? session.status} · 创建于{' '}
+            {formatDateTime(session.created_at)}
             {interview.relay ? ` · ${interview.relay.model}` : ''}
           </p>
         </div>
@@ -221,7 +211,7 @@ export default function SessionDetailPage() {
           <Link to="/sessions" className="ttc-btn ttc-btn-secondary">
             返回列表
           </Link>
-          {session?.status === 'created' && !isLive && (
+          {session.status === 'created' && !isLive && (
             <button type="button" className="ttc-btn ttc-btn-primary" onClick={interview.start}>
               <PlayCircle size={16} />
               开始面试
@@ -256,51 +246,75 @@ export default function SessionDetailPage() {
       </section>
 
       {interview.error && (
-        <div className="ttc-inline-error">
+        <div className="ttc-inline-error" role="alert">
           <AlertCircle size={16} />
           <span>{interview.error}</span>
         </div>
       )}
 
       {regenerate.isError && (
-        <div className="ttc-inline-error">
+        <div className="ttc-inline-error" role="alert">
           <AlertCircle size={16} />
-          <span>{getApiErrorMessage(regenerate.error, '纪要生成失败，请稍后重试。')}</span>
+          <span>{getApiErrorMessage(regenerate.error, '沟通纪要生成失败。')}</span>
         </div>
       )}
 
       <div className="ttc-session-grid">
         <article className="ttc-card ttc-transcript-card">
-          <div className="ttc-voice-panel-head">
+          <div className="ttc-card-head">
             <div>
               <div className="ttc-mini-heading">
                 <Mic size={14} />
-                LIVE TRANSCRIPT
+                <span>LIVE TRANSCRIPT</span>
               </div>
-              <h2>实时转写</h2>
+              <h2>实时声学舞台与对话转写</h2>
             </div>
             <span
               className={`ttc-voice-badge ${
                 interview.phase === 'live' ? 'ttc-voice-badge-ok' : 'ttc-voice-badge-muted'
               }`}
             >
-              {interview.phase === 'live' ? '实时' : STATUS_LABEL[session?.status ?? 'created']}
+              {interview.phase === 'live'
+                ? interview.muted
+                  ? '已静音'
+                  : '实时收音中'
+                : VOICE_STATUS_LABELS[session.status] ?? session.status}
             </span>
+          </div>
+
+          <div className={`ttc-acoustic-stage ${hasAcousticMotion ? 'is-active' : ''}`}>
+            <div className="ttc-acoustic-stage-meta">
+              <span className="ttc-acoustic-pill">
+                <Radio size={13} aria-hidden="true" />
+                {hasAcousticMotion
+                  ? '声学波形实时响应'
+                  : interview.muted
+                    ? '麦克风已静音 · 波形暂停'
+                    : isEnded
+                      ? '会话已结束 · 保留完整转写回放'
+                      : '待开启实时语音会话'}
+              </span>
+              <span className="ttc-muted">
+                {interview.relay?.model ?? session.provider} · 上限 {Math.round(session.max_seconds / 60)} 分钟
+              </span>
+            </div>
+            <PremiumWaveform
+              tone="subtle"
+              height={88}
+              motionOverride={hasAcousticMotion}
+              label="实时语音面接声学信号波形"
+            />
           </div>
 
           <div className="ttc-transcript-body" ref={transcriptRef}>
             {!showLiveTranscript && persistedTurns.length === 0 && (
-              <div className="ttc-voice-transcript-empty">
-                <span className="ttc-voice-transcript-icon">
-                  <Bot size={19} />
-                </span>
-                <strong>
-                  {session?.status === 'created' ? '等待开始' : '本次会话没有转写内容'}
-                </strong>
+              <div className="ttc-transcript-empty">
                 <p>
-                  {session?.status === 'created'
-                    ? '点击「开始面试」后，AI 面试官会先开口提问，你的回答会实时显示在这里。'
-                    : '实时语音服务没有返回任何转写文本。'}
+                  {session.status === 'created'
+                    ? '点击右上角「开始面试」，浏览器会请求麦克风权限并接入实时语音模型，AI 面试官会先开场白。'
+                    : isLive
+                      ? '正在等待双方首句语音转写…'
+                      : '实时语音服务没有返回任何转写文本。'}
                 </p>
               </div>
             )}
@@ -316,34 +330,39 @@ export default function SessionDetailPage() {
                 </div>
               ))}
 
-            {liveLines.map((line) => (
-              <div key={line.id} className={`ttc-transcript-line is-${line.role}`}>
-                <span className="ttc-transcript-who">
-                  {line.role === 'interviewer' ? <Bot size={14} /> : <UserRound size={14} />}
-                  {line.role === 'interviewer' ? 'AI 面试官' : line.role === 'candidate' ? '候选人' : '系统'}
-                </span>
-                <p className={line.pending ? 'is-pending' : ''}>{line.text}</p>
-              </div>
-            ))}
+            {showLiveTranscript &&
+              liveLines.map((line) => (
+                <div key={line.id} className={`ttc-transcript-line is-${line.role}`}>
+                  <span className="ttc-transcript-who">
+                    {line.role === 'interviewer' ? <Bot size={14} /> : <UserRound size={14} />}
+                    {line.role === 'interviewer' ? 'AI 面试官' : line.role === 'candidate' ? '候选人' : '系统'}
+                  </span>
+                  <p className={line.pending ? 'is-pending' : ''}>{line.text}</p>
+                </div>
+              ))}
           </div>
         </article>
 
-        <div className="ttc-session-side">
+        <aside className="ttc-session-side">
           <article className="ttc-card ttc-voice-panel">
             <div className="ttc-voice-panel-head">
               <div>
                 <div className="ttc-mini-heading">
                   <Bot size={14} />
-                  INTERVIEW PLAN
+                  <span>INTERVIEW PLAN</span>
                 </div>
-                <h2>面试问题</h2>
+                <h2>面试提问计划</h2>
               </div>
+              {questions.length > 0 && <span className="ttc-badge ttc-badge-blue">{questions.length} 题</span>}
             </div>
             <ol className="ttc-question-list">
-              {(questions.length > 0 ? questions : []).map((question) => (
-                <li key={question.id}>
-                  <span className="ttc-question-section">{question.section}</span>
-                  {question.text}
+              {questions.map((question, index) => (
+                <li key={question.id} className="ttc-question-item">
+                  <span className="ttc-question-num">{String(index + 1).padStart(2, '0')}</span>
+                  <div className="ttc-question-copy">
+                    <span className="ttc-question-section">{question.section}</span>
+                    <p>{question.text}</p>
+                  </div>
                 </li>
               ))}
             </ol>
@@ -355,41 +374,32 @@ export default function SessionDetailPage() {
               <div>
                 <div className="ttc-mini-heading">
                   <RefreshCw size={14} />
-                  SESSION STATE
+                  <span>SESSION STATE</span>
                 </div>
-                <h2>会话状态</h2>
+                <h2>实时连接信息</h2>
               </div>
             </div>
-            <div className="ttc-voice-meta">
-              <div className="ttc-voice-meta-row">
-                <span className="ttc-voice-meta-icon">
-                  <Mic size={15} />
-                </span>
-                <div className="ttc-voice-meta-copy">
-                  <strong>状态</strong>
-                  <span>{session?.status ?? '—'}</span>
-                </div>
-              </div>
+            <div className="ttc-voice-meta-list">
               <div className="ttc-voice-meta-row">
                 <span className="ttc-voice-meta-icon">
                   <Bot size={15} />
                 </span>
                 <div className="ttc-voice-meta-copy">
                   <strong>实时模型</strong>
-                  <span>{interview.relay?.model ?? session?.provider ?? '—'}</span>
+                  <span>{interview.relay?.model ?? session.provider ?? '—'}</span>
                 </div>
               </div>
               <div className="ttc-voice-meta-row">
                 <span className="ttc-voice-meta-icon">
-                  <PlayCircle size={15} />
+                  <Clock size={15} />
                 </span>
                 <div className="ttc-voice-meta-copy">
-                  <strong>时长上限</strong>
-                  <span>{formatClock(session?.max_seconds ?? 0)}</span>
+                  <strong>最长通话时长</strong>
+                  <span>{Math.round(session.max_seconds / 60)} 分钟</span>
                 </div>
               </div>
             </div>
-            {session?.end_reason && (
+            {session.end_reason && (
               <p className="ttc-muted">结束原因：{session.end_reason}</p>
             )}
           </article>
@@ -407,31 +417,29 @@ export default function SessionDetailPage() {
                   <div>
                     <div className="ttc-mini-heading">
                       <FileText size={14} />
-                      CALL REPORT
+                      <span>CALL SUMMARY</span>
                     </div>
-                    <h2>通话报告</h2>
+                    <h2>沟通纪要</h2>
                   </div>
                 </div>
                 <p className="ttc-muted">
-                  {reportQuery.isError
-                    ? isApiNotFound(reportQuery.error)
-                      ? '该会话没有生成通话报告：实时语音没有产生转写内容，或尚未结束。'
-                      : getApiErrorMessage(reportQuery.error, '报告尚未生成。')
-                    : '正在生成报告…'}
+                  {reportQuery.isError && !isApiNotFound(reportQuery.error)
+                    ? getApiErrorMessage(reportQuery.error, '沟通纪要暂时无法读取。')
+                    : '对话已完成，正在生成或尚未整理结构化纪要。'}
                 </p>
-                {reportQuery.isError && !isApiNotFound(reportQuery.error) && (
-                  <button
-                    type="button"
-                    className="ttc-btn ttc-btn-secondary ttc-btn-sm"
-                    onClick={() => void reportQuery.refetch()}
-                  >
-                    重新获取
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className="ttc-btn ttc-btn-secondary ttc-btn-sm"
+                  disabled={regenerate.isPending}
+                  onClick={() => regenerate.mutate()}
+                >
+                  <RefreshCw size={14} />
+                  {regenerate.isPending ? '整理中…' : '刷新 / 生成纪要'}
+                </button>
               </article>
             )
           )}
-        </div>
+        </aside>
       </div>
     </div>
   )
