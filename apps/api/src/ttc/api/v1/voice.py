@@ -1,10 +1,12 @@
 import asyncio
 import json
+import logging
+import os
 from datetime import UTC, datetime
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, Request, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, Query, Request, WebSocket
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy import text
@@ -22,11 +24,31 @@ from ttc.core.config import get_settings
 from ttc.core.db import get_session
 from ttc.core.errors import TTCError
 from ttc.core.security import uuid7
-from ttc.domains.interview.plan import (FALLBACK_PLAN, build_plan, parse_plan,
-                                        plan_from_db, session_instructions)
+from ttc.domains.interview.plan import (
+    build_plan,
+    parse_plan,
+    plan_from_db,
+    session_instructions,
+)
 
 router = APIRouter(tags=["voice"])
 hr = require_roles("hr", "admin")
+
+logger = logging.getLogger(__name__)
+
+# 排查「AI 说着说着不说话了」：打开后把上游事件类型按顺序写进日志，
+# 音频分片只记长度不记内容。默认关闭，避免正常通话刷屏。
+RELAY_TRACE = os.environ.get("TTC_RELAY_TRACE", "").lower() in ("1", "true", "yes")
+TRACE_SKIP = ("response.audio.delta", "response.output_audio.delta")
+
+if RELAY_TRACE:
+    # 项目本身没配置 root logger，不挂 handler 的话 info 级会被静默丢弃。
+    _handler = logging.StreamHandler()
+    _handler.setFormatter(logging.Formatter(
+        "%(asctime)s relay %(message)s", "%H:%M:%S"))
+    logger.addHandler(_handler)
+    logger.setLevel(logging.INFO)
+    logger.propagate = False
 
 
 class SessionInput(BaseModel):
@@ -56,7 +78,9 @@ class MintInput(BaseModel):
 
 async def require_session(session: AsyncSession, user: Principal, session_id: UUID):
     row = (await session.execute(text(
-        "SELECT v.* FROM voice_session v JOIN candidate c ON c.id = v.candidate_id "
+        "SELECT v.*, j.title AS job_title FROM voice_session v "
+        "JOIN candidate c ON c.id = v.candidate_id "
+        "LEFT JOIN job j ON j.id = v.job_id "
         "WHERE v.id = :id AND c.tenant_id = :tenant"
     ), {"id": session_id, "tenant": user.tenant_id})).mappings().one_or_none()
     if row is None:
@@ -162,8 +186,8 @@ async def connect_call(session_id: UUID, request: Request,
         offer.extend(chunk)
     if len(offer) < 30 or not offer.startswith(b"v=0"):
         raise TTCError("TTC-4000", "SDP 内容无效", 422)
-    answer, call_id = await create_call(bytes(offer),
-                                         session_instructions(plan_from_db(row["plan_json"])))
+    answer, call_id = await create_call(
+        bytes(offer), session_instructions(plan_from_db(row["plan_json"]), row["job_title"]))
     result = await session.execute(text(
         "UPDATE voice_session SET status = 'live', started_at = now(), "
         "provider_call_id = :call, model = :model WHERE id = :id "
@@ -251,11 +275,14 @@ async def realtime_relay(websocket: WebSocket, session_id: UUID):
         return
     settings = get_settings()
     plan = None
+    job_title = None
     max_seconds = 1200
     async for session in get_session():
         row = (await session.execute(text(
-            "SELECT s.plan_json, s.candidate_id, s.max_seconds, c.user_id "
-            "FROM voice_session s JOIN candidate c ON c.id = s.candidate_id "
+            "SELECT s.plan_json, s.candidate_id, s.max_seconds, c.user_id, "
+            "j.title AS job_title FROM voice_session s "
+            "JOIN candidate c ON c.id = s.candidate_id "
+            "LEFT JOIN job j ON j.id = s.job_id "
             "WHERE s.id = :id AND c.tenant_id = :tenant"
         ), {"id": session_id, "tenant": user["tenant_id"]})).mappings().one_or_none()
         if row is None:
@@ -277,8 +304,9 @@ async def realtime_relay(websocket: WebSocket, session_id: UUID):
             return
         await session.commit()
         plan = row["plan_json"]
+        job_title = row["job_title"]
 
-    instructions = session_instructions(plan_from_db(plan))
+    instructions = session_instructions(plan_from_db(plan), job_title)
 
     try:
         upstream, model, voice, initial = await qwen.open_session(
@@ -335,6 +363,12 @@ async def realtime_relay(websocket: WebSocket, session_id: UUID):
 
         async def upstream_to_client():
             async for message in upstream:
+                if RELAY_TRACE:
+                    if any(f'"type":"{skip}"' in message for skip in TRACE_SKIP):
+                        logger.info("relay %s upstream audio chunk %d bytes",
+                                    session_id, len(message))
+                    else:
+                        logger.info("relay %s upstream event %s", session_id, message[:600])
                 if not await _send_text(websocket, message):
                     return "client_gone"
             return "upstream_gone"
@@ -446,12 +480,15 @@ async def summarize_turns(session: AsyncSession, session_id: UUID,
     if not turns:
         return ({"status": "unassessed", "turn_count": 0,
                  "limitations": ["本次通话没有产生转写内容"]}, [], "transcript-v1")
-    plan = (await session.execute(text(
-        "SELECT plan_json FROM voice_session WHERE id = :id"), {"id": session_id}
-    )).scalar_one_or_none()
-    plan = plan_from_db(plan)
+    row = (await session.execute(text(
+        "SELECT v.plan_json, j.title AS job_title FROM voice_session v "
+        "LEFT JOIN job j ON j.id = v.job_id WHERE v.id = :id"), {"id": session_id}
+    )).mappings().one_or_none()
+    plan = plan_from_db(row["plan_json"] if row else None)
+    job_title = row["job_title"] if row else None
     try:
-        result = await LLMAdapter().summarize_interview(plan, [dict(turn) for turn in turns])
+        result = await LLMAdapter().summarize_interview(
+            plan, [dict(turn) for turn in turns], job_title)
     except TTCError as exc:
         return ({"status": "unassessed", "turn_count": len(turns),
                  "limitations": [f"纪要生成失败：{exc.message}", FALLBACK_LIMIT]},
