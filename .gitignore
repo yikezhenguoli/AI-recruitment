@@ -42,6 +42,7 @@ resume-match/*
 !resume-match/jd/
 !resume-match/scripts/
 !resume-match/splits/
+!resume-match/splits/*.csv
 resume-match/data/
 resume-match/runs/
 # synth：train_gbdt.py 默认读取的合成简历数据（无隐私、体积小），随仓库分发
@@ -63,7 +64,9 @@ apps/api/uploads/
 apps/candidate-web/.certs/
 apps/candidate-web/public/ttc-dev-ca.crt
 
-# 导出的简历 HTML 与数据分析报告
-/resume_html/resume[0-9]*.html
-/resume_html/extraction_report.html
-/resume_html/structure_report.html
+# 本地简历 HTML 与分析数据，不纳入版本控制
+/resume-html/
+/resume_html/
+
+# 本地数据集，不纳入版本控制
+/dataset/
