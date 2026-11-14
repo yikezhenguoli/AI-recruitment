@@ -1,0 +1,752 @@
+{
+  "total": 30,
+  "positions": [
+    {
+      "position_id": "python_engineer",
+      "index": 1,
+      "name": "Python开发工程师",
+      "family": "软件研发",
+      "resumes": 3,
+      "experiences": 24,
+      "questions": 35,
+      "top_dimensions": {
+        "data_evidence": 3,
+        "technical_implementation": 3,
+        "technical_decision": 3,
+        "achievement_verification": 3,
+        "problem_solving": 3
+      },
+      "career_levels": {
+        "mid": 1,
+        "fresh": 1,
+        "expert": 1
+      },
+      "qualities": {
+        "high": 2,
+        "normal": 1
+      }
+    },
+    {
+      "position_id": "java_engineer",
+      "index": 2,
+      "name": "Java开发工程师",
+      "family": "软件研发",
+      "resumes": 3,
+      "experiences": 20,
+      "questions": 33,
+      "top_dimensions": {
+        "data_evidence": 3,
+        "technical_implementation": 3,
+        "business_understanding": 3,
+        "technical_decision": 3,
+        "problem_solving": 3
+      },
+      "career_levels": {
+        "expert": 1,
+        "mid": 2
+      },
+      "qualities": {
+        "high": 1,
+        "normal": 1,
+        "vague": 1
+      }
+    },
+    {
+      "position_id": "frontend_engineer",
+      "index": 3,
+      "name": "前端开发工程师",
+      "family": "软件研发",
+      "resumes": 3,
+      "experiences": 18,
+      "questions": 30,
+      "top_dimensions": {
+        "data_evidence": 3,
+        "problem_solving": 3,
+        "technical_implementation": 3,
+        "technical_decision": 3,
+        "risk_awareness": 3
+      },
+      "career_levels": {
+        "junior": 2,
+        "fresh": 1
+      },
+      "qualities": {
+        "normal": 2,
+        "high": 1
+      }
+    },
+    {
+      "position_id": "backend_engineer",
+      "index": 4,
+      "name": "后端开发工程师",
+      "family": "软件研发",
+      "resumes": 4,
+      "experiences": 30,
+      "questions": 44,
+      "top_dimensions": {
+        "data_evidence": 5,
+        "technical_implementation": 4,
+        "technical_decision": 4,
+        "achievement_verification": 4,
+        "risk_awareness": 4
+      },
+      "career_levels": {
+        "mid": 1,
+        "junior": 1,
+        "fresh": 1,
+        "senior": 1
+      },
+      "qualities": {
+        "high": 1,
+        "normal": 1,
+        "contradictory": 2
+      }
+    },
+    {
+      "position_id": "algorithm_engineer",
+      "index": 5,
+      "name": "算法工程师",
+      "family": "算法与数据",
+      "resumes": 4,
+      "experiences": 30,
+      "questions": 44,
+      "top_dimensions": {
+        "data_evidence": 6,
+        "business_understanding": 5,
+        "professional_depth": 5,
+        "technical_decision": 4,
+        "innovation": 4
+      },
+      "career_levels": {
+        "senior": 1,
+        "mid": 2,
+        "fresh": 1
+      },
+      "qualities": {
+        "high": 1,
+        "vague": 1,
+        "normal": 2
+      }
+    },
+    {
+      "position_id": "ai_engineer",
+      "index": 6,
+      "name": "AI工程师",
+      "family": "算法与数据",
+      "resumes": 3,
+      "experiences": 24,
+      "questions": 34,
+      "top_dimensions": {
+        "technical_implementation": 4,
+        "data_evidence": 4,
+        "business_understanding": 3,
+        "risk_awareness": 3,
+        "technical_decision": 3
+      },
+      "career_levels": {
+        "mid": 1,
+        "junior": 1,
+        "expert": 1
+      },
+      "qualities": {
+        "vague": 1,
+        "high": 1,
+        "contradictory": 1
+      }
+    },
+    {
+      "position_id": "data_analyst",
+      "index": 7,
+      "name": "数据分析师",
+      "family": "算法与数据",
+      "resumes": 3,
+      "experiences": 23,
+      "questions": 29,
+      "top_dimensions": {
+        "professional_depth": 3,
+        "data_evidence": 3,
+        "business_understanding": 3,
+        "reflection": 3,
+        "problem_solving": 3
+      },
+      "career_levels": {
+        "junior": 1,
+        "expert": 1,
+        "senior": 1
+      },
+      "qualities": {
+        "high": 1,
+        "normal": 1,
+        "vague": 1
+      }
+    },
+    {
+      "position_id": "data_engineer",
+      "index": 8,
+      "name": "数据工程师",
+      "family": "算法与数据",
+      "resumes": 3,
+      "experiences": 22,
+      "questions": 30,
+      "top_dimensions": {
+        "data_evidence": 3,
+        "technical_implementation": 3,
+        "risk_awareness": 3,
+        "problem_solving": 3,
+        "project_management": 3
+      },
+      "career_levels": {
+        "junior": 1,
+        "mid": 1,
+        "expert": 1
+      },
+      "qualities": {
+        "normal": 3
+      }
+    },
+    {
+      "position_id": "product_manager",
+      "index": 9,
+      "name": "产品经理",
+      "family": "产品与项目",
+      "resumes": 3,
+      "experiences": 21,
+      "questions": 30,
+      "top_dimensions": {
+        "achievement_verification": 3,
+        "technical_decision": 3,
+        "data_evidence": 3,
+        "business_understanding": 3,
+        "reflection": 3
+      },
+      "career_levels": {
+        "mid": 3
+      },
+      "qualities": {
+        "high": 2,
+        "normal": 1
+      }
+    },
+    {
+      "position_id": "project_manager",
+      "index": 10,
+      "name": "项目经理",
+      "family": "产品与项目",
+      "resumes": 4,
+      "experiences": 35,
+      "questions": 38,
+      "top_dimensions": {
+        "project_management": 5,
+        "business_understanding": 5,
+        "leadership": 4,
+        "achievement_verification": 4,
+        "risk_awareness": 4
+      },
+      "career_levels": {
+        "senior": 2,
+        "fresh": 1,
+        "expert": 1
+      },
+      "qualities": {
+        "normal": 3,
+        "high": 1
+      }
+    },
+    {
+      "position_id": "software_tester",
+      "index": 11,
+      "name": "软件测试工程师",
+      "family": "质量与运维",
+      "resumes": 3,
+      "experiences": 22,
+      "questions": 27,
+      "top_dimensions": {
+        "data_evidence": 3,
+        "risk_awareness": 3,
+        "technical_implementation": 3,
+        "business_understanding": 3,
+        "professional_depth": 2
+      },
+      "career_levels": {
+        "fresh": 2,
+        "mid": 1
+      },
+      "qualities": {
+        "high": 1,
+        "contradictory": 1,
+        "vague": 1
+      }
+    },
+    {
+      "position_id": "devops_engineer",
+      "index": 12,
+      "name": "运维工程师",
+      "family": "质量与运维",
+      "resumes": 4,
+      "experiences": 28,
+      "questions": 38,
+      "top_dimensions": {
+        "technical_implementation": 4,
+        "achievement_verification": 4,
+        "risk_awareness": 4,
+        "data_evidence": 4,
+        "project_management": 4
+      },
+      "career_levels": {
+        "junior": 1,
+        "senior": 2,
+        "mid": 1
+      },
+      "qualities": {
+        "normal": 2,
+        "high": 2
+      }
+    },
+    {
+      "position_id": "uiux_designer",
+      "index": 13,
+      "name": "UI/UX设计师",
+      "family": "设计",
+      "resumes": 3,
+      "experiences": 20,
+      "questions": 28,
+      "top_dimensions": {
+        "business_understanding": 5,
+        "data_evidence": 3,
+        "professional_depth": 3,
+        "technical_implementation": 3,
+        "innovation": 2
+      },
+      "career_levels": {
+        "junior": 1,
+        "senior": 1,
+        "fresh": 1
+      },
+      "qualities": {
+        "normal": 2,
+        "vague": 1
+      }
+    },
+    {
+      "position_id": "finance_staff",
+      "index": 14,
+      "name": "财务人员",
+      "family": "职能支持",
+      "resumes": 3,
+      "experiences": 22,
+      "questions": 32,
+      "top_dimensions": {
+        "achievement_verification": 4,
+        "business_understanding": 3,
+        "technical_implementation": 3,
+        "problem_solving": 3,
+        "data_evidence": 3
+      },
+      "career_levels": {
+        "junior": 1,
+        "fresh": 1,
+        "mid": 1
+      },
+      "qualities": {
+        "vague": 1,
+        "contradictory": 1,
+        "normal": 1
+      }
+    },
+    {
+      "position_id": "hr_specialist",
+      "index": 15,
+      "name": "人力资源",
+      "family": "职能支持",
+      "resumes": 5,
+      "experiences": 33,
+      "questions": 52,
+      "top_dimensions": {
+        "achievement_verification": 6,
+        "business_understanding": 5,
+        "teamwork": 5,
+        "technical_implementation": 5,
+        "professional_depth": 5
+      },
+      "career_levels": {
+        "junior": 3,
+        "fresh": 2
+      },
+      "qualities": {
+        "normal": 3,
+        "vague": 1,
+        "high": 1
+      }
+    },
+    {
+      "position_id": "marketing_operator",
+      "index": 16,
+      "name": "市场运营",
+      "family": "市场与销售",
+      "resumes": 3,
+      "experiences": 24,
+      "questions": 34,
+      "top_dimensions": {
+        "business_understanding": 4,
+        "professional_depth": 4,
+        "achievement_verification": 4,
+        "technical_implementation": 3,
+        "personal_contribution": 3
+      },
+      "career_levels": {
+        "fresh": 2,
+        "mid": 1
+      },
+      "qualities": {
+        "vague": 1,
+        "normal": 1,
+        "contradictory": 1
+      }
+    },
+    {
+      "position_id": "business_operator",
+      "index": 17,
+      "name": "业务运营",
+      "family": "市场与销售",
+      "resumes": 3,
+      "experiences": 22,
+      "questions": 32,
+      "top_dimensions": {
+        "business_understanding": 4,
+        "data_evidence": 4,
+        "problem_solving": 3,
+        "project_management": 3,
+        "achievement_verification": 3
+      },
+      "career_levels": {
+        "mid": 1,
+        "senior": 1,
+        "junior": 1
+      },
+      "qualities": {
+        "normal": 2,
+        "high": 1
+      }
+    },
+    {
+      "position_id": "embedded_engineer",
+      "index": 18,
+      "name": "嵌入式开发工程师",
+      "family": "硬件与制造",
+      "resumes": 3,
+      "experiences": 23,
+      "questions": 34,
+      "top_dimensions": {
+        "data_evidence": 3,
+        "technical_implementation": 3,
+        "problem_solving": 3,
+        "risk_awareness": 3,
+        "reflection": 3
+      },
+      "career_levels": {
+        "junior": 2,
+        "senior": 1
+      },
+      "qualities": {
+        "normal": 2,
+        "high": 1
+      }
+    },
+    {
+      "position_id": "security_engineer",
+      "index": 19,
+      "name": "网络安全工程师",
+      "family": "质量与运维",
+      "resumes": 3,
+      "experiences": 19,
+      "questions": 29,
+      "top_dimensions": {
+        "professional_depth": 3,
+        "risk_awareness": 3,
+        "technical_implementation": 3,
+        "project_management": 3,
+        "data_evidence": 3
+      },
+      "career_levels": {
+        "mid": 2,
+        "fresh": 1
+      },
+      "qualities": {
+        "normal": 1,
+        "vague": 1,
+        "high": 1
+      }
+    },
+    {
+      "position_id": "software_architect",
+      "index": 20,
+      "name": "软件架构师",
+      "family": "软件研发",
+      "resumes": 3,
+      "experiences": 27,
+      "questions": 32,
+      "top_dimensions": {
+        "business_understanding": 5,
+        "data_evidence": 3,
+        "project_management": 3,
+        "technical_decision": 3,
+        "leadership": 3
+      },
+      "career_levels": {
+        "senior": 1,
+        "expert": 2
+      },
+      "qualities": {
+        "high": 1,
+        "normal": 2
+      }
+    },
+    {
+      "position_id": "hardware_engineer",
+      "index": 21,
+      "name": "电子硬件工程师",
+      "family": "硬件与制造",
+      "resumes": 4,
+      "experiences": 30,
+      "questions": 37,
+      "top_dimensions": {
+        "risk_awareness": 4,
+        "data_evidence": 4,
+        "technical_implementation": 4,
+        "professional_depth": 4,
+        "problem_solving": 3
+      },
+      "career_levels": {
+        "mid": 2,
+        "fresh": 1,
+        "expert": 1
+      },
+      "qualities": {
+        "contradictory": 1,
+        "normal": 2,
+        "vague": 1
+      }
+    },
+    {
+      "position_id": "mechanical_engineer",
+      "index": 22,
+      "name": "机械工程师",
+      "family": "硬件与制造",
+      "resumes": 3,
+      "experiences": 19,
+      "questions": 32,
+      "top_dimensions": {
+        "technical_implementation": 3,
+        "professional_depth": 3,
+        "technical_decision": 3,
+        "business_understanding": 3,
+        "data_evidence": 3
+      },
+      "career_levels": {
+        "junior": 2,
+        "fresh": 1
+      },
+      "qualities": {
+        "vague": 1,
+        "normal": 1,
+        "contradictory": 1
+      }
+    },
+    {
+      "position_id": "electrical_engineer",
+      "index": 23,
+      "name": "电气工程师",
+      "family": "硬件与制造",
+      "resumes": 3,
+      "experiences": 23,
+      "questions": 29,
+      "top_dimensions": {
+        "data_evidence": 4,
+        "technical_implementation": 3,
+        "business_understanding": 3,
+        "risk_awareness": 3,
+        "teamwork": 2
+      },
+      "career_levels": {
+        "mid": 2,
+        "expert": 1
+      },
+      "qualities": {
+        "vague": 1,
+        "normal": 1,
+        "contradictory": 1
+      }
+    },
+    {
+      "position_id": "sales_rep",
+      "index": 24,
+      "name": "销售人员",
+      "family": "市场与销售",
+      "resumes": 3,
+      "experiences": 24,
+      "questions": 34,
+      "top_dimensions": {
+        "business_understanding": 4,
+        "achievement_verification": 3,
+        "professional_depth": 3,
+        "data_evidence": 3,
+        "risk_awareness": 3
+      },
+      "career_levels": {
+        "fresh": 2,
+        "junior": 1
+      },
+      "qualities": {
+        "high": 1,
+        "normal": 1,
+        "vague": 1
+      }
+    },
+    {
+      "position_id": "customer_service",
+      "index": 25,
+      "name": "客户服务人员",
+      "family": "市场与销售",
+      "resumes": 4,
+      "experiences": 25,
+      "questions": 45,
+      "top_dimensions": {
+        "data_evidence": 5,
+        "achievement_verification": 4,
+        "business_understanding": 4,
+        "technical_decision": 4,
+        "teamwork": 4
+      },
+      "career_levels": {
+        "fresh": 3,
+        "junior": 1
+      },
+      "qualities": {
+        "high": 2,
+        "vague": 1,
+        "normal": 1
+      }
+    },
+    {
+      "position_id": "supply_chain_manager",
+      "index": 26,
+      "name": "供应链管理人员",
+      "family": "职能支持",
+      "resumes": 3,
+      "experiences": 26,
+      "questions": 32,
+      "top_dimensions": {
+        "business_understanding": 4,
+        "data_evidence": 4,
+        "leadership": 3,
+        "project_management": 3,
+        "risk_awareness": 3
+      },
+      "career_levels": {
+        "senior": 2,
+        "mid": 1
+      },
+      "qualities": {
+        "vague": 2,
+        "high": 1
+      }
+    },
+    {
+      "position_id": "legal_staff",
+      "index": 27,
+      "name": "法务人员",
+      "family": "职能支持",
+      "resumes": 3,
+      "experiences": 26,
+      "questions": 28,
+      "top_dimensions": {
+        "business_understanding": 4,
+        "professional_depth": 3,
+        "risk_awareness": 3,
+        "reflection": 3,
+        "achievement_verification": 2
+      },
+      "career_levels": {
+        "fresh": 1,
+        "senior": 1,
+        "mid": 1
+      },
+      "qualities": {
+        "normal": 2,
+        "vague": 1
+      }
+    },
+    {
+      "position_id": "education_trainer",
+      "index": 28,
+      "name": "教育培训人员",
+      "family": "职能支持",
+      "resumes": 3,
+      "experiences": 17,
+      "questions": 30,
+      "top_dimensions": {
+        "data_evidence": 4,
+        "professional_depth": 3,
+        "reflection": 3,
+        "achievement_verification": 3,
+        "innovation": 3
+      },
+      "career_levels": {
+        "junior": 3
+      },
+      "qualities": {
+        "normal": 2,
+        "high": 1
+      }
+    },
+    {
+      "position_id": "construction_engineer",
+      "index": 29,
+      "name": "建筑工程人员",
+      "family": "硬件与制造",
+      "resumes": 3,
+      "experiences": 21,
+      "questions": 33,
+      "top_dimensions": {
+        "project_management": 3,
+        "data_evidence": 3,
+        "business_understanding": 3,
+        "risk_awareness": 3,
+        "personal_contribution": 3
+      },
+      "career_levels": {
+        "senior": 1,
+        "mid": 2
+      },
+      "qualities": {
+        "normal": 2,
+        "high": 1
+      }
+    },
+    {
+      "position_id": "rnd_researcher",
+      "index": 30,
+      "name": "研究开发人员",
+      "family": "算法与数据",
+      "resumes": 5,
+      "experiences": 44,
+      "questions": 50,
+      "top_dimensions": {
+        "project_management": 5,
+        "business_understanding": 5,
+        "leadership": 5,
+        "professional_depth": 5,
+        "data_evidence": 4
+      },
+      "career_levels": {
+        "senior": 3,
+        "expert": 2
+      },
+      "qualities": {
+        "contradictory": 1,
+        "vague": 3,
+        "normal": 1
+      }
+    }
+  ]
+}

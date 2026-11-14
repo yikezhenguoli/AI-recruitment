@@ -1,0 +1,170 @@
+{
+  "position_id": "embedded_engineer",
+  "index": 18,
+  "position_name": "嵌入式开发工程师",
+  "family": "硬件与制造",
+  "core_responsibilities": [
+    "负责嵌入式固件设计与开发",
+    "编写外设驱动与通信协议",
+    "调试样机与定位硬件相关问题",
+    "优化功耗与实时性",
+    "维护固件升级与版本管理",
+    "输出设计文档与测试记录"
+  ],
+  "common_tasks": [
+    "基于 RTOS 实现任务划分与调度",
+    "编写 I2C SPI UART 驱动",
+    "实现 CAN 或 Modbus 协议栈",
+    "使用示波器与逻辑分析仪调试",
+    "设计低功耗唤醒与休眠策略",
+    "实现 OTA 升级与校验回滚"
+  ],
+  "core_skills": [
+    "C 语言与内存管理",
+    "RTOS 任务与中断",
+    "外设驱动与寄存器配置",
+    "通信协议与校验",
+    "低功耗设计",
+    "实时性与时序分析",
+    "硬件原理图阅读"
+  ],
+  "tools": [
+    "STM32",
+    "FreeRTOS",
+    "Keil",
+    "GCC ARM",
+    "示波器",
+    "逻辑分析仪",
+    "J-Link",
+    "Git"
+  ],
+  "business_scenarios": [
+    "工业采集终端",
+    "智能网关设备",
+    "电机控制器",
+    "低功耗传感节点"
+  ],
+  "project_types": [
+    {
+      "name": "智能网关固件",
+      "goal": "实现多协议采集与边缘上报",
+      "tech_focus": [
+        "STM32",
+        "FreeRTOS",
+        "Modbus"
+      ],
+      "typical_metrics": [
+        "采集丢包率由1.8%降至0.15%",
+        "平均功耗下降28%"
+      ],
+      "difficulties": [
+        "多任务优先级翻转",
+        "串口缓冲区溢出"
+      ]
+    },
+    {
+      "name": "低功耗传感节点",
+      "goal": "延长电池供电终端的续航",
+      "tech_focus": [
+        "低功耗模式",
+        "唤醒策略",
+        "ADC采样"
+      ],
+      "typical_metrics": [
+        "整机平均电流由18mA降至4.2mA",
+        "预计续航由7个月提升至26个月"
+      ],
+      "difficulties": [
+        "唤醒时序与数据丢失",
+        "传感器启动稳定时间"
+      ]
+    },
+    {
+      "name": "电机控制固件",
+      "goal": "提升转速闭环的稳定性",
+      "tech_focus": [
+        "PID",
+        "编码器",
+        "定时器"
+      ],
+      "typical_metrics": [
+        "转速波动由±6%收敛至±1.2%",
+        "异常停机次数减少82%"
+      ],
+      "difficulties": [
+        "中断抖动与采样同步",
+        "过流保护误触发"
+      ]
+    },
+    {
+      "name": "OTA 升级机制",
+      "goal": "支持现场设备远程固件更新与回滚",
+      "tech_focus": [
+        "双分区",
+        "Bootloader",
+        "CRC"
+      ],
+      "typical_metrics": [
+        "升级失败率由3.6%降至0.2%",
+        "现场维护工单减少71%"
+      ],
+      "difficulties": [
+        "断电写入中断",
+        "版本兼容性校验"
+      ]
+    }
+  ],
+  "achievement_metrics": [
+    "采集丢包率由1.8%降至0.15%",
+    "整机平均电流由18mA降至4.2mA",
+    "转速波动由±6%收敛至±1.2%",
+    "升级失败率由3.6%降至0.2%",
+    "平均功耗下降28%",
+    "异常停机次数减少82%"
+  ],
+  "technical_difficulties": [
+    "中断优先级与优先级翻转",
+    "共享资源与临界区保护",
+    "低功耗唤醒时序",
+    "采样同步与抖动",
+    "OTA 断电中断与回滚",
+    "EMC 干扰下的通信稳定性"
+  ],
+  "work_risks": [
+    "功耗数据未说明测试条件与负载模型",
+    "续航为预计值而非实测值需核实",
+    "未说明固件中个人负责的模块边界",
+    "丢包率统计的通信距离与干扰条件缺失"
+  ],
+  "interview_dimensions": {
+    "technical_implementation": 5,
+    "problem_solving": 4,
+    "data_evidence": 4,
+    "risk_awareness": 3,
+    "professional_depth": 3,
+    "reflection": 2
+  },
+  "career_level_requirements": {
+    "fresh": {
+      "scope": "在指导下完成外设驱动调试与单模块开发"
+    },
+    "junior": {
+      "scope": "独立承担固件模块与协议实现"
+    },
+    "mid": {
+      "scope": "负责终端固件方案与性能功耗优化"
+    },
+    "senior": {
+      "scope": "主导嵌入式平台架构与可靠性设计"
+    },
+    "expert": {
+      "scope": "制定固件技术路线与跨硬件平台标准"
+    }
+  },
+  "probe_topics": [
+    "中断优先级设计",
+    "低功耗唤醒时序",
+    "OTA 回滚机制",
+    "采样同步方法"
+  ]
+}

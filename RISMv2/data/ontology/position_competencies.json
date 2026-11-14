@@ -1,0 +1,625 @@
+{
+  "version": "RISM-002.1",
+  "generated_at": "2026-11-14T19:34:50+08:00",
+  "note": "岗位能力与追问方向为多对多关系；关联依据是显式能力域映射，不是岗位名称文本相似度。",
+  "position_family_count": 8,
+  "competency_count": 24,
+  "competencies": [
+    {
+      "position_family": "software_development",
+      "competency_id": "software_development__impl_detail",
+      "competency_name": "技术实现与实现细节掌控",
+      "competency_definition": "能够说明具体实现路径、关键参数与异常处理，并解释实现背后的原理与边界。",
+      "importance": "high",
+      "related_direction_ids": [
+        "hist_clarification__business_understanding",
+        "hist_clarification__personal_contribution",
+        "hist_clarification__technical_implementation",
+        "hist_technical_deep_dive__professional_depth",
+        "hist_technical_deep_dive__technical_decision",
+        "hist_technical_deep_dive__technical_implementation"
+      ],
+      "competency_domain": "technical_implementation",
+      "version": "RISM-002.1",
+      "review": {
+        "annotation_source": "rule_based",
+        "annotation_status": "pending",
+        "annotator_id": null,
+        "reviewed_at": null,
+        "review_reason": "岗位能力由能力域映射初建，待人工审核",
+        "ontology_version": "RISM-002.1",
+        "reviewed": false
+      }
+    },
+    {
+      "position_family": "software_development",
+      "competency_id": "software_development__design_decision",
+      "competency_name": "技术方案决策与权衡",
+      "competency_definition": "能够说明方案选择依据、替代方案比较与技术取舍，而非仅描述结果。",
+      "importance": "high",
+      "related_direction_ids": [
+        "hist_decision_analysis__innovation",
+        "hist_decision_analysis__project_management",
+        "hist_decision_analysis__technical_decision",
+        "hist_scenario_analysis__business_understanding",
+        "hist_scenario_analysis__risk_awareness",
+        "hist_scenario_analysis__technical_decision",
+        "hist_technical_deep_dive__professional_depth",
+        "hist_technical_deep_dive__technical_decision",
+        "hist_technical_deep_dive__technical_implementation"
+      ],
+      "competency_domain": "decision_and_design",
+      "version": "RISM-002.1",
+      "review": {
+        "annotation_source": "rule_based",
+        "annotation_status": "pending",
+        "annotator_id": null,
+        "reviewed_at": null,
+        "review_reason": "岗位能力由能力域映射初建，待人工审核",
+        "ontology_version": "RISM-002.1",
+        "reviewed": false
+      }
+    },
+    {
+      "position_family": "software_development",
+      "competency_id": "software_development__problem_diagnosis",
+      "competency_name": "问题定位与排查",
+      "competency_definition": "能够还原问题现象、排查路径、根因判断与验证方式。",
+      "importance": "medium",
+      "related_direction_ids": [
+        "hist_problem_investigation__problem_solving",
+        "hist_problem_investigation__professional_depth",
+        "hist_problem_investigation__risk_awareness",
+        "hist_risk_investigation__achievement_verification",
+        "hist_risk_investigation__data_evidence",
+        "hist_risk_investigation__risk_awareness"
+      ],
+      "competency_domain": "problem_diagnosis",
+      "version": "RISM-002.1",
+      "review": {
+        "annotation_source": "rule_based",
+        "annotation_status": "pending",
+        "annotator_id": null,
+        "reviewed_at": null,
+        "review_reason": "岗位能力由能力域映射初建，待人工审核",
+        "ontology_version": "RISM-002.1",
+        "reviewed": false
+      }
+    },
+    {
+      "position_family": "algorithm_and_data",
+      "competency_id": "algorithm_and_data__metric_evidence",
+      "competency_name": "指标口径与数据证据",
+      "competency_definition": "能够说明指标定义、数据来源、统计口径、对比基准与观察周期。",
+      "importance": "high",
+      "related_direction_ids": [
+        "hist_data_verification__achievement_verification",
+        "hist_data_verification__data_evidence",
+        "hist_result_verification__achievement_verification",
+        "hist_result_verification__business_understanding"
+      ],
+      "competency_domain": "verification_and_metrics",
+      "version": "RISM-002.1",
+      "review": {
+        "annotation_source": "rule_based",
+        "annotation_status": "pending",
+        "annotator_id": null,
+        "reviewed_at": null,
+        "review_reason": "岗位能力由能力域映射初建，待人工审核",
+        "ontology_version": "RISM-002.1",
+        "reviewed": false
+      }
+    },
+    {
+      "position_family": "algorithm_and_data",
+      "competency_id": "algorithm_and_data__method_principle",
+      "competency_name": "方法原理与实验设计",
+      "competency_definition": "能够解释方法原理、变量控制、实验设计与结论适用边界。",
+      "importance": "high",
+      "related_direction_ids": [
+        "hist_decision_analysis__innovation",
+        "hist_decision_analysis__project_management",
+        "hist_decision_analysis__technical_decision",
+        "hist_scenario_analysis__business_understanding",
+        "hist_scenario_analysis__risk_awareness",
+        "hist_scenario_analysis__technical_decision",
+        "hist_technical_deep_dive__professional_depth",
+        "hist_technical_deep_dive__technical_decision",
+        "hist_technical_deep_dive__technical_implementation"
+      ],
+      "competency_domain": "decision_and_design",
+      "version": "RISM-002.1",
+      "review": {
+        "annotation_source": "rule_based",
+        "annotation_status": "pending",
+        "annotator_id": null,
+        "reviewed_at": null,
+        "review_reason": "岗位能力由能力域映射初建，待人工审核",
+        "ontology_version": "RISM-002.1",
+        "reviewed": false
+      }
+    },
+    {
+      "position_family": "algorithm_and_data",
+      "competency_id": "algorithm_and_data__result_attribution",
+      "competency_name": "结果归因与可复现性",
+      "competency_definition": "能够区分个人贡献与团队贡献，说明结果的可复现条件与局限。",
+      "importance": "medium",
+      "related_direction_ids": [
+        "hist_clarification__business_understanding",
+        "hist_clarification__personal_contribution",
+        "hist_clarification__technical_implementation",
+        "hist_contribution_verification__leadership",
+        "hist_contribution_verification__personal_contribution",
+        "hist_contribution_verification__teamwork"
+      ],
+      "competency_domain": "contribution_and_collaboration",
+      "version": "RISM-002.1",
+      "review": {
+        "annotation_source": "rule_based",
+        "annotation_status": "pending",
+        "annotator_id": null,
+        "reviewed_at": null,
+        "review_reason": "岗位能力由能力域映射初建，待人工审核",
+        "ontology_version": "RISM-002.1",
+        "reviewed": false
+      }
+    },
+    {
+      "position_family": "product_and_project",
+      "competency_id": "product_and_project__business_context",
+      "competency_name": "业务背景与优先级判断",
+      "competency_definition": "能够说明业务问题触发背景、相关方诉求与优先级判断依据。",
+      "importance": "high",
+      "related_direction_ids": [
+        "hist_decision_analysis__innovation",
+        "hist_decision_analysis__project_management",
+        "hist_decision_analysis__technical_decision",
+        "hist_scenario_analysis__business_understanding",
+        "hist_scenario_analysis__risk_awareness",
+        "hist_scenario_analysis__technical_decision"
+      ],
+      "competency_domain": "planning_and_business",
+      "version": "RISM-002.1",
+      "review": {
+        "annotation_source": "rule_based",
+        "annotation_status": "pending",
+        "annotator_id": null,
+        "reviewed_at": null,
+        "review_reason": "岗位能力由能力域映射初建，待人工审核",
+        "ontology_version": "RISM-002.1",
+        "reviewed": false
+      }
+    },
+    {
+      "position_family": "product_and_project",
+      "competency_id": "product_and_project__planning_control",
+      "competency_name": "排期与里程碑管理",
+      "competency_definition": "能够说明任务分解、依赖关系、里程碑设置与风险预案。",
+      "importance": "high",
+      "related_direction_ids": [
+        "hist_decision_analysis__innovation",
+        "hist_decision_analysis__project_management",
+        "hist_decision_analysis__technical_decision",
+        "hist_scenario_analysis__business_understanding",
+        "hist_scenario_analysis__risk_awareness",
+        "hist_scenario_analysis__technical_decision"
+      ],
+      "competency_domain": "planning_and_business",
+      "version": "RISM-002.1",
+      "review": {
+        "annotation_source": "rule_based",
+        "annotation_status": "pending",
+        "annotator_id": null,
+        "reviewed_at": null,
+        "review_reason": "岗位能力由能力域映射初建，待人工审核",
+        "ontology_version": "RISM-002.1",
+        "reviewed": false
+      }
+    },
+    {
+      "position_family": "product_and_project",
+      "competency_id": "product_and_project__acceptance_validation",
+      "competency_name": "验收标准与成果核实",
+      "competency_definition": "能够说明业务验收标准、成果核对方式与数据来源。",
+      "importance": "medium",
+      "related_direction_ids": [
+        "hist_data_verification__achievement_verification",
+        "hist_data_verification__data_evidence",
+        "hist_result_verification__achievement_verification",
+        "hist_result_verification__business_understanding"
+      ],
+      "competency_domain": "verification_and_metrics",
+      "version": "RISM-002.1",
+      "review": {
+        "annotation_source": "rule_based",
+        "annotation_status": "pending",
+        "annotator_id": null,
+        "reviewed_at": null,
+        "review_reason": "岗位能力由能力域映射初建，待人工审核",
+        "ontology_version": "RISM-002.1",
+        "reviewed": false
+      }
+    },
+    {
+      "position_family": "quality_and_operations",
+      "competency_id": "quality_and_operations__verification_process",
+      "competency_name": "验证过程与排查路径",
+      "competency_definition": "能够说明测试/验证设计、问题现象、排查路径与排除依据。",
+      "importance": "high",
+      "related_direction_ids": [
+        "hist_data_verification__achievement_verification",
+        "hist_data_verification__data_evidence",
+        "hist_result_verification__achievement_verification",
+        "hist_result_verification__business_understanding"
+      ],
+      "competency_domain": "verification_and_metrics",
+      "version": "RISM-002.1",
+      "review": {
+        "annotation_source": "rule_based",
+        "annotation_status": "pending",
+        "annotator_id": null,
+        "reviewed_at": null,
+        "review_reason": "岗位能力由能力域映射初建，待人工审核",
+        "ontology_version": "RISM-002.1",
+        "reviewed": false
+      }
+    },
+    {
+      "position_family": "quality_and_operations",
+      "competency_id": "quality_and_operations__risk_handling",
+      "competency_name": "风险识别与处置",
+      "competency_definition": "能够说明风险信号、影响面、预案与资源协调方式。",
+      "importance": "high",
+      "related_direction_ids": [
+        "hist_data_verification__achievement_verification",
+        "hist_data_verification__data_evidence",
+        "hist_risk_investigation__achievement_verification",
+        "hist_risk_investigation__data_evidence",
+        "hist_risk_investigation__risk_awareness"
+      ],
+      "competency_domain": "risk_and_evidence",
+      "version": "RISM-002.1",
+      "review": {
+        "annotation_source": "rule_based",
+        "annotation_status": "pending",
+        "annotator_id": null,
+        "reviewed_at": null,
+        "review_reason": "岗位能力由能力域映射初建，待人工审核",
+        "ontology_version": "RISM-002.1",
+        "reviewed": false
+      }
+    },
+    {
+      "position_family": "quality_and_operations",
+      "competency_id": "quality_and_operations__evidence_trace",
+      "competency_name": "证据链与口径一致性",
+      "competency_definition": "能够提供可核对的过程记录，说明统计口径与信息一致性。",
+      "importance": "medium",
+      "related_direction_ids": [
+        "hist_data_verification__achievement_verification",
+        "hist_data_verification__data_evidence",
+        "hist_result_verification__achievement_verification",
+        "hist_result_verification__business_understanding"
+      ],
+      "competency_domain": "verification_and_metrics",
+      "version": "RISM-002.1",
+      "review": {
+        "annotation_source": "rule_based",
+        "annotation_status": "pending",
+        "annotator_id": null,
+        "reviewed_at": null,
+        "review_reason": "岗位能力由能力域映射初建，待人工审核",
+        "ontology_version": "RISM-002.1",
+        "reviewed": false
+      }
+    },
+    {
+      "position_family": "design",
+      "competency_id": "design__design_rationale",
+      "competency_name": "设计决策依据",
+      "competency_definition": "能够说明设计取舍、用户场景约束与替代方案比较。",
+      "importance": "high",
+      "related_direction_ids": [
+        "hist_decision_analysis__innovation",
+        "hist_decision_analysis__project_management",
+        "hist_decision_analysis__technical_decision",
+        "hist_scenario_analysis__business_understanding",
+        "hist_scenario_analysis__risk_awareness",
+        "hist_scenario_analysis__technical_decision",
+        "hist_technical_deep_dive__professional_depth",
+        "hist_technical_deep_dive__technical_decision",
+        "hist_technical_deep_dive__technical_implementation"
+      ],
+      "competency_domain": "decision_and_design",
+      "version": "RISM-002.1",
+      "review": {
+        "annotation_source": "rule_based",
+        "annotation_status": "pending",
+        "annotator_id": null,
+        "reviewed_at": null,
+        "review_reason": "岗位能力由能力域映射初建，待人工审核",
+        "ontology_version": "RISM-002.1",
+        "reviewed": false
+      }
+    },
+    {
+      "position_family": "design",
+      "competency_id": "design__user_evidence",
+      "competency_name": "用户研究与验证证据",
+      "competency_definition": "能够说明研究方法、样本范围、结论依据与验证方式。",
+      "importance": "high",
+      "related_direction_ids": [
+        "hist_data_verification__achievement_verification",
+        "hist_data_verification__data_evidence",
+        "hist_result_verification__achievement_verification",
+        "hist_result_verification__business_understanding"
+      ],
+      "competency_domain": "verification_and_metrics",
+      "version": "RISM-002.1",
+      "review": {
+        "annotation_source": "rule_based",
+        "annotation_status": "pending",
+        "annotator_id": null,
+        "reviewed_at": null,
+        "review_reason": "岗位能力由能力域映射初建，待人工审核",
+        "ontology_version": "RISM-002.1",
+        "reviewed": false
+      }
+    },
+    {
+      "position_family": "design",
+      "competency_id": "design__iteration_reflection",
+      "competency_name": "迭代复盘与改进",
+      "competency_definition": "能够说明识别到的不足、具体改进动作与改进效果验证。",
+      "importance": "medium",
+      "related_direction_ids": [
+        "hist_reflection__innovation",
+        "hist_reflection__learning_ability",
+        "hist_reflection__reflection",
+        "hist_scenario_analysis__business_understanding",
+        "hist_scenario_analysis__risk_awareness",
+        "hist_scenario_analysis__technical_decision"
+      ],
+      "competency_domain": "reflection_and_improvement",
+      "version": "RISM-002.1",
+      "review": {
+        "annotation_source": "rule_based",
+        "annotation_status": "pending",
+        "annotator_id": null,
+        "reviewed_at": null,
+        "review_reason": "岗位能力由能力域映射初建，待人工审核",
+        "ontology_version": "RISM-002.1",
+        "reviewed": false
+      }
+    },
+    {
+      "position_family": "corporate_functions",
+      "competency_id": "corporate_functions__process_compliance",
+      "competency_name": "流程与口径合规",
+      "competency_definition": "能够说明流程依据、审批权限、口径一致性与可核对记录。",
+      "importance": "high",
+      "related_direction_ids": [
+        "hist_decision_analysis__innovation",
+        "hist_decision_analysis__project_management",
+        "hist_decision_analysis__technical_decision",
+        "hist_scenario_analysis__business_understanding",
+        "hist_scenario_analysis__risk_awareness",
+        "hist_scenario_analysis__technical_decision"
+      ],
+      "competency_domain": "planning_and_business",
+      "version": "RISM-002.1",
+      "review": {
+        "annotation_source": "rule_based",
+        "annotation_status": "pending",
+        "annotator_id": null,
+        "reviewed_at": null,
+        "review_reason": "岗位能力由能力域映射初建，待人工审核",
+        "ontology_version": "RISM-002.1",
+        "reviewed": false
+      }
+    },
+    {
+      "position_family": "corporate_functions",
+      "competency_id": "corporate_functions__data_attribution",
+      "competency_name": "数据归责与口径",
+      "competency_definition": "能够说明数据来源、计算公式、对比基准与个人/团队职责边界。",
+      "importance": "high",
+      "related_direction_ids": [
+        "hist_data_verification__achievement_verification",
+        "hist_data_verification__data_evidence",
+        "hist_result_verification__achievement_verification",
+        "hist_result_verification__business_understanding"
+      ],
+      "competency_domain": "verification_and_metrics",
+      "version": "RISM-002.1",
+      "review": {
+        "annotation_source": "rule_based",
+        "annotation_status": "pending",
+        "annotator_id": null,
+        "reviewed_at": null,
+        "review_reason": "岗位能力由能力域映射初建，待人工审核",
+        "ontology_version": "RISM-002.1",
+        "reviewed": false
+      }
+    },
+    {
+      "position_family": "corporate_functions",
+      "competency_id": "corporate_functions__stakeholder_coordination",
+      "competency_name": "相关方协同与优先级",
+      "competency_definition": "能够说明相关方诉求、沟通路径与优先级判断。",
+      "importance": "medium",
+      "related_direction_ids": [
+        "hist_clarification__business_understanding",
+        "hist_clarification__personal_contribution",
+        "hist_clarification__technical_implementation",
+        "hist_contribution_verification__leadership",
+        "hist_contribution_verification__personal_contribution",
+        "hist_contribution_verification__teamwork"
+      ],
+      "competency_domain": "contribution_and_collaboration",
+      "version": "RISM-002.1",
+      "review": {
+        "annotation_source": "rule_based",
+        "annotation_status": "pending",
+        "annotator_id": null,
+        "reviewed_at": null,
+        "review_reason": "岗位能力由能力域映射初建，待人工审核",
+        "ontology_version": "RISM-002.1",
+        "reviewed": false
+      }
+    },
+    {
+      "position_family": "marketing_and_sales",
+      "competency_id": "marketing_and_sales__result_evidence",
+      "competency_name": "业绩证据与归因",
+      "competency_definition": "能够说明业绩口径、数据来源、对比基准与归因隔离方法。",
+      "importance": "high",
+      "related_direction_ids": [
+        "hist_data_verification__achievement_verification",
+        "hist_data_verification__data_evidence",
+        "hist_result_verification__achievement_verification",
+        "hist_result_verification__business_understanding"
+      ],
+      "competency_domain": "verification_and_metrics",
+      "version": "RISM-002.1",
+      "review": {
+        "annotation_source": "rule_based",
+        "annotation_status": "pending",
+        "annotator_id": null,
+        "reviewed_at": null,
+        "review_reason": "岗位能力由能力域映射初建，待人工审核",
+        "ontology_version": "RISM-002.1",
+        "reviewed": false
+      }
+    },
+    {
+      "position_family": "marketing_and_sales",
+      "competency_id": "marketing_and_sales__business_judgement",
+      "competency_name": "业务判断与决策依据",
+      "competency_definition": "能够说明市场判断、方案选择依据与预期/实际差异。",
+      "importance": "high",
+      "related_direction_ids": [
+        "hist_decision_analysis__innovation",
+        "hist_decision_analysis__project_management",
+        "hist_decision_analysis__technical_decision",
+        "hist_scenario_analysis__business_understanding",
+        "hist_scenario_analysis__risk_awareness",
+        "hist_scenario_analysis__technical_decision"
+      ],
+      "competency_domain": "planning_and_business",
+      "version": "RISM-002.1",
+      "review": {
+        "annotation_source": "rule_based",
+        "annotation_status": "pending",
+        "annotator_id": null,
+        "reviewed_at": null,
+        "review_reason": "岗位能力由能力域映射初建，待人工审核",
+        "ontology_version": "RISM-002.1",
+        "reviewed": false
+      }
+    },
+    {
+      "position_family": "marketing_and_sales",
+      "competency_id": "marketing_and_sales__customer_collaboration",
+      "competency_name": "客户协同与过程还原",
+      "competency_definition": "能够还原客户沟通、推进过程与个人实际贡献。",
+      "importance": "medium",
+      "related_direction_ids": [
+        "hist_clarification__business_understanding",
+        "hist_clarification__personal_contribution",
+        "hist_clarification__technical_implementation",
+        "hist_contribution_verification__leadership",
+        "hist_contribution_verification__personal_contribution",
+        "hist_contribution_verification__teamwork"
+      ],
+      "competency_domain": "contribution_and_collaboration",
+      "version": "RISM-002.1",
+      "review": {
+        "annotation_source": "rule_based",
+        "annotation_status": "pending",
+        "annotator_id": null,
+        "reviewed_at": null,
+        "review_reason": "岗位能力由能力域映射初建，待人工审核",
+        "ontology_version": "RISM-002.1",
+        "reviewed": false
+      }
+    },
+    {
+      "position_family": "hardware_and_manufacturing",
+      "competency_id": "hardware_and_manufacturing__engineering_detail",
+      "competency_name": "工程实现与参数依据",
+      "competency_definition": "能够说明具体实现步骤、关键工具与参数、完成确认方式。",
+      "importance": "high",
+      "related_direction_ids": [
+        "hist_clarification__business_understanding",
+        "hist_clarification__personal_contribution",
+        "hist_clarification__technical_implementation",
+        "hist_technical_deep_dive__professional_depth",
+        "hist_technical_deep_dive__technical_decision",
+        "hist_technical_deep_dive__technical_implementation"
+      ],
+      "competency_domain": "technical_implementation",
+      "version": "RISM-002.1",
+      "review": {
+        "annotation_source": "rule_based",
+        "annotation_status": "pending",
+        "annotator_id": null,
+        "reviewed_at": null,
+        "review_reason": "岗位能力由能力域映射初建，待人工审核",
+        "ontology_version": "RISM-002.1",
+        "reviewed": false
+      }
+    },
+    {
+      "position_family": "hardware_and_manufacturing",
+      "competency_id": "hardware_and_manufacturing__verification_baseline",
+      "competency_name": "测试验证与对比基准",
+      "competency_definition": "能够说明测试环境、对比基准、测量方法与结果验证。",
+      "importance": "high",
+      "related_direction_ids": [
+        "hist_data_verification__achievement_verification",
+        "hist_data_verification__data_evidence",
+        "hist_result_verification__achievement_verification",
+        "hist_result_verification__business_understanding"
+      ],
+      "competency_domain": "verification_and_metrics",
+      "version": "RISM-002.1",
+      "review": {
+        "annotation_source": "rule_based",
+        "annotation_status": "pending",
+        "annotator_id": null,
+        "reviewed_at": null,
+        "review_reason": "岗位能力由能力域映射初建，待人工审核",
+        "ontology_version": "RISM-002.1",
+        "reviewed": false
+      }
+    },
+    {
+      "position_family": "hardware_and_manufacturing",
+      "competency_id": "hardware_and_manufacturing__failure_analysis",
+      "competency_name": "异常分析与改进",
+      "competency_definition": "能够说明异常现象、根因定位、处理过程与后续改进。",
+      "importance": "medium",
+      "related_direction_ids": [
+        "hist_problem_investigation__problem_solving",
+        "hist_problem_investigation__professional_depth",
+        "hist_problem_investigation__risk_awareness",
+        "hist_risk_investigation__achievement_verification",
+        "hist_risk_investigation__data_evidence",
+        "hist_risk_investigation__risk_awareness"
+      ],
+      "competency_domain": "problem_diagnosis",
+      "version": "RISM-002.1",
+      "review": {
+        "annotation_source": "rule_based",
+        "annotation_status": "pending",
+        "annotator_id": null,
+        "reviewed_at": null,
+        "review_reason": "岗位能力由能力域映射初建，待人工审核",
+        "ontology_version": "RISM-002.1",
+        "reviewed": false
+      }
+    }
+  ]
+}

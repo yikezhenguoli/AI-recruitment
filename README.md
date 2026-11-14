@@ -1,668 +1,451 @@
-# TTC · 才多对 AI 赋能与人才挖掘平台
+# TTC · AI 招聘与人才挖掘平台
 
-> 面向企业招聘与人才发现的 AI
-> 辅助评估平台。通过岗位画像、简历结构化解析、外部证据检索、岗位适配评估与授权式语音面试，帮助
-> HR 更高效地理解候选人的能力、经历及其证据基础。
+TTC 是一套面向企业招聘和候选人求职的双端 AI 辅助平台。系统把岗位 JD、简历、
+外部证据、岗位适配评估、实时语音初筛和面试排期串成一条可复核的业务链路。
+招聘方使用 HR 工作台，候选人使用独立的求职门户，二者共享同一套多租户 API 和业务数据。
 
--   **项目版本**：V1.0 初版已完成；本文档同时记录 V1.1 完善方向
--   **设计基线**：《TTC 平台详细设计说明书 V1.0》（2026-11-13）
--   **项目形态**：企业级 Web 应用 / AI 辅助人才评估
--   **核心原则**：证据可追溯、评估可解释、人工可复核、隐私可治理
--   **注意**：V1.1
-    规划项不代表当前版本已经实现，具体实现状态以代码仓库和测试结果为准。
+项目当前是 **V1.0 功能实现快照**，不是单纯的前端原型。后端接口统一为
+`/api/v1`，使用 PostgreSQL 持久化数据，并通过 Alembic 管理数据库结构。
 
-------------------------------------------------------------------------
+## 核心特点
 
-## 目录
+- **双账本评估**：分别记录证据可信度和岗位适配度，不把两者合并为一个“人才总分”。
+- **证据可追溯**：简历声明保留原文、字符位置和版本；评估维度可关联声明与证据。
+- **岗位版本化**：JD 版本、权重方案和面试方案与岗位绑定，修改不会覆盖历史版本。
+- **授权式语音面试**：创建会话和服务端建立连接前均检查候选人授权，撤回后中断后续处理。
+- **招聘全流程**：覆盖岗位、候选人、投递、评估、排期、Offer、通知到隐私请求和审计。
+- **双端体验**：HR 工作台负责招聘决策辅助；候选人门户负责浏览岗位、投递、查看进度和管理授权。
+- **可运行的数据工程**：`dataset/` 提供独立、可复现的模拟简历与经历级面试问题生成流水线。
 
--   [项目背景与目标](#项目背景与目标)
--   [核心设计原则](#核心设计原则)
--   [功能概览](#功能概览)
--   [系统架构](#系统架构)
--   [技术栈](#技术栈)
--   [核心业务流程](#核心业务流程)
--   [核心数据与评估模型](#核心数据与评估模型)
--   [API 概览](#api-概览)
--   [安全、隐私与合规](#安全隐私与合规)
--   [V1.1 完善与创新路线图](#v11-完善与创新路线图)
--   [开发与运行](#开发与运行)
--   [测试与验收建议](#测试与验收建议)
--   [项目目录结构](#项目目录结构)
--   [已知边界与后续规划](#已知边界与后续规划)
+## 系统组成
 
-------------------------------------------------------------------------
+| 模块 | 技术栈 | 职责 |
+| --- | --- | --- |
+| `apps/api` | Python 3.11+、FastAPI、SQLAlchemy Async、Alembic | REST API、鉴权、业务规则、异步任务和 WebSocket |
+| `apps/web` | React 18、TypeScript、Vite、Tailwind、TanStack Query、Zustand | HR 招聘工作台 |
+| `apps/candidate-web` | React 18、TypeScript、Vite、Tailwind | 候选人岗位广场、投递、语音面试和隐私管理 |
+| `dataset` | Python 标准库、JSON/JSONL、YAML | 模拟简历、经历拆解、面试问题、追问链和统计报告 |
+| `docs` | Markdown | 历史接口审计和项目说明 |
 
-## 项目背景与目标
+主要基础设施：
 
-招聘评估通常面临以下问题：
+- PostgreSQL 16：业务数据、任务和审计记录。
+- MinIO 或兼容 S3 的对象存储：简历文件、文本快照和音频对象。
+- 后台 Worker：处理简历解析、Crossref 证据检索和实时通话超时收尾。
+- OpenAI 兼容 LLM：JD 生成/抽取、简历声明抽取、匹配解释和面试纪要。
+- 实时语音供应商：OpenAI Realtime SDP 代理或通义千问 Realtime WebSocket 中转。
 
-1.  简历内容主要由候选人自述，真实性与个人贡献难以直接判断。
-2.  不同岗位的能力要求差异较大，单纯关键词匹配容易产生误判。
-3.  外部项目、论文、专利、奖项等资料分散，人工核验成本较高。
-4.  AI
-    评分如果缺少证据定位、计算规则和人工复核机制，难以用于严肃招聘决策。
-5.  面试结论与简历材料割裂，候选人的补充说明和矛盾信息难以形成闭环。
+## 业务流程
 
-TTC 的目标不是用一个 AI 分数替代
-HR，而是构建一套**以证据为基础的人才认知与岗位适配辅助系统**：
+```text
+创建岗位 / JD 版本化
+        |
+        v
+上传简历 -> 后台解析 -> Claims / 时间线
+        |                       |
+        |                       v
+        |                  DOI 证据检索
+        v
+岗位匹配 / 双账本评估
+        |
+        v
+授权式 AI 语音初筛 -> 初始问题 / 实时追问 / 转写 / 纪要 / 人工复核
+        |
+        v
+面试排期 -> Offer -> 候选人确认或拒绝
+```
 
--   将简历、岗位描述和面试信息转化为结构化数据；
--   将候选人的经历拆解为可追溯的 Claims；
--   关联项目、组织、论文、专利等实体及其外部证据；
--   根据岗位能力画像评估候选人的适配情况；
--   在获得明确授权后开展语音面试，并将面试结果与简历证据交叉核对；
--   输出可解释、可复核、可纠错的评估报告。
-
-## 核心设计原则
-
-### 1. 双账本，不制造单一"人才总分"
-
-平台分别呈现：
-
--   **证据可信度（Evidence
-    Confidence）**：材料是否有外部佐证、来源质量如何、信息是否一致。
--   **岗位适配度（Job
-    Match）**：候选人现有证据对岗位能力要求的支持程度。
-
-两者不能简单相加为一个"总分"。证据少不等于能力差；证据充分也不必然代表岗位适配。
-
-### 2. 每项判断尽可能回到证据
-
-评估维度应关联来源
-Claim、Evidence、原文摘录或面试轮次。无法定位依据的结论应标记为待验证或不确定，不应伪装成事实。
-
-### 3. AI 提取与解释，确定性规则负责计算
-
-LLM
-可负责信息抽取、语义归纳、问题生成和解释；最终分数应由可版本化、可测试的规则与权重方案计算。模型不得自行伪造证据
-ID、来源或事实。
-
-### 4. 人工复核优先于自动化结论
-
-低置信度实体匹配、关键事实冲突、证据不足和高影响评估结论应进入人工复核流程。人工修改需保留修改前后内容、操作者、时间和理由。
-
-### 5. 授权、撤回与删除是业务能力
-
-语音面试必须经过服务端授权检查。撤回后应阻止后续会话或处理。隐私删除流程应覆盖文件、解析文本、证据快照、转写、报告、向量索引及相关缓存，并提供可验证的执行记录。
-
-------------------------------------------------------------------------
+后端按 `api -> domains -> adapters` 分层。API 路由负责鉴权与请求编排，
+领域代码处理简历、面试计划和人才索引，外部模型、存储、实时语音和检索通过适配器接入。
 
 ## 功能概览
 
-  --------------------------------------------------------------------------------------------------
-  模块                    主要能力                                           设计定位
-  ----------------------- -------------------------------------------------- -----------------------
-  M1 身份与租户           用户、角色、租户、登录与权限                       平台基础
+### 招聘工作台
 
-  M2 岗位画像             JD 创建、AI 生成/润色、多版本、能力维度与权重方案  定义岗位标准
+- 岗位列表、创建、编辑、归档、发布和岗位统计。
+- 手动粘贴 JD、AI 抽取或生成 JD，保存并选择 JD 版本。
+- 配置岗位评估权重、面试轮次和维度。
+- 管理候选人，上传 PDF、DOCX、TXT、PNG、JPEG 或 WebP 简历。
+- 查看解析状态、claims、纯文本、时间线、证据和评估报告。
+- 生成确定性双账本评估，人工修订单个维度并保留修订记录。
+- 创建 AI 语音会话、查看初始问题、动态追问、轮次、纪要和通话报告。
+- 安排面试、检测面试官/候选人时间冲突、登记面试状态。
+- 创建、发送、撤回 Offer，并记录候选人决策。
+- 人才库索引重建、自然语言检索和相似候选人查询。
+- 团队成员、角色权限、通知、审计、指标、备份和隐私请求管理。
 
-  M3 简历解析             文件上传、结构化抽取、原文定位、时间线与冲突识别   将简历转成结构化 Claims
+### 候选人门户
 
-  M4 实体与证据           实体抽取、消歧、外部来源检索、证据分级与冲突记录   支撑事实核验
+- 注册、登录、维护求职档案。
+- 浏览企业已发布岗位并查看结构化 JD。
+- 上传简历投递岗位，查看解析、匹配和投递状态。
+- 查看 3～5 个初始问题，在浏览器中完成实时语音初筛；后续问题根据回答和岗位相关性动态生成。
+- 逐项查看授权记录并撤回授权，提交访问、更正或删除等隐私请求。
+- 查看招聘方发送的 Offer 并提交接受或拒绝决定。
 
-  M5 评估报告             双账本、维度评分、证据引用校验、人工修订           输出可解释评估
+### 数据集工程
 
-  M6 语音会话             授权门槛、问题计划、会话状态机、实时语音适配       补充候选人信息
+- 30 个岗位类别，使用本地规则模板和岗位知识库生成虚拟候选人。
+- 将简历拆成 8 类经历单元，每道问题绑定具体经历、原文片段和字符偏移。
+- 生成 15 个维度的追问问题、题级评分和 4 至 5 层追问链。
+- 提供严格校验、硬性质量门槛、去重分析、统计报告和断点续跑。
 
-  M7 通话分析             面试摘要、维度分析、引文、简历交叉核验与追问建议   形成面试证据
+当前仓库中的 pilot 数据规模为：
 
-  M8 治理合规             授权、审计、隐私请求、保留与删除策略               保障数据治理
+| 指标 | 当前值 |
+| --- | ---: |
+| 模拟简历 | 100 |
+| 岗位类别 | 30 |
+| 经历单元 | 742 |
+| 面试问题 | 1035 |
+| 追问链 | 300 |
 
-  外部集成                OpenATS 同步回写、Vekt 向量索引与检索              对接外围系统
-  --------------------------------------------------------------------------------------------------
+全量目标为 5000 份简历。pilot 阶段已经通过自动校验，但全量生成受人工验收闸门控制。
 
-### 主要用户
+## 项目结构
 
--   **HR /
-    招聘人员**：创建岗位、上传简历、查看证据和评估报告、发起面试。
--   **管理员**：管理租户、用户、数据源、审计、集成和运行状态。
--   **候选人**：查看授权说明、授予或撤回授权、参与语音会话、提交隐私请求并查看相关信息。
-
-------------------------------------------------------------------------
-
-## 系统架构
-
-系统采用分层与适配器设计，核心业务领域不直接依赖外部供应商的具体实现。
-
-``` text
-HR 工作台（React 18 + Vite）       候选人端（Next.js 15）
-                \                    /
-                 \                  /
-                  FastAPI API（/api/v1）
-                           |
-        +------------------+------------------+
-        |                  |                  |
-     Domains            Core             WebSocket
-  identity/job       auth/security       progress/voice
-  resume/evidence    audit/contracts
-  assessment/voice   logging/errors
-  call_analysis/
-  governance/
-        |
-     Adapters / Ports
-        |
-  +-----+---------+----------+----------+----------+
-  |               |          |          |          |
- LLM           Parsing    Realtime    Sources     ATS/Vector
- Provider      PDF/DOCX    Providers   Whitelist  OpenATS/Vekt
-  |               |          |          |          |
-  +---------------+----------+----------+----------+
-                           |
-             PostgreSQL / MinIO / Redis(可选)
-                           |
-                    Worker / Task Runner
+```text
+AI-recruitment/
+├── apps/
+│   ├── api/                         # FastAPI 后端
+│   │   ├── alembic/                 # 数据库迁移，当前 head 为 0006
+│   │   ├── scripts/                 # 演示租户和岗位数据
+│   │   ├── src/ttc/
+│   │   │   ├── api/v1/              # REST 与 WebSocket 路由
+│   │   │   ├── adapters/            # LLM、存储、实时语音等适配器
+│   │   │   ├── core/                # 配置、数据库、鉴权、审计、错误
+│   │   │   ├── domains/             # 简历、面试计划、人才索引等领域逻辑
+│   │   │   └── tasks/               # 后台任务消费者
+│   │   └── tests/                   # API、领域与数据库测试
+│   ├── web/                         # HR 工作台
+│   └── candidate-web/               # 候选人门户
+├── dataset/                         # 模拟简历与面试数据生成系统
+├── docs/                            # 接口审计等文档
+├── files/                           # 示例简历文本
+└── README.md
 ```
 
-### 架构约束
-
--   后端采用 `api → domains → adapters` 分层。
--   领域层只依赖 `adapters/ports.py` 中定义的
-    Protocol，不直接导入供应商实现。
--   外部模型、语音、存储、检索与 ATS 通过适配器接入，便于替换和降级。
--   耗时任务通过任务队列/Worker 执行，前端通过进度接口或 WebSocket
-    获取状态。
--   外部时间使用 RFC 3339 UTC；数据库时间字段使用 `timestamptz`。
--   ID 按设计使用 UUID v7；列表接口采用游标分页，默认 20 条、最大 100
-    条。
-
-## 技术栈
-
-  ---------------------------------------------------------------------------------------
-  层次                    技术 / 组件                         用途
-  ----------------------- ----------------------------------- ---------------------------
-  后端                    Python 3.11、FastAPI                API 与业务服务
-
-  数据库                  PostgreSQL 16                       业务数据、关系数据、JSONB
-
-  对象存储                MinIO                               简历等文件存储
-
-  缓存 / 队列             Redis 7（可选）                     缓存、任务协调等
-
-  ORM / 迁移              SQLAlchemy、Alembic（按项目实现）   数据访问与迁移
-
-  HR 前端                 React 18、Vite                      招聘工作台
-
-  候选人端                Next.js 15                          候选人授权与面试端
-
-  容器                    Docker Compose v2                   本地与部署环境
-
-  AI 编排                 LangGraph（用于相关管线）           多步骤抽取与分析
-
-  向量检索                Vekt 适配器                         向量写入、召回与重建
-
-  实时语音                OpenAI Realtime / Gemini Live /     多供应商语音会话
-                          local S2S / stub 适配               
-  ---------------------------------------------------------------------------------------
-
-> 具体依赖版本、供应商可用性和部署参数以仓库锁定文件、`.env.example`
-> 及部署配置为准。
-
-------------------------------------------------------------------------
-
-## 核心业务流程
-
-### 1. 岗位创建与画像生成
-
-1.  HR 创建岗位并录入 JD，或使用 AI 生成/润色 JD。
-2.  JD 抽取器将原文转为结构化岗位信息。
-3.  系统生成岗位能力维度与权重方案。
-4.  HR 确认后发布岗位版本。
-5.  已发布版本不应被原地覆盖；修改应创建新版本。
-
-### 2. 简历解析与 Claim 抽取
-
-1.  HR 上传 PDF / DOCX 等受支持格式。
-2.  文件进入对象存储并创建解析任务。
-3.  解析器抽取文本与结构化信息。
-4.  将教育、工作、项目、论文、专利、奖项、技能等拆解为 Claims。
-5.  每个 Claim 尽可能保留原文定位、字符偏移、来源版本与抽取置信度。
-6.  识别时间线异常、字段缺失和经历冲突。
-
-### 3. 实体识别与外部证据核验
-
-1.  从 Claims 中抽取公司、学校、项目、论文、专利、奖项等实体。
-2.  通过实体消歧匹配候选外部实体。
-3.  从白名单来源检索证据并保存来源快照、抓取时间和内容摘要/哈希。
-4.  按证据等级与匹配置信度分级。
-5.  记录冲突信息；低置信度匹配进入人工确认。
-
-### 4. 岗位适配评估
-
-1.  读取指定的简历版本、岗位版本和权重方案。
-2.  将岗位要求映射到能力维度。
-3.  为每个维度关联支持、反向或缺失证据。
-4.  由规则引擎计算维度分与岗位适配度。
-5.  单独计算证据可信度，并标记证据覆盖情况。
-6.  生成带证据引用的报告；引用校验失败时降级或拒绝输出该结论。
-
-### 5. 授权式语音面试
-
-1.  候选人阅读授权说明并明确选择授权范围。
-2.  服务端创建会话前重新核验有效授权，不信任前端状态。
-3.  建会话时读取候选人最新简历文本与岗位 JD，交给模型生成 3–5 个锚定简历事实的问题（含候选人画像与每题关注点），生成失败或没有简历文本时回退固定清单，不影响会话创建。
-4.  实时语音供应商通过适配器连接；stub 模式用于离线演示。
-5.  会话结束后生成转写与通话分析。
-6.  将面试回答与简历 Claims / 外部证据进行一致、补充、冲突、待核验分类。
-7.  形成追问建议与人工复核事项。
-
-------------------------------------------------------------------------
-
-## 核心数据与评估模型
-
-### 关键业务对象
-
--   `Tenant` / `AppUser`：租户与用户。
--   `Job` / `JobVersion`：岗位与不可覆盖的岗位版本。
--   `WeightPlan` / `InterviewPlan`：评估权重与面试方案。
--   `Candidate`：候选人。
--   `Resume` / `ResumeVersion`：原始简历及其版本。
--   `Claim`：简历中的结构化陈述及原文定位。
--   `Entity` / `Evidence` / `EvidenceConflict`：实体、外部证据与冲突。
--   `Assessment` / `DimensionScore` /
-    `AssessmentRevision`：评估、维度分与人工修订。
--   `Consent` / `VoiceSession` / `VoiceTurn` /
-    `CallReport`：授权、面试会话、轮次与分析报告。
--   `PrivacyRequest` / `AuditLog` / `Task` /
-    `VectorRef`：治理、审计、任务和向量索引引用。
-
-### 评估的三个独立观察面
-
-建议在 V1.1 中将以下指标明确区分，不要把它们压缩成同一分数：
-
-  ----------------------------------------------------------------------------------
-  指标                    回答的问题                         示例状态
-  ----------------------- ---------------------------------- -----------------------
-  Evidence Confidence     当前材料可信程度如何？             strong / partial /
-                                                             self_claim / missing
-
-  Capability Assessment   证据对某项岗位能力提供多强支持？   supported /
-                                                             partially_supported /
-                                                             not_enough_evidence /
-                                                             contradicted
-
-  Assessment Coverage     本次评估覆盖了多少岗位关键维度？   covered / partial /
-                                                             missing
-  ----------------------------------------------------------------------------------
-
-### 证据链的三级核验
-
-1.  **成果存在性**：项目、论文、专利或奖项是否真实存在？
-2.  **个人参与性**：候选人是否确实参与该成果？
-3.  **个人贡献度**：候选人具体承担了什么工作、产生了什么可归因贡献？
-
-外部页面证明项目存在，并不能自动证明候选人参与，更不能自动证明其贡献程度。
-
-### 建议的报告结构
-
-``` json
-{
-  "evidence_assessment": {
-    "score": 0,
-    "grade": "B",
-    "coverage": 0,
-    "limitations": []
-  },
-  "job_match": {
-    "score": 0,
-    "dimensions": []
-  },
-  "assessment_quality": {
-    "comparable": false,
-    "coverage": 0,
-    "evidence_sufficiency": "low",
-    "uncertainty_level": "high",
-    "missing_dimensions": []
-  },
-  "verification_tasks": [],
-  "human_review_required": true
-}
-```
-
-以上为建议结构示例，需结合现有 JSON Schema 与 API 契约进行兼容性升级。
-
-------------------------------------------------------------------------
-
-## API 概览
-
-API 前缀：`/api/v1`
-
-  --------------------------------------------------------------------------------------------------------------------------------
-  领域                    典型端点                                                                    用途
-  ----------------------- --------------------------------------------------------------------------- ----------------------------
-  认证                    `POST /auth/login`、`POST /auth/refresh`、`POST /auth/logout`               登录与令牌管理
-
-  岗位                    `/jobs`、`/jobs/{id}/jd/generate`、`/jobs/{id}/publish`                     岗位、JD 与版本
-
-  候选人                  `/candidates`                                                               候选人管理
-
-  简历                    `POST /resumes`、`GET /resumes/{id}/claims`、`GET /resumes/{id}/timeline`   上传、解析与查看
-
-  证据                    `/candidates/{id}/evidence`、`/evidence/{id}/confirm`                       证据检索与人工确认
-
-  评估                    `/candidates/{id}/assessments`、`/assessments/{id}`                         生成、读取与修订报告
-
-  授权                    `/consents`、`/consents/{id}/revoke`                                        授权与撤回
-
-  语音                    `/voice-sessions`、`/realtime/mint`、`/voice-sessions/{id}/finish`          会话管理
-
-  隐私                    `/privacy/requests`                                                         访问、更正、撤回、删除请求
-
-  集成                    `/integrations/openats/sync`、`/integrations/vekt/rebuild`                  外部系统同步与索引重建
-
-  实时事件                `/ws/progress/{task_id}`、`/ws/voice/{session_id}`                          任务与会话状态
-  --------------------------------------------------------------------------------------------------------------------------------
-
-通用约定：
-
--   Access Token 通过 `Authorization: Bearer` 传递。
--   `tenant_id` 从认证上下文解析，不接受客户端自行指定。
--   写接口应支持 `Idempotency-Key`。
--   PATCH 使用 `If-Match` 做乐观并发控制。
--   响应包含 `X-Request-Id`，错误响应包含统一错误码与请求 ID。
--   端点的实际可用性以当前 OpenAPI 文档为准。
-
-------------------------------------------------------------------------
-
-## 安全、隐私与合规
-
-### 多租户隔离
-
-V1.1 应对所有租户归属明确的业务表统一检查
-`tenant_id`，包括但不限于简历、简历版本、Claims、证据、评估、语音会话、轮次与通话报告。建议结合：
-
--   组合外键，防止跨租户对象关联；
--   PostgreSQL Row Level Security（RLS）作为纵深防护；
--   API 层租户上下文校验；
--   跨租户访问自动化测试；
--   后台任务执行时显式传递租户上下文。
-
-### 外部内容与提示词注入防护
-
-简历、附件、超链接、GitHub README、论文页面、外部 API
-返回、候选人语音转写均视为**不可信数据**。不得把其中的指令当作系统指令执行。工具调用应使用白名单、最小权限和结构化参数校验。
-
-### 授权与删除
-
--   语音面试前服务端校验授权目的、范围、版本与有效期。
--   撤回后终止或阻止相关处理。
--   默认不保存原始音频；实际策略应与配置及告知文本一致。
--   删除任务应覆盖对象存储、数据库、搜索/向量索引、缓存和第三方处理链路。
--   对备份设置明确的过期清理周期，并记录无法即时清除的边界。
--   删除完成后进行抽样或自动化验证，不能仅以"已脱敏"视为删除完成。
-
-### 招聘公平性
-
-模型不得仅凭年龄、性别、种族、宗教、婚育状况、院校标签或口音等敏感/代理特征作出能力判断。表达流畅度不能替代技术能力。应进行分群误差审查、人工复核和申诉纠错，并遵循适用法律与组织政策。
-
-------------------------------------------------------------------------
-
-## V1.1 完善与创新路线图
-
-以下为初版完成后的增量升级建议。应先盘点当前实现，确认已有能力、缺口和兼容风险，再按优先级迭代，不应直接推翻重写。
-
-### P0：可靠性与评估可信度
-
--   [ ] 统一解析状态机，消除 `done / parsed / partial / error`
-    等状态语义不一致。
--   [ ] 审查核心业务表的 `tenant_id`、组合外键、RLS 和跨租户访问测试。
--   [ ] 建立 Assessment
-    Snapshot，固定简历版本、岗位版本、权重方案、提示词版本、模型版本、证据快照和规则版本。
--   [ ] 将 Evidence Confidence、Capability Assessment、Assessment
-    Coverage 分开呈现。
--   [ ] 为低覆盖或低证据充分度的评估增加"不宜直接比较/待补充核验"状态。
--   [ ] 对评分规则增加边界保护、缺失值处理、冲突识别与版本化。
--   [ ] 建立提示词注入、伪造 evidence_id、跨租户访问和删除链路测试。
-
-### P1：人才能力认知与贡献核验
-
--   [ ] 建立统一 Competency
-    Dictionary（能力字典），统一岗位、简历、面试和评估维度。
--   [ ] 增加三级贡献证据链：成果存在性、个人参与性、个人贡献度。
--   [ ] 增加 Transferable
-    Skills（可迁移能力）识别，并区分直接证据、相关证据与待验证推断。
--   [ ]
-    构建人才能力关系模型：Person、Skill、Competency、Project、Achievement、Organization、Role、Evidence。
--   [ ] 初期可在 PostgreSQL
-    中用关系表实现，不因"知识图谱"概念而过早引入独立图数据库。
--   [ ] 增加人工纠错、候选人补充材料和申诉记录。
-
-### P2：主动式评估与人才发现
-
--   [ ] 增加 Assessment
-    Orchestrator：统一调度解析、核验、能力评估、面试计划、面试分析和报告更新。
--   [ ] 增加 Assessment
-    Planner：根据岗位关键能力缺口生成下一步验证任务。
--   [ ] 采用有边界的 Agent 工作流；Agent
-    只能在授权工具、数据范围和状态机约束内执行。
--   [ ] 增加多候选人能力矩阵，展示分数、证据覆盖、评估状态与不确定性。
--   [ ] 增加候选人到多个岗位、岗位到多个候选人的双向推荐。
--   [ ]
-    探索潜力与成长分析，仅基于可观察的学习迁移、问题解决和成果迭代证据，不以人口属性或表达风格推断潜力。
-
-### P3：模型评测与持续校准
-
--   [ ]
-    建立抽取准确率、实体消歧准确率、证据匹配准确率、评分一致性等评测集。
--   [ ] 建立人工标注规范和双人复核抽样机制。
--   [ ] 使用真实岗位样本与招聘专家评审校准权重和阈值。
--   [ ] 记录模型、提示词、规则、数据版本，支持回归测试与版本对比。
--   [ ] 监控不同岗位类别和群体的误差差异，发现偏差时暂停相关自动化结论。
-
-### 推荐新增模块
-
-  --------------------------------------------------------------------------------------
-  模块                    名称                    职责
-  ----------------------- ----------------------- --------------------------------------
-  M9                      Talent Knowledge Model  人才、能力、项目、成果与证据关系模型
-
-  M10                     Contribution            成果存在性、个人参与性、贡献度核验
-                          Verification            
-
-  M11                     Assessment Orchestrator 评估全生命周期编排与状态管理
-
-  M12                     Model Evaluation &      模型评测、规则校准、公平性与回归测试
-                          Calibration             
-
-  M13                     Talent Discovery        双向推荐、能力矩阵与人才发现
-  --------------------------------------------------------------------------------------
-
-建议优先将 M9--M12 的基础能力纳入 V1.1；M13
-在数据质量和评估校准达到要求后推进。
-
-------------------------------------------------------------------------
-
-## 开发与运行
+## 快速开始
 
 ### 环境要求
 
-设计文档定义的基线环境：
+- Python 3.11 或更高版本
+- Node.js `>=20.19 <23`
+- npm
+- PostgreSQL 16
+- `uv`
+- Docker Compose v2，可选
+- MinIO 或兼容 S3 的对象存储，生产环境必需
 
--   Python 3.11
--   Node.js 20 LTS（22 亦可）
--   PostgreSQL 16
--   Redis 7（可选）
--   MinIO
--   Docker Compose v2
+### 1. 安装并配置 API
 
-### 配置
-
-从仓库提供的环境模板开始：
-
-``` bash
-cp deploy/.env.example .env
+```bash
+cd apps/api
+cp .env.example .env
+uv sync --extra dev
 ```
 
-请根据实际部署环境填写数据库、对象存储、JWT/加密密钥、LLM、语音供应商、外部检索与
-ATS 配置。不要将真实密钥提交到 Git。
+编辑 `apps/api/.env`，至少确认以下值：
 
-设计文档中的部分配置项包括：
-
--   `OPENAI_API_KEY`
--   `GEMINI_API_KEY`
--   `RETENTION_AUDIO_HOURS`
--   `RETENTION_TRANSCRIPT_DAYS`
--   `RETENTION_AUDIT_DAYS`
--   `DEMO_MODE`
--   `LOG_LEVEL`
-
-实际变量名以当前仓库 `.env.example` 为准。
-
-### Docker Compose
-
-设计文档规划的服务包括：
-
--   `api`：FastAPI 服务
--   `worker`：后台任务执行器
--   `web`：HR 工作台
--   `candidate`：候选人端
--   `postgres`：关系数据库
--   `minio`：对象存储
-
-常见启动方式（请以仓库实际 Compose 文件为准）：
-
-``` bash
-docker compose -f deploy/docker-compose.yml up --build
+```dotenv
+POSTGRES_DB=ttc
+POSTGRES_USER=ttc
+POSTGRES_PASSWORD=你的数据库密码
+DATABASE_URL=postgresql+asyncpg://ttc:你的数据库密码@127.0.0.1:5432/ttc
+JWT_SECRET=至少32字节的随机字符串
+COLUMN_ENCRYPTION_KEY=Base64编码的32字节随机密钥
+DEMO_MODE=true
+S3_ACCESS_KEY=ttc-local-minio
+S3_SECRET_KEY=change-me-local-minio-password
 ```
 
-### 数据库迁移
+可以用下面的命令生成密钥，再将输出写入 `.env`：
 
-``` bash
-# 在 API 项目目录和正确的 Python 环境中执行
-alembic upgrade head
+```bash
+python3 - <<'PY'
+import base64
+import secrets
+
+print("JWT_SECRET=" + secrets.token_urlsafe(48))
+print("COLUMN_ENCRYPTION_KEY=" + base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())
+PY
 ```
 
-### 本地开发
+`DEMO_MODE=true` 时，未配置 S3 的简历会写入本机私有目录，适合本地联调。
+由于 Compose 会解析 MinIO 服务的必填变量，即使暂不启动 MinIO，也应先填写两个本地账号值。
+如果要验证 MinIO 或生产对象存储，请配置：
 
-后端、HR
-前端、候选人端应分别按各自目录中的依赖管理文件安装依赖并启动。具体命令以仓库
-`README`、`pyproject.toml`、`package.json` 和脚本定义为准。
-
-本机实测可用的三进程启动方式（三个终端，均在仓库根目录执行）：
-
-``` bash
-# 1) 后端：必须监听 0.0.0.0，否则手机/同网段设备访问不到
-cd apps/api && .venv/bin/uvicorn ttc.main:app --app-dir src --host 0.0.0.0 --port 8000
-
-# 2) HR 工作台（http://<本机IP>:5174）
-cd apps/web && npx vite --port 5174 --strictPort
-
-# 3) 候选人端（有证书时自动走 https，见下节）
-cd apps/candidate-web && npx vite --port 5175 --strictPort
+```dotenv
+DEMO_MODE=false
+S3_ENDPOINT=http://127.0.0.1:9000
+S3_ACCESS_KEY=你的对象存储账号
+S3_SECRET_KEY=你的对象存储密码
+S3_BUCKET_RESUMES=resumes
+S3_BUCKET_AUDIO=audio
 ```
 
-两个前端的 `vite.config.ts` 已设 `server.host = true`，命令行不再需要 `--host`；
-后端仍须自己传 `--host 0.0.0.0`。前端把 `/api`、`/ws`、`/health` 代理到
-`http://localhost:8000`，因此手机直接访问前端端口即可，不需要单独记后端地址。
+### 2. 启动 PostgreSQL 并迁移
 
-#### 手机上录音（候选人端必须 HTTPS）
+使用仓库自带的 Compose 启动数据库：
 
-浏览器只在**安全上下文**里暴露麦克风：`localhost`、或用 HTTPS 打开的非本机地址。
-手机用 `http://<本机IP>:5175` 打开时 `navigator.mediaDevices` 直接是 `undefined`，
-表现就是「录不进去音」，且面试会话会被后端记成一次「候选人已结束」。所以候选人端
-用局域网 IP 访问时必须是 HTTPS：
-
-``` bash
-# 生成本机开发证书（默认取本机第一个局域网 IP，也可显式传入）
-cd apps/candidate-web && ./scripts/make-dev-cert.sh 172.30.11.140
+```bash
+cd apps/api
+docker compose --env-file .env up -d --wait postgres
+uv run alembic upgrade head
+uv run alembic current
 ```
 
-生成后重启 vite，`vite.config.ts` 检测到 `.certs/` 就自动启用 https，地址变成
-`https://<本机IP>:5175`。**证书必须被手机信任**，仅在警告页点「继续前往」不够：
-Chrome 把带证书错误的页面仍判为非安全上下文，麦克风依旧拿不到。
+`alembic current` 应显示 `0006_offers_scheduling_ops (head)`。
+如果 PostgreSQL 数据卷已经初始化过，仅修改 `.env` 中的 `POSTGRES_PASSWORD` 不会修改
+数据库内的角色密码；需要在数据库中显式同步修改。
 
-- Android：手机打开 `https://<本机IP>:5175/ttc-dev-ca.crt` 下载，
-  「设置 → 安全 → 加密与凭据 → 安装证书 → CA 证书」选择该文件安装。
-- iOS：同上地址下载，装描述文件后在「设置 → 通用 → 关于本机 → 证书信任设置」
-  里对 `TTC Dev CA` 打开完全信任。
+### 3. 启动 API 和后台 Worker
 
-热点重连后本机 IP 可能变化，重跑 `make-dev-cert.sh` 并重新安装 CA 即可。
-证书与 CA 文件都在 `.gitignore` 里，不进仓库。
+在两个终端中分别执行：
 
-### 演示模式
-
-演示数据应明确标记为合成数据（例如 `is_synthetic` /
-`DEMO_MODE`），不得将演示数据误用于真实招聘决策或模型训练。
-
-------------------------------------------------------------------------
-
-## 测试与验收建议
-
-建议至少覆盖以下端到端场景：
-
-1.  用户登录、刷新令牌、角色权限和租户隔离。
-2.  创建岗位、JD 生成、版本选择、发布与锁定。
-3.  上传合法/非法/损坏简历，验证解析任务状态与错误处理。
-4.  Claim 原文定位、字符偏移和简历版本关联。
-5.  实体消歧、证据等级、来源快照和冲突处理。
-6.  伪造或不存在的 `evidence_id` 必须被拒绝或降级为未核验。
-7.  双账本报告不产生合并总分，维度分可追溯到证据。
-8.  低覆盖评估不被错误标记为可直接比较。
-9.  未授权不能创建语音会话；撤回授权后会话被阻止或终止。
-10. 不同语音供应商失败时按策略降级，stub 模式可完成演示。
-11. 隐私删除覆盖文件、文本、报告、转写、向量索引与缓存。
-12. 外部内容中的恶意指令不会触发越权工具调用。
-13. 模型、提示词或规则升级后运行回归测试。
-14. 人工修订保留修改前后差异、操作者与理由。
-
-------------------------------------------------------------------------
-
-## 项目目录结构
-
-以下为 V1.0 设计文档中的目标结构示意，实际仓库可能存在实现差异：
-
-``` text
-ttc-platform/
-├── apps/
-│   ├── api/
-│   │   ├── alembic/
-│   │   ├── src/ttc/
-│   │   │   ├── core/
-│   │   │   ├── api/v1/
-│   │   │   ├── domains/
-│   │   │   │   ├── identity/
-│   │   │   │   ├── job/
-│   │   │   │   ├── resume/
-│   │   │   │   ├── evidence/
-│   │   │   │   ├── assessment/
-│   │   │   │   ├── voice/
-│   │   │   │   ├── call_analysis/
-│   │   │   │   └── governance/
-│   │   │   ├── adapters/
-│   │   │   ├── ws/
-│   │   │   └── tasks/
-│   │   └── tests/
-│   ├── web/
-│   ├── candidate/
-│   └── voice-worker/
-├── packages/
-│   └── contracts/
-├── deploy/
-└── scripts/
+```bash
+cd apps/api
+uv run uvicorn ttc.main:app --app-dir src --host 127.0.0.1 --port 8000
 ```
 
-------------------------------------------------------------------------
+```bash
+cd apps/api
+uv run python -m ttc.tasks.runner
+```
 
-## 已知边界与后续规划
+- API 文档：`http://127.0.0.1:8000/docs`
+- 进程存活：`http://127.0.0.1:8000/api/v1/health/live`
+- 就绪检查：`http://127.0.0.1:8000/api/v1/health/ready`
 
--   本 README 依据 V1.0 详细设计说明书及 V1.1
-    评审建议整理，不代表已经审计当前代码仓库。
--   当前实现状态、实际接口、数据库字段和依赖版本，应以代码、迁移文件、OpenAPI
-    与自动化测试为准。
--   外部证据可用性受数据源授权、网络、限流和供应商政策影响；缺少公开证据不能直接推断候选人不具备能力。
--   AI
-    输出仅作为招聘辅助信息，不应未经人工审查直接成为录用、淘汰或其他重大人事决定的唯一依据。
--   权重、阈值和模型输出必须通过岗位样本与专家评审持续校准。
+简历解析、Crossref 检索和通话超时处理依赖 Worker，请不要只启动 API。
 
-## 贡献与维护建议
+### 4. 创建本地账号和演示岗位
 
--   所有数据库变更通过迁移脚本提交。
--   所有 API 契约变更同步更新 JSON Schema / OpenAPI 和测试。
--   新增外部服务必须通过 Adapter / Port 接口接入。
--   新增评估维度必须同步更新能力字典、岗位画像、面试方案、评分规则和报告展示。
--   任何涉及个人数据、授权、保留、删除和模型训练的变更，必须同步更新隐私说明与测试。
--   提交前运行格式检查、类型检查、单元测试、集成测试和安全回归测试。
+先创建演示租户和 HR 管理员：
 
-------------------------------------------------------------------------
+```bash
+cd apps/api
+TTC_BOOTSTRAP_PASSWORD='请替换为至少12位密码' \
+uv run python -m ttc.cli \
+  --tenant-slug demo \
+  --tenant-name '演示企业' \
+  --email web.test.hr@ttc.local \
+  --name '演示 HR' \
+  --role admin
+```
 
-**TTC · 才多对 AI 赋能与人才挖掘平台**\
-*README 基于《详细设计说明书 V1.0》整理；V1.1 内容为建议升级规划。*
+再写入演示公司和岗位数据：
+
+```bash
+cd apps/api
+TTC_SEED_PASSWORD='请替换为演示账号密码' \
+uv run python scripts/seed_demo_companies.py
+```
+
+种子脚本是幂等的。候选人也可以从求职门户注册到 `demo` 租户。
+
+### 5. 启动 HR 工作台
+
+```bash
+cd apps/web
+npm ci
+npm run dev
+```
+
+默认地址：`http://localhost:5173`。开发服务器会把 `/api`、`/ws` 和 `/health`
+代理到 `http://localhost:8000`。
+
+### 6. 启动候选人门户
+
+```bash
+cd apps/candidate-web
+npm ci
+npm run dev
+```
+
+默认地址：`http://localhost:5175`。
+
+两个前端在本地开发时都可以保持 `VITE_API_BASE_URL` 为空，通过 Vite 代理访问后端。
+如果前后端独立部署，在对应目录创建 `.env`：
+
+```dotenv
+VITE_API_BASE_URL=https://api.example.com
+```
+
+候选人端默认监听局域网地址。手机通过 `http://局域网IP:5175` 打开时，浏览器不会提供
+麦克风权限。需要 HTTPS 时生成开发证书并重启 Vite：
+
+```bash
+cd apps/candidate-web
+./scripts/make-dev-cert.sh 192.168.1.10
+npm run dev
+```
+
+随后使用 `https://192.168.1.10:5175`。开发证书需要安装并信任，仅在本地开发使用。
+
+### Docker Compose 运行完整后端
+
+生产或集成联调时，可从 `apps/api` 启动 PostgreSQL、MinIO、API 和 Worker：
+
+```bash
+cd apps/api
+docker compose --env-file .env build api worker
+docker compose --env-file .env up -d --wait postgres minio
+docker compose --env-file .env run --rm api alembic upgrade head
+docker compose --env-file .env up -d --wait api worker
+```
+
+Compose 默认只把 PostgreSQL、MinIO 和 API 绑定到本机回环地址。对外部署时应在前端
+和 API 前配置 TLS 反向代理，并替换所有演示密码和默认密钥。
+
+## 环境变量
+
+完整模板见 [`apps/api/.env.example`](apps/api/.env.example)。关键变量如下：
+
+| 变量 | 作用 |
+| --- | --- |
+| `DATABASE_URL` | PostgreSQL 异步连接串；未配置时就绪检查返回 503 |
+| `JWT_SECRET` | HS256 访问令牌密钥，至少 32 字节 |
+| `COLUMN_ENCRYPTION_KEY` | 联系人等信息加密所需的 32 字节 AES-GCM 密钥 |
+| `DEMO_MODE` | 本地演示开关；开启后允许本地文件存储并标识演示数据 |
+| `S3_ENDPOINT` / `S3_*` | S3 或 MinIO 地址、凭证和桶名 |
+| `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL` | OpenAI 兼容 LLM 服务 |
+| `DASHSCOPE_API_KEY` / `DASHSCOPE_*` | 通义千问实时语音 |
+| `REALTIME_API_KEY` / `REALTIME_MODEL` | OpenAI Realtime SDP 代理 |
+| `OCR_VLM_MODELS` / `OCR_VLM_API_KEY` | 扫描简历的视觉 OCR 模型链 |
+| `EMBEDDING_*` | 人才库向量化服务；未配置时使用本地词法向量 |
+| `OPENATS_*` / `VEKT_*` | 外部 ATS 和向量系统的预留配置 |
+
+不要提交真实 `.env`、访问令牌、模型密钥或候选人资料。
+
+## API 说明
+
+所有业务接口位于 `/api/v1`。下表中的端点省略该前缀。HTTP 接口使用：
+
+```http
+Authorization: Bearer <access_token>
+```
+
+访问令牌默认 15 分钟有效，刷新令牌 30 天有效并轮换。候选人、HR 和 admin 的角色权限
+由后端校验，`tenant_id` 从当前用户上下文解析。
+
+错误响应采用统一结构：
+
+```json
+{
+  "code": "TTC-2001",
+  "message": "资源不存在",
+  "request_id": "请求追踪 ID",
+  "details": {}
+}
+```
+
+常用接口：
+
+| 领域 | 主要端点 |
+| --- | --- |
+| 健康与认证 | `/health/live`、`/health/ready`、`/auth/login`、`/auth/refresh`、`/auth/logout`、`/me` |
+| 岗位 | `/jobs`、`/jobs/{id}/publish`、`/jobs/{id}/jd/versions`、`/jobs/{id}/weight-plan` |
+| 候选人 | `/candidates`、`/candidates/{id}/resumes` |
+| 简历 | `/resumes`、`/resumes/{id}/claims`、`/resumes/{id}/text`、`/resumes/{id}/timeline` |
+| 证据与评估 | `/candidates/{id}/evidence-search`、`/candidates/{id}/assessments`、`/assessments/{id}` |
+| 语音面试 | `/voice-sessions`、`/voice-sessions/{id}/realtime`、`/voice-sessions/{id}/turns`、`/voice-sessions/{id}/report` |
+| 人工面试与 Offer | `/interviews`、`/interviews/{id}/status`、`/offers`、`/offers/{id}/decision` |
+| 候选人门户 | `/portal/register`、`/portal/jobs`、`/portal/applications`、`/portal/interviews` |
+| 治理与运营 | `/consents`、`/privacy/requests`、`/admin/audit-logs`、`/admin/backups`、`/talent/search` |
+| 实时事件 | `/ws/progress/{task_id}`、`/ws/voice/{session_id}` |
+
+进度和语音状态 WebSocket 建立连接后，客户端先发送：
+
+```json
+{"token":"<access_token>"}
+```
+
+具体请求体、响应结构和权限以启动后的 `/docs`、`/openapi.json` 为准。
+
+## 数据集使用
+
+进入数据集目录后，可执行 pilot 流程：
+
+```bash
+cd dataset
+python3 scripts/run_pipeline.py --stage pilot
+```
+
+只重新校验和统计已有数据：
+
+```bash
+cd dataset
+python3 scripts/run_pipeline.py --validate-only --strict
+```
+
+人工审阅 `dataset/reports/` 下的报告后，才可解除全量阶段闸门：
+
+```bash
+cd dataset
+python3 scripts/run_pipeline.py --accept --note "人工验收通过"
+python3 scripts/run_pipeline.py --stage full
+```
+
+核心输出：
+
+- `dataset/dataset/resumes/resumes.jsonl`
+- `dataset/dataset/resumes/resume_experiences.jsonl`
+- `dataset/dataset/questions/interview_questions.jsonl`
+- `dataset/dataset/questions/question_chains.jsonl`
+- `dataset/dataset/metadata/`
+- `dataset/reports/`
+
+所有当前人物、学校、公司和联系方式均为合成数据。外部生成默认关闭，错误地使用真实
+个人简历或未授权材料不在此工程的支持范围内。
+
+## 测试与检查
+
+后端：
+
+```bash
+cd apps/api
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 uv run pytest -p pytest_asyncio.plugin -q
+uv run ruff check src tests alembic
+```
+
+前端：
+
+```bash
+cd apps/web
+npm run typecheck
+npm run build
+```
+
+```bash
+cd apps/candidate-web
+npm run typecheck
+npm run build
+```
+
+数据集：
+
+```bash
+cd dataset
+python3 scripts/run_pipeline.py --validate-only --strict
+```
+
+## 当前边界
+
+- LLM 未配置时，JD AI、简历 claim 抽取、匹配解释和面试纪要会返回明确的 503 或降级
+  状态，不会生成伪造结果。
+- 简历-岗位匹配需要可用的独立推理服务；模型未就绪时接口返回 503。可配置关键词兜底，
+  但它只用于开发联调，不代表模型能力。
+- 扫描 PDF 的 OCR 依赖视觉模型链，或服务器上的 `pdftoppm`、Tesseract 及对应语言包。
+- Crossref 检索只对简历原文中可逐字定位的 DOI 查询作品元数据，不能证明候选人是作者。
+- 通话报告整理已提交的转写轮次；没有转写时只生成“未评估”报告，不推断能力分数。
+- OpenATS 同步和 Vekt 重建仍依赖尚未确定的外部协议与凭证，当前端点会明确返回未实现状态。
+- 数据集全量 5000 份的生成需要先完成 pilot 人工验收；当前仓库记录的是 100 份试点数据。
+- 演示账号、默认密码和开发证书仅可用于本机开发，不能直接用于生产环境。
+
+## 相关文档
+
+- 后端详细启动与边界：[`apps/api/README.md`](apps/api/README.md)
+- 数据生成系统说明：[`dataset/README.md`](dataset/README.md)
+- 历史接口审计：[`docs/API_CONTRACT.md`](docs/API_CONTRACT.md)
+- 设计说明书：[`TTC_AI人才挖掘平台_详细设计说明书(6).pdf`](<TTC_AI人才挖掘平台_详细设计说明书(6).pdf>)

@@ -189,7 +189,15 @@ export interface ApplicationDetail {
 }
 
 export interface InterviewPlan {
-  questions: Array<{ id: string; text: string; focus?: string }>
+  questions: Array<{
+    id: string
+    text: string
+    focus?: string
+    section?: string
+    job_relevance?: string
+    resume_anchor?: string
+  }>
+  strategy?: string
   [key: string]: unknown
 }
 

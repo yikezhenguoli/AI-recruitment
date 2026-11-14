@@ -1,0 +1,169 @@
+{
+  "position_id": "java_engineer",
+  "index": 2,
+  "position_name": "Java开发工程师",
+  "family": "软件研发",
+  "core_responsibilities": [
+    "负责交易域微服务的开发与维护",
+    "设计领域模型与数据库表结构",
+    "实现分布式事务与消息可靠性",
+    "进行 JVM 调优与线上问题排查",
+    "编写单元测试与接口契约",
+    "参与迭代评审与技术债清理"
+  ],
+  "common_tasks": [
+    "基于 Spring Boot 开发业务服务",
+    "使用 MyBatis 编写复杂查询与批量操作",
+    "通过 RocketMQ 完成异步解耦",
+    "配置 JVM 参数与 GC 策略",
+    "实现接口幂等与分布式锁",
+    "维护 Maven 多模块依赖"
+  ],
+  "core_skills": [
+    "Java 语言与集合并发包",
+    "JVM 内存模型与 GC",
+    "Spring 生态与依赖注入",
+    "分布式事务最终一致性",
+    "消息队列与削峰填谷",
+    "数据库事务与锁",
+    "接口幂等设计"
+  ],
+  "tools": [
+    "Spring Boot",
+    "Spring Cloud",
+    "MyBatis",
+    "RocketMQ",
+    "Nacos",
+    "MySQL",
+    "Maven",
+    "Arthas"
+  ],
+  "business_scenarios": [
+    "交易下单与支付回调",
+    "会员积分与权益",
+    "结算对账",
+    "库存扣减"
+  ],
+  "project_types": [
+    {
+      "name": "交易中台服务拆分",
+      "goal": "将单体交易系统拆分为订单与履约服务",
+      "tech_focus": [
+        "Spring Cloud",
+        "MyBatis",
+        "RocketMQ"
+      ],
+      "typical_metrics": [
+        "下单链路TPS从420提升至1500",
+        "发布回滚时长由40分钟缩短至8分钟"
+      ],
+      "difficulties": [
+        "分布式事务一致性",
+        "灰度期间双写数据校验"
+      ]
+    },
+    {
+      "name": "会员积分系统",
+      "goal": "支撑多场景积分发放与过期清算",
+      "tech_focus": [
+        "Spring Boot",
+        "Redis",
+        "XXL-Job"
+      ],
+      "typical_metrics": [
+        "积分发放峰值从每秒800笔提升至5000笔",
+        "日终清算时长由90分钟降至18分钟"
+      ],
+      "difficulties": [
+        "并发扣减超卖",
+        "积分流水对账差异"
+      ]
+    },
+    {
+      "name": "支付对账服务",
+      "goal": "自动核对渠道账单与本地交易流水",
+      "tech_focus": [
+        "Java",
+        "MySQL",
+        "定时任务"
+      ],
+      "typical_metrics": [
+        "对账差异率从0.9%降至0.08%",
+        "人工核对工时减少85%"
+      ],
+      "difficulties": [
+        "渠道账单格式差异",
+        "重复入账识别"
+      ]
+    },
+    {
+      "name": "配置中心客户端改造",
+      "goal": "统一多环境配置下发与热更新",
+      "tech_focus": [
+        "Nacos",
+        "Spring",
+        "灰度发布"
+      ],
+      "typical_metrics": [
+        "配置生效时间从10分钟降至5秒内",
+        "配置类故障减少60%"
+      ],
+      "difficulties": [
+        "长连接断开重连",
+        "配置回滚一致性"
+      ]
+    }
+  ],
+  "achievement_metrics": [
+    "下单链路TPS从420提升至1500",
+    "Full GC 频次由每日12次降至1次以内",
+    "对账差异率从0.9%降至0.08%",
+    "接口幂等覆盖率由60%提升至98%",
+    "服务发布回滚时长由40分钟缩短至8分钟"
+  ],
+  "technical_difficulties": [
+    "分布式事务的最终一致性实现",
+    "JVM 堆外内存与 GC 停顿",
+    "消息重复消费与顺序性",
+    "分库分表后的跨表查询",
+    "线程池参数与拒绝策略",
+    "灰度发布期间的流量染色"
+  ],
+  "work_risks": [
+    "TPS 指标未说明机器规格与压测模型",
+    "事务方案与业务峰值之间存在解释缺口",
+    "个人在拆分项目中的边界未说明",
+    "对账口径与业务报表口径可能不一致"
+  ],
+  "interview_dimensions": {
+    "technical_implementation": 5,
+    "technical_decision": 4,
+    "data_evidence": 4,
+    "problem_solving": 3,
+    "professional_depth": 3,
+    "risk_awareness": 2
+  },
+  "career_level_requirements": {
+    "fresh": {
+      "scope": "在指导下完成单个接口与缺陷修复"
+    },
+    "junior": {
+      "scope": "独立承担模块开发与联调"
+    },
+    "mid": {
+      "scope": "负责服务内技术方案与性能治理"
+    },
+    "senior": {
+      "scope": "主导领域拆分与中间件选型"
+    },
+    "expert": {
+      "scope": "制定交易域技术架构并推动跨团队落地"
+    }
+  },
+  "probe_topics": [
+    "分布式事务方案",
+    "GC 调优依据",
+    "消息幂等实现",
+    "线程池参数设计"
+  ]
+}

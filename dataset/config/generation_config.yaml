@@ -1,0 +1,65 @@
+# 全局生成配置：所有生成参数集中在此，禁止散落到脚本中
+project_name: "AI 简历深度追问数据集构建系统"
+dataset_version: "0.1.0-pilot"
+
+# 可复现性
+random_seed: 20261114
+as_of_date: "2026-10"
+
+# 数据规模
+total_resumes: 5000
+pilot_size: 100
+batch_size: 100
+
+# 问题与追问链数量约束
+questions_per_resume_min: 8
+questions_per_resume_max: 12
+min_distinct_experiences_per_resume: 3
+chains_per_resume_min: 3
+chain_depth_min: 4
+chain_depth_max: 5
+
+# 岗位约束
+min_resumes_per_position: 100
+
+# 质量门槛
+quality_gate:
+  min_question_score: 60
+  min_experience_score: 55
+  min_resume_score: 60
+  max_duplicate_question_ratio: 0.02
+  max_template_concentration: 0.30
+  hard_gates:
+    - "experience_link_valid"
+    - "reference_exact_match"
+    - "no_generic_question"
+    - "no_cross_experience_mix"
+    - "chain_experience_consistent"
+
+# 取值域
+priorities: [high, medium, low]
+difficulties: [easy, medium, hard]
+question_levels: [fact_confirmation, process_detail, principle_decision, verification_challenge, scenario_migration]
+
+# 外部 AI 服务：默认完全关闭，绝不默认调用付费 API
+external_generation:
+  enabled: false
+  provider: null
+  note: "默认使用本地规则模板 + 岗位知识库生成，不调用任何外部服务"
+
+# 断点续跑
+checkpoint:
+  state_file: "logs/generation_state.json"
+  batch_dir: "dataset/batches"
+  log_file: "logs/generation.log"
+  plan_file: "dataset/metadata/generation_plan.json"
+
+# 输出路径
+paths:
+  resumes: "dataset/resumes/resumes.jsonl"
+  experiences: "dataset/resumes/resume_experiences.jsonl"
+  questions: "dataset/questions/interview_questions.jsonl"
+  chains: "dataset/questions/question_chains.jsonl"
+  metadata_dir: "dataset/metadata"
+  reports_dir: "reports"
+  knowledge_base_dir: "knowledge_base/positions"

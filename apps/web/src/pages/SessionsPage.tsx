@@ -223,7 +223,7 @@ export default function SessionsPage() {
         <div className="ttc-card ttc-empty-large">
           <Bot size={30} />
           <h2>还没有语音会话</h2>
-          <p>选择一位已授权的候选人发起面试，AI 面试官会按岗位问题清单依次提问。</p>
+          <p>选择一位已授权的候选人发起面试，AI 面试官会从岗位初始问题开场并根据回答动态追问。</p>
         </div>
       )}
 

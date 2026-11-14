@@ -189,24 +189,29 @@ export default function InterviewDetailPage() {
               <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-soft text-brand-deep">
                 <ClipboardList size={16} />
               </span>
-              <h2 className="section-title">本轮问题清单</h2>
+              <h2 className="section-title">本轮初始问题</h2>
             </div>
             {questions.length === 0 ? (
-              <p className="mt-3 text-xs text-muted">本轮没有预设问题。</p>
+              <p className="mt-3 text-xs text-muted">本轮没有初始问题。</p>
             ) : (
-              <ol className="mt-4 space-y-3">
-                {questions.map((question, index) => (
-                  <li key={question.id ?? index} className="flex items-start gap-3 rounded-xl bg-white/60 p-3">
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand/10 text-[11px] font-bold text-brand-deep">
-                      {index + 1}
-                    </span>
-                    <div>
-                      <p className="text-xs leading-relaxed text-ink/85">{question.text}</p>
-                      {question.focus && <p className="mt-0.5 text-[10px] text-muted">关注点：{question.focus}</p>}
-                    </div>
-                  </li>
-                ))}
-              </ol>
+              <>
+                <ol className="mt-4 space-y-3">
+                  {questions.map((question, index) => (
+                    <li key={question.id ?? index} className="flex items-start gap-3 rounded-xl bg-white/60 p-3">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand/10 text-[11px] font-bold text-brand-deep">
+                        {index + 1}
+                      </span>
+                      <div>
+                        <p className="text-xs leading-relaxed text-ink/85">{question.text}</p>
+                        {question.focus && <p className="mt-0.5 text-[10px] text-muted">关注点：{question.focus}</p>}
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+                <p className="mt-3 rounded-xl border border-line/70 bg-white/50 px-3 py-2 text-[10.5px] leading-relaxed text-muted">
+                  后续问题会根据你的回答和岗位要求实时生成。回答较为笼统时，面试官可能继续追问具体职责、实现过程、数据依据或关键取舍。
+                </p>
+              </>
             )}
           </section>
 

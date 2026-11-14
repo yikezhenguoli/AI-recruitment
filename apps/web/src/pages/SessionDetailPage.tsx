@@ -351,9 +351,11 @@ export default function SessionDetailPage() {
                   <Bot size={14} />
                   <span>INTERVIEW PLAN</span>
                 </div>
-                <h2>面试提问计划</h2>
+                <h2>初始问题与追问方向</h2>
               </div>
-              {questions.length > 0 && <span className="ttc-badge ttc-badge-blue">{questions.length} 题</span>}
+              {questions.length > 0 && (
+                <span className="ttc-badge ttc-badge-blue">{questions.length} 个初始问题</span>
+              )}
             </div>
             <ol className="ttc-question-list">
               {questions.map((question, index) => (
@@ -366,7 +368,12 @@ export default function SessionDetailPage() {
                 </li>
               ))}
             </ol>
-            {questions.length === 0 && <p className="ttc-muted">该会话没有绑定问题清单。</p>}
+            {questions.length === 0 && <p className="ttc-muted">该会话没有绑定初始问题。</p>}
+            {questions.length > 0 && (
+              <p className="ttc-muted">
+                以下仅是本轮开场切入点；实时面试官会根据候选人的回答和岗位相关性继续追问。
+              </p>
+            )}
           </article>
 
           <article className="ttc-card ttc-voice-panel">

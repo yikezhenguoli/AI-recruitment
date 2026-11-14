@@ -205,9 +205,17 @@ export interface VoiceSessionDetail {
   provider: string
   max_seconds: number
   plan_json: {
-    questions?: { id: string; section: string; text: string }[]
+    questions?: {
+      id: string
+      section: string
+      text: string
+      focus?: string
+      job_relevance?: string
+      resume_anchor?: string
+    }[]
     sections_order?: string[]
     language_mode?: { primary: string; mixed: boolean }
+    strategy?: string
   }
   created_at: string
   started_at: string | null
@@ -480,4 +488,3 @@ export interface BackupRestoreResult extends BackupVerifyResult {
   applied: boolean
   written?: Record<string, number>
 }
-

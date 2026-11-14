@@ -93,12 +93,12 @@ export default function InterviewsPage() {
                   </span>
                   <span className="inline-flex items-center gap-1.5">
                     <ListChecks size={13} />
-                    {item.question_count} 个问题 · 最长 {Math.round(item.max_seconds / 60)} 分钟
+                    {item.question_count} 个初始问题 · 最长 {Math.round(item.max_seconds / 60)} 分钟
                   </span>
                 </div>
 
                 <div className="mt-4 flex items-center justify-between border-t border-line/70 pt-3 text-[11px]">
-                  <span className="text-muted">点击查看问题清单与状态</span>
+                  <span className="text-muted">点击查看初始问题与状态</span>
                   <span className="inline-flex items-center gap-1 font-semibold text-brand-deep">
                     进入 <ArrowRight size={12} />
                   </span>

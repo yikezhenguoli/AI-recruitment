@@ -1,0 +1,170 @@
+{
+  "position_id": "devops_engineer",
+  "index": 12,
+  "position_name": "运维工程师",
+  "family": "质量与运维",
+  "core_responsibilities": [
+    "负责集群与发布平台的稳定性",
+    "建设 CI/CD 流水线与回滚机制",
+    "维护监控告警与可观测体系",
+    "组织故障响应与复盘",
+    "推进容量与成本治理",
+    "落实容灾与演练"
+  ],
+  "common_tasks": [
+    "维护 Kubernetes 集群与工作负载",
+    "编写 Helm 与 IaC 模板",
+    "配置 Prometheus 告警与 SLO",
+    "执行故障演练与预案验证",
+    "排查线上性能与网络问题",
+    "优化资源配额与镜像分发"
+  ],
+  "core_skills": [
+    "容器编排与调度",
+    "持续交付与灰度发布",
+    "监控指标与告警治理",
+    "SLO 与错误预算",
+    "故障定位与根因分析",
+    "基础设施即代码",
+    "容量与成本优化"
+  ],
+  "tools": [
+    "Kubernetes",
+    "Docker",
+    "Terraform",
+    "Prometheus",
+    "Grafana",
+    "Jenkins",
+    "Nginx",
+    "ELK"
+  ],
+  "business_scenarios": [
+    "多环境发布管理",
+    "大促弹性扩容",
+    "跨机房容灾",
+    "故障应急响应"
+  ],
+  "project_types": [
+    {
+      "name": "持续交付流水线改造",
+      "goal": "将人工发布转为可回滚的灰度流程",
+      "tech_focus": [
+        "Jenkins",
+        "Kubernetes",
+        "Helm"
+      ],
+      "typical_metrics": [
+        "发布时长由50分钟降至7分钟",
+        "发布相关故障减少74%"
+      ],
+      "difficulties": [
+        "灰度流量控制",
+        "配置与镜像版本一致性"
+      ]
+    },
+    {
+      "name": "可观测体系建设",
+      "goal": "统一日志指标链路并收敛无效告警",
+      "tech_focus": [
+        "Prometheus",
+        "ELK",
+        "Jaeger"
+      ],
+      "typical_metrics": [
+        "告警数量减少68%",
+        "故障平均定位时长由38分钟降至9分钟"
+      ],
+      "difficulties": [
+        "告警阈值与噪声",
+        "采样率与存储成本"
+      ]
+    },
+    {
+      "name": "弹性扩容方案",
+      "goal": "应对大促期间流量突增",
+      "tech_focus": [
+        "HPA",
+        "压测",
+        "预热"
+      ],
+      "typical_metrics": [
+        "扩容生效时长由12分钟降至90秒",
+        "峰值期间资源冗余下降33%"
+      ],
+      "difficulties": [
+        "指标滞后与扩缩容抖动",
+        "有状态服务扩容"
+      ]
+    },
+    {
+      "name": "容灾演练机制",
+      "goal": "验证单可用区故障下的业务连续性",
+      "tech_focus": [
+        "多活架构",
+        "演练脚本",
+        "预案"
+      ],
+      "typical_metrics": [
+        "RTO由45分钟降至6分钟",
+        "演练发现问题闭环率由52%提升至95%"
+      ],
+      "difficulties": [
+        "流量切换时的数据一致性",
+        "依赖服务降级"
+      ]
+    }
+  ],
+  "achievement_metrics": [
+    "发布时长由50分钟降至7分钟",
+    "故障平均定位时长由38分钟降至9分钟",
+    "告警数量减少68%",
+    "RTO由45分钟降至6分钟",
+    "扩容生效时长由12分钟降至90秒",
+    "发布相关故障减少74%"
+  ],
+  "technical_difficulties": [
+    "灰度与回滚时的数据兼容性",
+    "告警噪声与漏报权衡",
+    "有状态服务扩缩容",
+    "跨可用区流量切换",
+    "监控采样与成本平衡",
+    "依赖服务的级联故障"
+  ],
+  "work_risks": [
+    "RTO 指标未说明演练场景与业务优先级",
+    "告警减少是否伴随阈值放宽未解释",
+    "未说明本人在平台建设中的职责范围",
+    "发布故障统计周期与分级标准缺失"
+  ],
+  "interview_dimensions": {
+    "risk_awareness": 5,
+    "problem_solving": 4,
+    "technical_implementation": 4,
+    "project_management": 3,
+    "data_evidence": 3,
+    "reflection": 2
+  },
+  "career_level_requirements": {
+    "fresh": {
+      "scope": "在指导下维护环境与执行发布"
+    },
+    "junior": {
+      "scope": "独立负责服务部署与监控配置"
+    },
+    "mid": {
+      "scope": "负责发布体系与可观测方案"
+    },
+    "senior": {
+      "scope": "主导稳定性架构与容灾体系"
+    },
+    "expert": {
+      "scope": "制定 SRE 治理框架与组织级预案"
+    }
+  },
+  "probe_topics": [
+    "灰度回滚条件",
+    "告警阈值设计",
+    "RTO 验证方式",
+    "级联故障隔离"
+  ]
+}

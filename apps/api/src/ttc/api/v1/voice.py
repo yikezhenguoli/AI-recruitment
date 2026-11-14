@@ -412,7 +412,11 @@ async def realtime_relay(websocket: WebSocket, session_id: UUID):
                     status, reason = "failed", "error"
                     error_note = f"上游连接中断: {type(exc).__name__}: {exc}"[:500]
                 else:
-                    reason = "candidate_end" if task.result() == "client_gone" else "upstream_closed"
+                    reason = (
+                        "candidate_end"
+                        if task.result() == "client_gone"
+                        else "upstream_closed"
+                    )
             else:
                 # 浏览器先断开（WebSocketDisconnect）或上游拒收
                 if exc is not None and not type(exc).__name__ == "WebSocketDisconnect":

@@ -1,0 +1,104 @@
+{
+  "schema_version": "RISM-002.1",
+  "ontology_version": "RISM-002.1",
+  "project_root": "auto",
+  "created_at": "2026-11-14",
+  "description": "RISM-002 数据集体系配置。所有路径相对 project_root；脚本基于 __file__ 定位，不依赖当前工作目录。",
+
+  "source": {
+    "resumes": "data/resumes.jsonl",
+    "experiences": "data/resume_experiences.jsonl",
+    "questions": "data/interview_questions.jsonl",
+    "chains": "data/question_chains.jsonl",
+    "training_samples": "data/training_samples.jsonl",
+    "multilabel_samples": "data/multilabel_samples.jsonl",
+    "embedding_metadata": "embeddings/metadata.json"
+  },
+
+  "readonly_assets": [
+    "data/resumes.jsonl",
+    "data/resume_experiences.jsonl",
+    "data/interview_questions.jsonl",
+    "data/question_chains.jsonl",
+    "data/training_samples.jsonl",
+    "data/multilabel_samples.jsonl",
+    "embeddings/experience_embeddings.npy",
+    "embeddings/job_embeddings.npy",
+    "embeddings/labels.npy",
+    "embeddings/metadata.json",
+    "embeddings/split_indices.npz",
+    "embeddings/split_metadata.json",
+    "outputs/best_model.pth",
+    "outputs/prediction_result.json"
+  ],
+
+  "paths": {
+    "taxonomy": "configs/rism002_taxonomy.json",
+    "source_manifest": "data/raw/source_manifest.json",
+    "ontology_dir": "data/ontology",
+    "directions": "data/ontology/investigation_directions.json",
+    "competencies": "data/ontology/position_competencies.json",
+    "intermediate_dir": "data/intermediate",
+    "candidate_directions": "data/intermediate/candidate_directions.jsonl",
+    "intent_analysis": "data/intermediate/question_intent_analysis.json",
+    "candidate_claims": "data/intermediate/candidate_claims.jsonl",
+    "candidate_gaps": "data/intermediate/candidate_gaps.jsonl",
+    "candidate_strategies": "data/intermediate/candidate_strategies.jsonl",
+    "annotations_dir": "data/annotations",
+    "human_claims": "data/annotations/claims.jsonl",
+    "human_gaps": "data/annotations/evidence_gaps.jsonl",
+    "human_strategies": "data/annotations/strategies.jsonl",
+    "human_direction_annotations": "data/annotations/direction_annotations.jsonl",
+    "review_template": "data/annotations/human_review_template.jsonl",
+    "processed_samples": "data/processed/rism002_samples.jsonl",
+    "output_dir": "outputs/rism002",
+    "baseline_manifest": "outputs/rism002/rism001_baseline_manifest.json"
+  },
+
+  "llm": {
+    "enabled": false,
+    "provider": null,
+    "endpoint": null,
+    "model": null,
+    "fields_to_send": [],
+    "require_explicit_confirm": true,
+    "note": "默认关闭。启用前必须在报告与终端明确告知发送数据字段与目标服务，并由用户传入 --confirm-external；本任务全程不启用。"
+  },
+
+  "review": {
+    "allowed_statuses": ["pending", "approved", "rejected"],
+    "allowed_sources": ["human", "historical_question", "rule_based", "llm", "unknown"],
+    "approved_requires_sources": ["human"],
+    "auto_approve": false,
+    "default_label_status": "unknown",
+    "label_statuses": ["positive", "negative", "unknown"],
+    "negative_requires_reviewed": true,
+    "allow_unreviewed_in_processed": false
+  },
+
+  "analysis": {
+    "ngram": 3,
+    "similarity_threshold": 0.82,
+    "max_candidate_directions": 60,
+    "min_intent_support": 3,
+    "min_candidate_name_length": 2
+  },
+
+  "dataset": {
+    "sample_experience_limit": 12,
+    "include_pending_as_unknown": false,
+    "max_claims_per_experience": 6,
+    "max_gaps_per_experience": 6,
+    "max_strategies_per_experience": 6,
+    "allow_partial_approved_records": true
+  },
+
+  "privacy": {
+    "log_experience_text": false,
+    "log_resume_text": false,
+    "log_basic_info": false,
+    "id_only_in_reports": true
+  },
+
+  "seed": 20261114
+}

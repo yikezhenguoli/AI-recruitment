@@ -81,7 +81,7 @@ export default function HomePage() {
             </h1>
             <p className="mt-4 max-w-lg text-sm leading-relaxed text-muted">
               不是关键词过滤。你的每一段经历都会被理解、被对照到岗位要求上；
-              面试前你能看到问题清单，面试后你能回看说了什么。
+              面试前你能看到初始问题，面试中系统会根据回答动态追问，面试后还能回看说了什么。
             </p>
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <Link to="/jobs" className="btn-primary">

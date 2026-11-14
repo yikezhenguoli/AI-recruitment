@@ -1,0 +1,170 @@
+{
+  "position_id": "data_engineer",
+  "index": 8,
+  "position_name": "数据工程师",
+  "family": "算法与数据",
+  "core_responsibilities": [
+    "负责数据仓库分层模型设计与开发",
+    "建设离线与实时数据链路",
+    "保障数据质量与任务调度稳定",
+    "维护元数据与血缘关系",
+    "优化计算与存储成本",
+    "支撑下游分析与模型取数"
+  ],
+  "common_tasks": [
+    "开发 ETL 作业与维度模型",
+    "使用 Flink 处理实时事件流",
+    "配置调度依赖与失败重跑",
+    "实现数据质量规则与对账",
+    "梳理字段级血缘与口径",
+    "治理小文件与存储成本"
+  ],
+  "core_skills": [
+    "数仓分层与维度建模",
+    "批处理与流处理",
+    "任务调度与依赖管理",
+    "数据质量与对账",
+    "血缘解析与元数据管理",
+    "计算与存储优化",
+    "增量与全量同步策略"
+  ],
+  "tools": [
+    "Spark",
+    "Flink",
+    "Hive",
+    "Kafka",
+    "Airflow",
+    "Doris",
+    "Iceberg",
+    "Great Expectations"
+  ],
+  "business_scenarios": [
+    "实时经营大屏",
+    "用户行为日志接入",
+    "离线主题宽表",
+    "财务与交易对账"
+  ],
+  "project_types": [
+    {
+      "name": "实时数仓链路建设",
+      "goal": "将核心交易指标从T+1提升至分钟级",
+      "tech_focus": [
+        "Flink",
+        "Kafka",
+        "Doris"
+      ],
+      "typical_metrics": [
+        "数据延迟由24小时缩短至3分钟",
+        "实时与离线差异率降至0.3%"
+      ],
+      "difficulties": [
+        "乱序事件与水位线",
+        "维表关联状态管理"
+      ]
+    },
+    {
+      "name": "主题宽表治理",
+      "goal": "收敛重复报表口径与冗余中间表",
+      "tech_focus": [
+        "Spark",
+        "Hive",
+        "血缘解析"
+      ],
+      "typical_metrics": [
+        "中间表数量由420张降至160张",
+        "存储成本下降41%"
+      ],
+      "difficulties": [
+        "字段口径冲突",
+        "下游依赖影响面评估"
+      ]
+    },
+    {
+      "name": "数据质量平台",
+      "goal": "对核心表配置完整性及时效性校验",
+      "tech_focus": [
+        "Great Expectations",
+        "Airflow",
+        "告警"
+      ],
+      "typical_metrics": [
+        "线上数据事故由每月7起降至1起",
+        "问题发现时长由6小时缩短至20分钟"
+      ],
+      "difficulties": [
+        "规则误报",
+        "阻断与放行权衡"
+      ]
+    },
+    {
+      "name": "日志采集改造",
+      "goal": "统一多端埋点上报与格式校验",
+      "tech_focus": [
+        "Kafka",
+        "Flink",
+        "Schema Registry"
+      ],
+      "typical_metrics": [
+        "上报丢失率由2.4%降至0.2%",
+        "解析失败工单减少83%"
+      ],
+      "difficulties": [
+        "客户端时钟偏移",
+        "Schema 兼容性演进"
+      ]
+    }
+  ],
+  "achievement_metrics": [
+    "数据延迟由24小时缩短至3分钟",
+    "实时与离线差异率降至0.3%",
+    "存储成本下降41%",
+    "线上数据事故由每月7起降至1起",
+    "上报丢失率由2.4%降至0.2%",
+    "中间表数量由420张降至160张"
+  ],
+  "technical_difficulties": [
+    "流批口径一致性与水位线",
+    "乱序与迟到数据处理",
+    "维表关联与状态后端",
+    "小文件与压缩策略",
+    "Schema 演进兼容",
+    "任务回溯与幂等重跑"
+  ],
+  "work_risks": [
+    "延迟指标未说明端到端还是处理耗时",
+    "差异率的统计对象与容差未定义",
+    "成本下降是否伴随数据量变化未解释",
+    "事故数量统计周期与分级标准缺失"
+  ],
+  "interview_dimensions": {
+    "technical_implementation": 5,
+    "data_evidence": 4,
+    "problem_solving": 4,
+    "risk_awareness": 3,
+    "project_management": 3,
+    "reflection": 2
+  },
+  "career_level_requirements": {
+    "fresh": {
+      "scope": "在指导下开发单表 ETL 与校验规则"
+    },
+    "junior": {
+      "scope": "独立承担主题域链路与调度维护"
+    },
+    "mid": {
+      "scope": "负责实时离线链路架构设计"
+    },
+    "senior": {
+      "scope": "主导数据平台与质量治理体系"
+    },
+    "expert": {
+      "scope": "制定企业级数据架构与成本治理策略"
+    }
+  },
+  "probe_topics": [
+    "流批一致性",
+    "迟到数据处理",
+    "Schema 演进",
+    "回溯重跑幂等"
+  ]
+}

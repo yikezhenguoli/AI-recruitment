@@ -1,0 +1,124 @@
+[2026-11-14 13:33:28] 生成计划加载完成：5000 条；岗位 30 类；每岗位 166~167 份
+[2026-11-14 13:33:28] 年限分布：{'mid': 1250, 'fresh': 1000, 'senior': 1000, 'expert': 500, 'junior': 1250}
+[2026-11-14 13:33:28] 质量分布：{'high': 1500, 'normal': 2000, 'vague': 1000, 'contradictory': 500}
+[2026-11-14 13:33:28] 试验样本 100 份：岗位 30 类；年限 {'senior': 18, 'junior': 22, 'expert': 12, 'fresh': 22, 'mid': 26}；质量 {'contradictory': 10, 'normal': 44, 'high': 25, 'vague': 21}
+[2026-11-14 13:33:28] 阶段参数：--stage pilot（本脚本只建立计划，不生成简历）
+[2026-11-14 13:33:35] [pilot] 批次 000 生成简历 44 份 / 经历 283 条
+[2026-11-14 13:33:35] [阶段] 简历批次完成：新增 44，失败 56
+[2026-11-14 13:33:35] 警告：存在失败数据，已进入 logs/generation_state.json 的 failed_resume_ids 队列，可单独重生成
+[2026-11-14 13:33:36] [pilot] pilot_000_qa.json 生成问题 464 道 / 追问链 132 条
+[2026-11-14 13:33:36] 合并落盘：简历 44 / 经历 283 / 问题 464 / 追问链 132
+[2026-11-14 13:33:36] 执行：/Users/zhengrui/.workbuddy/binaries/python/versions/3.13.12/bin/python3 extract_experiences.py
+[2026-11-14 13:33:36] 合并落盘：简历 44 / 经历 283 / 问题 464 / 追问链 132
+[2026-11-14 13:33:36] 经历拆解完成：283 个经历单元，类型分布 {'education': 53, 'work_experience': 22, 'project_experience': 112, 'internship': 50, 'research': 26, 'competition': 20}
+[2026-11-14 13:33:36] 关联校验通过：resume_id → experience_id → original_content → resume_text 全部可追溯
+[2026-11-14 13:33:36] 执行：/Users/zhengrui/.workbuddy/binaries/python/versions/3.13.12/bin/python3 generate_question_chains.py
+[2026-11-14 13:33:37] 追问链重建完成：132 条，覆盖 44 份简历
+[2026-11-14 13:33:37] 执行：/Users/zhengrui/.workbuddy/binaries/python/versions/3.13.12/bin/python3 validate_dataset.py --stage pilot
+[2026-11-14 13:33:38] 校验完成 [pilot]：通过=False 错误=5 警告=15
+[2026-11-14 13:33:38] 规模：简历 44 / 经历 283 / 问题 464 / 追问链 132
+[2026-11-14 13:33:38] 硬性门槛未过问题数：1；问题重复率 0.0；模板集中度 0.01078
+[2026-11-14 13:33:38]   错误 chain_experience_consistent x2 | 示例：CHAIN_00111301: 追问链跳到其它经历
+[2026-11-14 13:33:38]   错误 no_cross_experience_mix x1 | 示例：Q_00111309: 混入其它经历标题 新人培养项目
+[2026-11-14 13:33:38]   错误 pilot_position_coverage x1 | 示例：dataset: 仅 23 个岗位
+[2026-11-14 13:33:38]   错误 pilot_level_coverage x1 | 示例：dataset: 仅 2 个年限档
+[2026-11-14 13:33:38]   警告 foreign_position_token x14
+[2026-11-14 13:33:38]   警告 pilot_size x1
+[2026-11-14 13:33:38] 执行：/Users/zhengrui/.workbuddy/binaries/python/versions/3.13.12/bin/python3 deduplicate_dataset.py
+[2026-11-14 13:33:38] 重复分析：问题重复组 0 (0.0)，模板签名 301 种，最高占比 0.01078
+[2026-11-14 13:33:38] 执行：/Users/zhengrui/.workbuddy/binaries/python/versions/3.13.12/bin/python3 generate_statistics.py --stage pilot
+[2026-11-14 13:33:38] 统计与报告生成完成：metadata 4 份，reports 4 份（阶段 pilot）
+[2026-11-14 13:33:38] === pilot 阶段流程结束 ===
+[2026-11-14 13:33:38] 下一步：人工验收 reports/ 下 4 份报告；确认后执行 --accept 解除阶段闸门，再 --stage full
+[2026-11-14 13:35:25] [pilot] 批次 000 生成简历 100 份 / 经历 730 条
+[2026-11-14 13:35:25] [阶段] 简历批次完成：新增 100，失败 0
+[2026-11-14 13:35:26] [pilot] pilot_000_qa.json 生成问题 1035 道 / 追问链 300 条
+[2026-11-14 13:35:26] 合并落盘：简历 100 / 经历 730 / 问题 1035 / 追问链 300
+[2026-11-14 13:35:26] 执行：/Users/zhengrui/.workbuddy/binaries/python/versions/3.13.12/bin/python3 extract_experiences.py
+[2026-11-14 13:35:26] 合并落盘：简历 100 / 经历 730 / 问题 1035 / 追问链 300
+[2026-11-14 13:35:26] 经历拆解完成：730 个经历单元，类型分布 {'education': 120, 'work_experience': 141, 'project_experience': 249, 'achievement': 30, 'skill_application': 56, 'internship': 63, 'research': 40, 'competition': 31}
+[2026-11-14 13:35:26] 关联校验通过：resume_id → experience_id → original_content → resume_text 全部可追溯
+[2026-11-14 13:35:26] 执行：/Users/zhengrui/.workbuddy/binaries/python/versions/3.13.12/bin/python3 generate_question_chains.py
+[2026-11-14 13:35:27] 追问链重建完成：300 条，覆盖 100 份简历
+[2026-11-14 13:35:27] 执行：/Users/zhengrui/.workbuddy/binaries/python/versions/3.13.12/bin/python3 validate_dataset.py --stage pilot
+[2026-11-14 13:35:29] 校验完成 [pilot]：通过=False 错误=1 警告=27
+[2026-11-14 13:35:29] 规模：简历 100 / 经历 730 / 问题 1035 / 追问链 300
+[2026-11-14 13:35:29] 硬性门槛未过问题数：0；问题重复率 0.0；模板集中度 0.00773
+[2026-11-14 13:35:29]   错误 chain_experience_consistent x1 | 示例：CHAIN_00475903: 第 3 层未绑定同一原文
+[2026-11-14 13:35:29]   警告 foreign_position_token x27
+[2026-11-14 13:35:29] 执行：/Users/zhengrui/.workbuddy/binaries/python/versions/3.13.12/bin/python3 deduplicate_dataset.py
+[2026-11-14 13:35:29] 重复分析：问题重复组 0 (0.0)，模板签名 448 种，最高占比 0.00773
+[2026-11-14 13:35:29] 执行：/Users/zhengrui/.workbuddy/binaries/python/versions/3.13.12/bin/python3 generate_statistics.py --stage pilot
+[2026-11-14 13:35:30] 统计与报告生成完成：metadata 4 份，reports 4 份（阶段 pilot）
+[2026-11-14 13:35:30] === pilot 阶段流程结束 ===
+[2026-11-14 13:35:30] 下一步：人工验收 reports/ 下 4 份报告；确认后执行 --accept 解除阶段闸门，再 --stage full
+[2026-11-14 13:36:40] 追问链重建完成：300 条，覆盖 100 份简历
+[2026-11-14 13:36:40] 执行：/Users/zhengrui/.workbuddy/binaries/python/versions/3.13.12/bin/python3 validate_dataset.py --stage auto --strict
+[2026-11-14 13:36:41] 校验完成 [pilot]：通过=True 错误=0 警告=4
+[2026-11-14 13:36:41] 规模：简历 100 / 经历 730 / 问题 1035 / 追问链 300
+[2026-11-14 13:36:41] 硬性门槛未过问题数：0；问题重复率 0.0；模板集中度 0.00773
+[2026-11-14 13:36:41]   警告 foreign_position_token x4
+[2026-11-14 13:36:41] 执行：/Users/zhengrui/.workbuddy/binaries/python/versions/3.13.12/bin/python3 deduplicate_dataset.py
+[2026-11-14 13:36:41] 重复分析：问题重复组 0 (0.0)，模板签名 448 种，最高占比 0.00773
+[2026-11-14 13:36:41] 执行：/Users/zhengrui/.workbuddy/binaries/python/versions/3.13.12/bin/python3 generate_statistics.py --stage auto
+[2026-11-14 13:36:42] 统计与报告生成完成：metadata 4 份，reports 4 份（阶段 pilot）
+[2026-11-14 13:37:37] [pilot] 批次 000 生成简历 100 份 / 经历 736 条
+[2026-11-14 13:37:37] [阶段] 简历批次完成：新增 100，失败 0
+[2026-11-14 13:37:38] [pilot] pilot_000_qa.json 生成问题 1035 道 / 追问链 300 条
+[2026-11-14 13:37:38] 合并落盘：简历 100 / 经历 736 / 问题 1035 / 追问链 300
+[2026-11-14 13:37:38] 执行：/Users/zhengrui/.workbuddy/binaries/python/versions/3.13.12/bin/python3 extract_experiences.py
+[2026-11-14 13:37:38] 合并落盘：简历 100 / 经历 736 / 问题 1035 / 追问链 300
+[2026-11-14 13:37:38] 经历拆解完成：736 个经历单元，类型分布 {'education': 121, 'work_experience': 141, 'project_experience': 250, 'achievement': 30, 'skill_application': 56, 'internship': 63, 'research': 41, 'competition': 34}
+[2026-11-14 13:37:38] 关联校验通过：resume_id → experience_id → original_content → resume_text 全部可追溯
+[2026-11-14 13:37:38] 执行：/Users/zhengrui/.workbuddy/binaries/python/versions/3.13.12/bin/python3 generate_question_chains.py
+[2026-11-14 13:37:39] 追问链重建完成：300 条，覆盖 100 份简历
+[2026-11-14 13:37:39] 执行：/Users/zhengrui/.workbuddy/binaries/python/versions/3.13.12/bin/python3 validate_dataset.py --stage pilot --strict
+[2026-11-14 13:37:40] 校验完成 [pilot]：通过=True 错误=0 警告=0
+[2026-11-14 13:37:40] 规模：简历 100 / 经历 736 / 问题 1035 / 追问链 300
+[2026-11-14 13:37:40] 硬性门槛未过问题数：0；问题重复率 0.0；模板集中度 0.00773
+[2026-11-14 13:37:40] 执行：/Users/zhengrui/.workbuddy/binaries/python/versions/3.13.12/bin/python3 deduplicate_dataset.py
+[2026-11-14 13:37:41] 重复分析：问题重复组 0 (0.0)，模板签名 438 种，最高占比 0.00773
+[2026-11-14 13:37:41] 执行：/Users/zhengrui/.workbuddy/binaries/python/versions/3.13.12/bin/python3 generate_statistics.py --stage pilot
+[2026-11-14 13:37:41] 统计与报告生成完成：metadata 4 份，reports 4 份（阶段 pilot）
+[2026-11-14 13:37:41] === pilot 阶段流程结束 ===
+[2026-11-14 13:37:41] 下一步：人工验收 reports/ 下 4 份报告；确认后执行 --accept 解除阶段闸门，再 --stage full
+[2026-11-14 13:38:31] [pilot] 批次 000 生成简历 100 份 / 经历 742 条
+[2026-11-14 13:38:31] [阶段] 简历批次完成：新增 100，失败 0
+[2026-11-14 13:38:31] [pilot] pilot_000_qa.json 生成问题 1035 道 / 追问链 300 条
+[2026-11-14 13:38:31] 合并落盘：简历 100 / 经历 742 / 问题 1035 / 追问链 300
+[2026-11-14 13:38:31] 执行：/Users/zhengrui/.workbuddy/binaries/python/versions/3.13.12/bin/python3 extract_experiences.py
+[2026-11-14 13:38:32] 合并落盘：简历 100 / 经历 742 / 问题 1035 / 追问链 300
+[2026-11-14 13:38:32] 经历拆解完成：742 个经历单元，类型分布 {'education': 121, 'work_experience': 141, 'project_experience': 250, 'achievement': 30, 'skill_application': 56, 'internship': 68, 'research': 41, 'competition': 35}
+[2026-11-14 13:38:32] 关联校验通过：resume_id → experience_id → original_content → resume_text 全部可追溯
+[2026-11-14 13:38:32] 执行：/Users/zhengrui/.workbuddy/binaries/python/versions/3.13.12/bin/python3 generate_question_chains.py
+[2026-11-14 13:38:33] 追问链重建完成：300 条，覆盖 100 份简历
+[2026-11-14 13:38:33] 执行：/Users/zhengrui/.workbuddy/binaries/python/versions/3.13.12/bin/python3 validate_dataset.py --stage pilot --strict
+[2026-11-14 13:38:34] 校验完成 [pilot]：通过=True 错误=0 警告=0
+[2026-11-14 13:38:34] 规模：简历 100 / 经历 742 / 问题 1035 / 追问链 300
+[2026-11-14 13:38:34] 硬性门槛未过问题数：0；问题重复率 0.0；模板集中度 0.00773
+[2026-11-14 13:38:34] 执行：/Users/zhengrui/.workbuddy/binaries/python/versions/3.13.12/bin/python3 deduplicate_dataset.py
+[2026-11-14 13:38:34] 重复分析：问题重复组 0 (0.0)，模板签名 441 种，最高占比 0.00773
+[2026-11-14 13:38:34] 执行：/Users/zhengrui/.workbuddy/binaries/python/versions/3.13.12/bin/python3 generate_statistics.py --stage pilot
+[2026-11-14 13:38:34] 统计与报告生成完成：metadata 4 份，reports 4 份（阶段 pilot）
+[2026-11-14 13:38:34] === pilot 阶段流程结束 ===
+[2026-11-14 13:38:34] 下一步：人工验收 reports/ 下 4 份报告；确认后执行 --accept 解除阶段闸门，再 --stage full
+[2026-11-14 13:41:49] [pilot] 批次 000 生成简历 100 份 / 经历 742 条
+[2026-11-14 13:41:49] [阶段] 简历批次完成：新增 100，失败 0
+[2026-11-14 13:41:49] [pilot] pilot_000_qa.json 生成问题 1035 道 / 追问链 300 条
+[2026-11-14 13:41:49] 合并落盘：简历 100 / 经历 742 / 问题 1035 / 追问链 300
+[2026-11-14 13:41:49] 执行：/Users/zhengrui/.workbuddy/binaries/python/versions/3.13.12/bin/python3 extract_experiences.py
+[2026-11-14 13:41:50] 合并落盘：简历 100 / 经历 742 / 问题 1035 / 追问链 300
+[2026-11-14 13:41:50] 经历拆解完成：742 个经历单元，类型分布 {'education': 121, 'work_experience': 141, 'project_experience': 250, 'achievement': 30, 'skill_application': 56, 'internship': 68, 'research': 41, 'competition': 35}
+[2026-11-14 13:41:50] 关联校验通过：resume_id → experience_id → original_content → resume_text 全部可追溯
+[2026-11-14 13:41:50] 执行：/Users/zhengrui/.workbuddy/binaries/python/versions/3.13.12/bin/python3 generate_question_chains.py
+[2026-11-14 13:41:51] 追问链重建完成：300 条，覆盖 100 份简历
+[2026-11-14 13:41:51] 执行：/Users/zhengrui/.workbuddy/binaries/python/versions/3.13.12/bin/python3 validate_dataset.py --stage pilot --strict
+[2026-11-14 13:41:52] 校验完成 [pilot]：通过=True 错误=0 警告=0
+[2026-11-14 13:41:52] 规模：简历 100 / 经历 742 / 问题 1035 / 追问链 300
+[2026-11-14 13:41:52] 硬性门槛未过问题数：0；问题重复率 0.0；模板集中度 0.00773
+[2026-11-14 13:41:52] 执行：/Users/zhengrui/.workbuddy/binaries/python/versions/3.13.12/bin/python3 deduplicate_dataset.py
+[2026-11-14 13:41:52] 重复分析：问题重复组 0 (0.0)，模板签名 441 种，最高占比 0.00773
+[2026-11-14 13:41:52] 执行：/Users/zhengrui/.workbuddy/binaries/python/versions/3.13.12/bin/python3 generate_statistics.py --stage pilot
+[2026-11-14 13:41:52] 统计与报告生成完成：metadata 4 份，reports 4 份（阶段 pilot）
+[2026-11-14 13:41:53] === pilot 阶段流程结束 ===
+[2026-11-14 13:41:53] 下一步：人工验收 reports/ 下 4 份报告；确认后执行 --accept 解除阶段闸门，再 --stage full

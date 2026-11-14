@@ -1,0 +1,41 @@
+{
+  "passed": true,
+  "error_count": 0,
+  "warning_count": 0,
+  "errors": [],
+  "warnings": [],
+  "statistics": {
+    "direction_count": 28,
+    "status_distribution": {
+      "candidate": 28
+    },
+    "approved_direction_count": 0,
+    "multi_parent_direction_count": 14,
+    "max_parent_dimensions": 3,
+    "parent_dimension_distribution": {
+      "achievement_verification": 4,
+      "business_understanding": 5,
+      "data_evidence": 7,
+      "innovation": 2,
+      "leadership": 1,
+      "learning_ability": 1,
+      "personal_contribution": 2,
+      "problem_solving": 5,
+      "professional_depth": 2,
+      "project_management": 1,
+      "reflection": 7,
+      "risk_awareness": 3,
+      "teamwork": 1,
+      "technical_decision": 3,
+      "technical_implementation": 2
+    },
+    "related_direction_links": 59,
+    "dependency_edges": 0,
+    "dependency_cycles": 0,
+    "competency_count": 24,
+    "position_family_count": 8,
+    "competency_direction_links": 136,
+    "directions_with_position_families": 28
+  },
+  "generated_at": "2026-11-14T19:34:51+08:00"
+}

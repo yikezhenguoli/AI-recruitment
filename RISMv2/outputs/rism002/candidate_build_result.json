@@ -1,0 +1,41 @@
+{
+  "generated_at": "2026-11-14T19:36:28+08:00",
+  "selected_experience_ids": [
+    "EXP_00037707",
+    "EXP_00188105",
+    "EXP_00003005",
+    "EXP_00188106",
+    "EXP_00003002",
+    "EXP_00072308",
+    "EXP_00214907",
+    "EXP_00347001",
+    "EXP_00046205",
+    "EXP_00046202",
+    "EXP_00257006",
+    "EXP_00047602"
+  ],
+  "experience_type_coverage": [
+    "achievement",
+    "competition",
+    "education",
+    "internship",
+    "project_experience",
+    "research",
+    "skill_application",
+    "work_experience"
+  ],
+  "position_id_coverage": [
+    "data_engineer",
+    "finance_staff",
+    "hr_specialist",
+    "legal_staff",
+    "rnd_researcher",
+    "supply_chain_manager"
+  ],
+  "candidate_claims": 45,
+  "candidate_gaps": 39,
+  "candidate_strategies": 18,
+  "unknown_preview_samples": 12,
+  "approved_records_created": 0,
+  "annotation_files_initialized": []
+}

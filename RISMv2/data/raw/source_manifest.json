@@ -1,0 +1,69 @@
+{
+ "note": "RISM-001 只读资产指纹（阶段二基线，用于证明构建过程零改动）",
+ "project_root": "/Users/zhengrui/Documents/computer_programme/AI-recruitment/RISMv2",
+ "generated_at": "2026-11-14",
+ "files": {
+  "data/resumes.jsonl": {
+   "sha256": "6825f8f7192ed88cb4c0989a6700481556b0a8d42a071d0427bb5022ea087041",
+   "size": 1162344,
+   "lines": 100
+  },
+  "data/resume_experiences.jsonl": {
+   "sha256": "6b23bc7acdd6b5d8842fa69d65d246be12d6039ac467e23200185eed0886c213",
+   "size": 1103092,
+   "lines": 742
+  },
+  "data/interview_questions.jsonl": {
+   "sha256": "9ebfe7f2198ba2e13f63089427b789e345940178044f4473a7488d1c0591ac5e",
+   "size": 1099444,
+   "lines": 1035
+  },
+  "data/question_chains.jsonl": {
+   "sha256": "be6ef488a54e4d0bc368351fe0e34343dff5f9e23121ae935352f5af54ddf360",
+   "size": 767469,
+   "lines": 300
+  },
+  "data/training_samples.jsonl": {
+   "sha256": "dc4afd4865a1d9a9111e06d93901a180ed19d1888e142c01c1d6ba1a94620c0e",
+   "size": 694729,
+   "lines": 1035
+  },
+  "data/multilabel_samples.jsonl": {
+   "sha256": "fe9df422a67b074b605400774dc073df6384edb4f52e89e9625cc15a50d1be70",
+   "size": 309804,
+   "lines": 471
+  },
+  "embeddings/metadata.json": {
+   "sha256": "f125ff42caffb8a9e53cb7dbf9d1a005a411834276390a51e4a0a858636e2fd0",
+   "size": 51629
+  },
+  "embeddings/experience_embeddings.npy": {
+   "sha256": "3bc4829df445054d7e8ac4d4317e93b578bcda29bb250b32d7e08039382ccb8b",
+   "size": 964736
+  },
+  "embeddings/job_embeddings.npy": {
+   "sha256": "bceb86088ed7c021cec0d6105a07398d751e0e0e33b612ddc0eeec5e4238e45a",
+   "size": 964736
+  },
+  "embeddings/labels.npy": {
+   "sha256": "423704e520ae79273873d1b0ed49af86f15e87e8152eace1d8b22c2b5ffd91bd",
+   "size": 28388
+  },
+  "embeddings/split_indices.npz": {
+   "sha256": "58e4878c55aa2e3888d647a6aa89c6158d6c5b33f480c905d0c29414599e186f",
+   "size": 4558
+  },
+  "embeddings/split_metadata.json": {
+   "sha256": "5342cf181ed20625d2ce5f5651cc4c75dee570dbc545c2986d4dbe76feb51114",
+   "size": 1883
+  },
+  "outputs/best_model.pth": {
+   "sha256": "3c5650964d116479d23ef355c1b33e3ec69a18596113c9a5f60653442f9c11ad",
+   "size": 535035
+  },
+  "outputs/prediction_result.json": {
+   "sha256": "633f8c550544b1c9763268170c3559d204853b1ca14294bc04c03f935fc31087",
+   "size": 2740
+  }
+ }
+}

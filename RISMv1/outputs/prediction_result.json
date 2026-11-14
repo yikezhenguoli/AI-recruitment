@@ -1,0 +1,80 @@
+{
+    "resume_id": "NEW_000001",
+    "target_position": "Python后端开发工程师",
+    "threshold": 0.5,
+    "model": "RISM",
+    "experiences": [
+        {
+            "experience_id": "EXP_NEW_001",
+            "experience_type": "work",
+            "title": "高级Python开发工程师",
+            "predicted_dimensions": [
+                {
+                    "dimension": "leadership",
+                    "score": 0.6431
+                },
+                {
+                    "dimension": "problem_solving",
+                    "score": 0.6039
+                },
+                {
+                    "dimension": "personal_contribution",
+                    "score": 0.5908
+                }
+            ],
+            "dimension_scores": {
+                "achievement_verification": 0.3328,
+                "business_understanding": 0.384,
+                "data_evidence": 0.2156,
+                "innovation": 0.3057,
+                "leadership": 0.6431,
+                "learning_ability": 0.4821,
+                "personal_contribution": 0.5908,
+                "problem_solving": 0.6039,
+                "professional_depth": 0.4097,
+                "project_management": 0.3456,
+                "reflection": 0.2738,
+                "risk_awareness": 0.3907,
+                "teamwork": 0.3973,
+                "technical_decision": 0.4548,
+                "technical_implementation": 0.35
+            }
+        },
+        {
+            "experience_id": "EXP_NEW_002",
+            "experience_type": "project",
+            "title": "企业级数据分析平台",
+            "predicted_dimensions": [
+                {
+                    "dimension": "leadership",
+                    "score": 0.6574
+                },
+                {
+                    "dimension": "personal_contribution",
+                    "score": 0.6156
+                },
+                {
+                    "dimension": "problem_solving",
+                    "score": 0.5222
+                }
+            ],
+            "dimension_scores": {
+                "achievement_verification": 0.2913,
+                "business_understanding": 0.4041,
+                "data_evidence": 0.1658,
+                "innovation": 0.3086,
+                "leadership": 0.6574,
+                "learning_ability": 0.4687,
+                "personal_contribution": 0.6156,
+                "problem_solving": 0.5222,
+                "professional_depth": 0.4313,
+                "project_management": 0.3216,
+                "reflection": 0.245,
+                "risk_awareness": 0.3487,
+                "teamwork": 0.4515,
+                "technical_decision": 0.4665,
+                "technical_implementation": 0.3694
+            }
+        }
+    ]
+}

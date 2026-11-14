@@ -1,0 +1,260 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>数据资产清单 · resume_html</title><style>
+:root{--bg:#f7f8fa;--panel:#fff;--line:#e4e7ec;--txt:#1f2430;--sub:#667085;--accent:#2f6feb;--accent2:#0f9d76;--warn:#b45309;--chip:#f1f4f9}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.65 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}
+.wrap{max-width:1180px;margin:0 auto;padding:32px 24px 80px}
+h1{font-size:27px;margin:0 0 6px} .sub{color:var(--sub);margin-bottom:24px}
+.stats{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:26px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 18px;min-width:132px}
+.stat b{display:block;font-size:21px;color:var(--accent)}.stat span{color:var(--sub);font-size:12px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin-bottom:22px}
+.panel h2{font-size:17px;margin:0 0 14px;padding-bottom:9px;border-bottom:1px solid var(--line)}
+.flow{display:flex;flex-wrap:wrap;gap:9px;align-items:center;font-size:13px}
+.node{background:var(--chip);border:1px solid var(--line);border-radius:8px;padding:7px 11px;white-space:nowrap}
+.node.hi{background:#eaf1ff;border-color:#bcd2ff;color:#1c4fbd;font-weight:600}
+.node.ok{background:#e7f7f1;border-color:#b9e6d5;color:#087255;font-weight:600}
+.arrow{color:var(--sub);font-size:15px} .flowline{margin:9px 0;display:flex;flex-wrap:wrap;gap:9px;align-items:center}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:var(--chip);font-weight:600}td code{background:var(--chip);padding:1px 5px;border-radius:4px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:18px}
+input[type=search]{flex:1;min-width:220px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--txt);font-size:14px}
+button{padding:8px 13px;border:1px solid var(--line);background:var(--panel);color:var(--txt);border-radius:8px;cursor:pointer;font-size:13px}
+button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.laytitle{font-size:16px;font-weight:700;margin:26px 0 12px;padding-left:10px;border-left:4px solid var(--accent)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:15px 16px;cursor:pointer}
+.card:hover{border-color:#bcd2ff;box-shadow:0 2px 12px rgba(31,36,48,.06)}
+.head{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.tag{font-size:11px;color:var(--accent);background:#eaf1ff;border-radius:5px;padding:2px 7px}
+.kind{font-size:11px;color:var(--accent2);background:#e7f7f1;border-radius:5px;padding:2px 7px}
+.size{font-size:11px;color:var(--sub);margin-left:auto}
+.card h3{font-size:14px;margin:0 0 7px;word-break:break-all;font-family:ui-monospace,Menlo,monospace}
+.sum{color:var(--sub);font-size:13px;margin:0 0 10px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:12px;color:var(--sub)}
+.kv b{color:var(--txt);font-weight:500}
+.detail{display:none;margin-top:11px;padding-top:11px;border-top:1px dashed var(--line)}
+.card.open .detail{display:block}
+.lab{font-size:11px;color:var(--sub);margin:9px 0 5px;font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+code{font-family:ui-monospace,Menlo,monospace;font-size:11px;background:var(--chip);padding:2px 6px;border-radius:4px}
+.sample,.note{font-size:12px;background:var(--chip);border-radius:6px;padding:8px 10px;word-break:break-word;font-family:ui-monospace,Menlo,monospace}
+.note{color:var(--warn);font-family:inherit}
+.muted{color:var(--sub)} .foot{color:var(--sub);font-size:12px;margin-top:28px;text-align:center}
+</style></head><body><div class="wrap">
+<h1>数据资产清单</h1><div class="sub">工作区 resume_html · 生成于 2026-11-14 12:40 · 仅盘点，未训练、未修改任何原始数据</div>
+<div class="stats"><div class="stat"><b>22 项</b><span>数据资产条目</span></div><div class="stat"><b>2,484 份</b><span>原始 HTML</span></div><div class="stat"><b>203,394</b><span>CSV 数据行（9 张，含副本）</span></div><div class="stat"><b>9 张</b><span>CSV 文件</span></div><div class="stat"><b>45.3 MB</b><span>已训练权重</span></div><div class="stat"><b>32.3 MB</b><span>交付压缩包</span></div></div>
+<div class="panel"><h2>数据链路</h2>
+<div class="flowline"><span class="node">resume0..2483.html × 2,484</span><span class="arrow">──解析──▶</span><span class="node hi">resumes.csv + 4 张明细表</span><span class="arrow">──▶</span><span class="node ok">jobfit 模型训练</span><span class="arrow">──▶</span><span class="node ok">jobfit.ckpt / training_report.json</span></div>
+<div class="flowline"><span class="node">resume*.html</span><span class="arrow">──DOM 骨架聚类──▶</span><span class="node">structure_groups.csv</span><span class="arrow">──▶</span><span class="node">structure_report.html</span><span class="arrow">· 分组标记回填</span><span class="node hi">resumes.csv</span></div>
+<div class="flowline"><span class="node">tag.csv（24 类）</span><span class="arrow">＋</span><span class="node hi">resumes.csv</span><span class="arrow">──▶</span><span class="node ok">训练 / 评估 / 校准</span></div>
+<div class="flowline"><span class="node">JDList</span><span class="arrow">──▶</span><span class="node">jobexample.csv（24 份 JD）</span><span class="arrow">──改名为 jobs.csv 且重训──▶</span><span class="node ok">岗位塔文本</span><span class="muted">（当前 checkpoint 未使用，仍是伪 JD）</span></div>
+<div class="flowline"><span class="node">5 张抽取表</span><span class="arrow">──▶</span><span class="node">extraction_report.html</span><span class="muted">（字段字典与质量校验）</span></div>
+</div>
+<div class="panel"><h2>主键与关联</h2>
+<table><tr><th>键</th><th>出现位置</th><th>作用</th></tr>
+<tr><td><code>resume_id</code></td><td>tag.csv、resumes.csv、4 张明细表</td><td>全链路主键，0–2483，对应 <code>resume{id}.html</code></td></tr>
+<tr><td><code>file</code></td><td>resumes.csv、明细表、structure_groups.csv</td><td>物理文件名，关联原始 HTML 与结构报告中的相对链接</td></tr>
+<tr><td><code>structure_family / layout_group</code></td><td>structure_groups.csv → resumes.csv</td><td>结构分组结果回填主表；训练时用于同组不跨集合切分，防近重复泄漏</td></tr>
+<tr><td><code>section_index / item_index</code></td><td>resume_sections.csv、resume_items.csv</td><td>板块与条目层级，item 归属于同 resume_id + section_index 的板块</td></tr>
+<tr><td><code>label</code></td><td>tag.csv、JDList、jobexample.csv、checkpoint</td><td>24 个岗位类别，连接标注、JD 与模型岗位塔（必须逐字一致）</td></tr></table>
+</div>
+<div class="panel"><h2>已知数据特征与待办边界</h2>
+<table><tr><th>事项</th><th>说明</th></tr>
+<tr><td>数据已匿名化</td><td>first_name 1%、email 1%、phone 2% 非空；公司/地点多为 Company Name / City / State 占位符。属源数据特征，非抽取错误。</td></tr>
+<tr><td>类别不均衡</td><td>24 类从 BPO 22 份到 IT / BUSINESS-DEVELOPMENT 各 120 份，训练已用频率倒平方根加权缓解。</td></tr>
+<tr><td>空板块</td><td>240 份无 summary、19 份无教育信息，抽查确认源 HTML 对应板块为空 div。</td></tr>
+<tr><td>重复与破损</td><td>12 对内容近重复（2 对完全相同）；5 个 HTML 标签破损（1657/1831/1933/2035/2170），已容错解析。</td></tr>
+<tr><td>分数语义</td><td>当前百分制是 P(岗位类别 | 简历) 的校准代理，不是真实录用适配度；要业务化需 (简历, 岗位, 分数) 三元组标注。</td></tr>
+<tr><td>JD 现状</td><td>24 份 JD 已备好但<strong>尚未生效</strong>：必须改名为 jobs.csv 并重训。中文 JD 无效；--jd-text 零样本分支因 unk_proto 未训练而不可用。</td></tr>
+<tr><td>环境</td><td>临时虚拟环境 /tmp/jobfit_venv 已被系统清理，当前系统 Python 无 torch / numpy；重训前需先安装依赖。</td></tr></table>
+</div>
+<div class="bar"><input type="search" id="q" placeholder="搜索文件名、字段、说明…"><button id="expand">展开全部字段</button><button class="fbtn on" data-layer="ALL">全部</button><button class="fbtn" data-layer="L0 · 原始输入">L0 · 原始输入</button><button class="fbtn" data-layer="L1 · 格式化抽取">L1 · 格式化抽取</button><button class="fbtn" data-layer="L2 · 结构分析">L2 · 结构分析</button><button class="fbtn" data-layer="L3 · 岗位 JD">L3 · 岗位 JD</button><button class="fbtn" data-layer="L4 · 模型交付">L4 · 模型交付</button><button class="fbtn" data-layer="L5 · 辅助记录">L5 · 辅助记录</button></div>
+<div class="laytitle" data-layer="L0 · 原始输入">L0 · 原始输入</div><div class="grid"><article class="card" data-layer="L0 · 原始输入" data-text="resume0.html ~ resume2483.html（2,484 个） 简历生成器导出的 div 片段，无 doctype/html/body。字段靠 id 编码（jtit/comp/jstd/eddt/jdes 经历，dgre/scho/stuy/gryr 教育），章节为 section_xxxx。  约 37.2 mb；5 个标签破损：1657/1831/1933/2035/2170">
+  <div class="head"><span class="tag">L0 · 原始输入</span><span class="kind">HTML 片段</span><span class="size">37.2 MB · 2,484 行</span></div>
+  <h3>resume0.html ~ resume2483.html（2,484 个）</h3>
+  <p class="sum">简历生成器导出的 div 片段，无 doctype/html/body。字段靠 id 编码（JTIT/COMP/JSTD/EDDT/JDES 经历，DGRE/SCHO/STUY/GRYR 教育），章节为 SECTION_XXXX。</p>
+  <div class="kv"><span>主键</span><b>文件名 → resume_id</b><span>上游</span><b>—</b><span>下游</span><b>信息抽取 / DOM 骨架聚类</b></div>
+  <div class="detail"><div class="lab">字段 / 内容清单</div><div class="chips"><span class="muted">（非表格文件）</span></div>
+  <div class="lab">样例</div><div class="sample">示例：resume0.html 含 SECTION_NAME / SUMM / HILT / ACCM / EXPR / EDUC / SKLL</div>
+  <div class="lab">备注</div><div class="note">约 37.2 MB；5 个标签破损：1657/1831/1933/2035/2170</div></div>
+</article><article class="card" data-layer="L0 · 原始输入" data-text="tag.csv 无表头，两列 resume_id, 岗位类别（label 带前导空格），24 类，每份简历一个类别标签。训练的唯一监督信号。 resume_id label 无 jd 文本、无人工适配分；可选第 3 列 0-100 分需开 use_score_supervision">
+  <div class="head"><span class="tag">L0 · 原始输入</span><span class="kind">标注 CSV</span><span class="size">38.9 KB · 2,484 行 · 2 列/键</span></div>
+  <h3>tag.csv</h3>
+  <p class="sum">无表头，两列 resume_id, 岗位类别（label 带前导空格），24 类，每份简历一个类别标签。训练的唯一监督信号。</p>
+  <div class="kv"><span>主键</span><b>resume_id</b><span>上游</span><b>人工/数据集标注</b><span>下游</span><b>模型训练 / 评估</b></div>
+  <div class="detail"><div class="lab">字段 / 内容清单</div><div class="chips"><code>resume_id</code><code>label</code></div>
+  <div class="lab">样例</div><div class="sample">0, HR  |  2, HR  |  2483, AVIATION；最多 INFORMATION-TECHNOLOGY 120 份，最少 BPO 22 份</div>
+  <div class="lab">备注</div><div class="note">无 JD 文本、无人工适配分；可选第 3 列 0-100 分需开 use_score_supervision</div></div>
+</article><article class="card" data-layer="L0 · 原始输入" data-text="../jdlist（上级目录 ai-recruitment/） 24 行岗位标签，集合与 tag.csv 一致但顺序打乱。用于生成岗位 jd 清单。 岗位标签（每行一个） 无表头；内容不含 jd 正文">
+  <div class="head"><span class="tag">L0 · 原始输入</span><span class="kind">纯文本清单</span><span class="size">246 B · 24 行 · 1 列/键</span></div>
+  <h3>../JDList（上级目录 AI-recruitment/）</h3>
+  <p class="sum">24 行岗位标签，集合与 tag.csv 一致但顺序打乱。用于生成岗位 JD 清单。</p>
+  <div class="kv"><span>主键</span><b>label</b><span>上游</span><b>—</b><span>下游</span><b>jobexample.csv</b></div>
+  <div class="detail"><div class="lab">字段 / 内容清单</div><div class="chips"><code>岗位标签（每行一个）</code></div>
+  <div class="lab">样例</div><div class="sample">HR / DESIGNER / INFORMATION-TECHNOLOGY / TEACHER / … / AVIATION</div>
+  <div class="lab">备注</div><div class="note">无表头；内容不含 JD 正文</div></div>
+</article></div><div class="laytitle" data-layer="L1 · 格式化抽取">L1 · 格式化抽取</div><div class="grid"><article class="card" data-layer="L1 · 格式化抽取" data-text="resumes.csv 一份简历一行的宽表：结构分组标记 + 姓名/联系方式 + 20 余个板块文本 + 经历/教育摘要 + 计数特征。模型训练主输入。 resume_id file structure_family layout_group section_sequence name first_name last_name header_text email phone urls objective summary highlights technical_skills skills accomplishments affiliations certifications languages interests additional_info personal_info publications presentations awards military_experience links experience_text education_text other_sections_json n_experiences n_education n_sections n_items text_chars utf-8 bom；数据已匿名化（first_name 1%、email 1%、phone 2% 非空）">
+  <div class="head"><span class="tag">L1 · 格式化抽取</span><span class="kind">主表 CSV</span><span class="size">5.5 MB · 2,484 行 · 37 列/键</span></div>
+  <h3>resumes.csv</h3>
+  <p class="sum">一份简历一行的宽表：结构分组标记 + 姓名/联系方式 + 20 余个板块文本 + 经历/教育摘要 + 计数特征。模型训练主输入。</p>
+  <div class="kv"><span>主键</span><b>resume_id</b><span>上游</span><b>resume*.html, structure_groups.csv</b><span>下游</span><b>jobfit 训练 / 分析</b></div>
+  <div class="detail"><div class="lab">字段 / 内容清单</div><div class="chips"><code>resume_id</code><code>file</code><code>structure_family</code><code>layout_group</code><code>section_sequence</code><code>name</code><code>first_name</code><code>last_name</code><code>header_text</code><code>email</code><code>phone</code><code>urls</code><code>objective</code><code>summary</code><code>highlights</code><code>technical_skills</code><code>skills</code><code>accomplishments</code><code>affiliations</code><code>certifications</code><code>languages</code><code>interests</code><code>additional_info</code><code>personal_info</code><code>publications</code><code>presentations</code><code>awards</code><code>military_experience</code><code>links</code><code>experience_text</code><code>education_text</code><code>other_sections_json</code><code>n_experiences</code><code>n_education</code><code>n_sections</code><code>n_items</code><code>text_chars</code></div>
+  <div class="lab">样例</div><div class="sample">resume_id=0 | name=HR ADMINISTRATOR/MARKETING ASSOCIATE | n_experiences=7 | text_chars=5027</div>
+  <div class="lab">备注</div><div class="note">UTF-8 BOM；数据已匿名化（first_name 1%、email 1%、phone 2% 非空）</div></div>
+</article><article class="card" data-layer="L1 · 格式化抽取" data-text="resume_experiences.csv 一条工作经历一行：职位、公司、地点、起止日期、年份、是否在职、职责描述。 resume_id file exp_index section_code section_title job_title company city state country start_date end_date start_year end_year is_current description description_items job_title 97%、company 97%、description 96% 非空；日期保留原文（dec 2013 / current）">
+  <div class="head"><span class="tag">L1 · 格式化抽取</span><span class="kind">明细 CSV</span><span class="size">10.0 MB · 11,942 行 · 17 列/键</span></div>
+  <h3>resume_experiences.csv</h3>
+  <p class="sum">一条工作经历一行：职位、公司、地点、起止日期、年份、是否在职、职责描述。</p>
+  <div class="kv"><span>主键</span><b>resume_id + exp_index</b><span>上游</span><b>resumes.csv</b><span>下游</span><b>工作年限估算 / 训练数值特征</b></div>
+  <div class="detail"><div class="lab">字段 / 内容清单</div><div class="chips"><code>resume_id</code><code>file</code><code>exp_index</code><code>section_code</code><code>section_title</code><code>job_title</code><code>company</code><code>city</code><code>state</code><code>country</code><code>start_date</code><code>end_date</code><code>start_year</code><code>end_year</code><code>is_current</code><code>description</code><code>description_items</code></div>
+  
+  <div class="lab">备注</div><div class="note">job_title 97%、company 97%、description 96% 非空；日期保留原文（Dec 2013 / Current）</div></div>
+</article><article class="card" data-layer="L1 · 格式化抽取" data-text="resume_education.csv 一条教育经历一行：学位、专业、学校、毕业年、补充说明。 resume_id file edu_index section_code section_title degree major school city state country graduation_year grad_year details degree 88%、school 87%、graduation_year 71% 非空">
+  <div class="head"><span class="tag">L1 · 格式化抽取</span><span class="kind">明细 CSV</span><span class="size">978.6 KB · 5,520 行 · 14 列/键</span></div>
+  <h3>resume_education.csv</h3>
+  <p class="sum">一条教育经历一行：学位、专业、学校、毕业年、补充说明。</p>
+  <div class="kv"><span>主键</span><b>resume_id + edu_index</b><span>上游</span><b>resumes.csv</b><span>下游</span><b>训练数值特征</b></div>
+  <div class="detail"><div class="lab">字段 / 内容清单</div><div class="chips"><code>resume_id</code><code>file</code><code>edu_index</code><code>section_code</code><code>section_title</code><code>degree</code><code>major</code><code>school</code><code>city</code><code>state</code><code>country</code><code>graduation_year</code><code>grad_year</code><code>details</code></div>
+  
+  <div class="lab">备注</div><div class="note">degree 88%、school 87%、graduation_year 71% 非空</div></div>
+</article><article class="card" data-layer="L1 · 格式化抽取" data-text="resume_sections.csv 每个板块一行，保留板块完整文本（兜底召回，含自定义板块）。 resume_id file section_index section_code section_title item_count section_text section_title 79%、section_text 91% 非空；空值源于源 html 空 div">
+  <div class="head"><span class="tag">L1 · 格式化抽取</span><span class="kind">明细 CSV</span><span class="size">13.9 MB · 18,707 行 · 7 列/键</span></div>
+  <h3>resume_sections.csv</h3>
+  <p class="sum">每个板块一行，保留板块完整文本（兜底召回，含自定义板块）。</p>
+  <div class="kv"><span>主键</span><b>resume_id + section_index</b><span>上游</span><b>resumes.csv</b><span>下游</span><b>板块级分析</b></div>
+  <div class="detail"><div class="lab">字段 / 内容清单</div><div class="chips"><code>resume_id</code><code>file</code><code>section_index</code><code>section_code</code><code>section_title</code><code>item_count</code><code>section_text</code></div>
+  
+  <div class="lab">备注</div><div class="note">section_title 79%、section_text 91% 非空；空值源于源 HTML 空 div</div></div>
+</article><article class="card" data-layer="L1 · 格式化抽取" data-text="resume_items.csv 逐条拆分的内容条目（技能点、成就、职责），适合词频/打标。 resume_id file section_index section_code section_title item_index item_text 已过滤 city / state / company name 等占位符">
+  <div class="head"><span class="tag">L1 · 格式化抽取</span><span class="kind">明细 CSV</span><span class="size">19.7 MB · 159,725 行 · 7 列/键</span></div>
+  <h3>resume_items.csv</h3>
+  <p class="sum">逐条拆分的内容条目（技能点、成就、职责），适合词频/打标。</p>
+  <div class="kv"><span>主键</span><b>resume_id + section_index + item_index</b><span>上游</span><b>resume_sections.csv</b><span>下游</span><b>词表 / TF-IDF</b></div>
+  <div class="detail"><div class="lab">字段 / 内容清单</div><div class="chips"><code>resume_id</code><code>file</code><code>section_index</code><code>section_code</code><code>section_title</code><code>item_index</code><code>item_text</code></div>
+  
+  <div class="lab">备注</div><div class="note">已过滤 City / State / Company Name 等占位符</div></div>
+</article></div><div class="laytitle" data-layer="L2 · 结构分析">L2 · 结构分析</div><div class="grid"><article class="card" data-layer="L2 · 结构分析" data-text="structure_groups.csv 2,484 行结构分组结果：结构家族 / 精确版式组 / 章节序列 / 视觉主题 / 边框与日期容器特征 / 重复与破损标记。 file sim_family sim_family_size skeleton_similarity layout_group layout_group_size section_sequence root_theme heading_border date_wrapper two_column align extra_decor bytes content_duplicate malformed_tag 267 种精确版式、57 个结构家族、799 种章节序列、42 种根 class">
+  <div class="head"><span class="tag">L2 · 结构分析</span><span class="kind">分组清单 CSV</span><span class="size">324.1 KB · 2,484 行 · 16 列/键</span></div>
+  <h3>structure_groups.csv</h3>
+  <p class="sum">2,484 行结构分组结果：结构家族 / 精确版式组 / 章节序列 / 视觉主题 / 边框与日期容器特征 / 重复与破损标记。</p>
+  <div class="kv"><span>主键</span><b>file</b><span>上游</span><b>resume*.html</b><span>下游</span><b>回填 resumes.csv / 分层切分防泄漏</b></div>
+  <div class="detail"><div class="lab">字段 / 内容清单</div><div class="chips"><code>file</code><code>sim_family</code><code>sim_family_size</code><code>skeleton_similarity</code><code>layout_group</code><code>layout_group_size</code><code>section_sequence</code><code>root_theme</code><code>heading_border</code><code>date_wrapper</code><code>two_column</code><code>align</code><code>extra_decor</code><code>bytes</code><code>content_duplicate</code><code>malformed_tag</code></div>
+  <div class="lab">样例</div><div class="sample">resume0.html | sim_family=3(334份) | layout_group=7(95份) | 粗下边框 | datesWrapper</div>
+  <div class="lab">备注</div><div class="note">267 种精确版式、57 个结构家族、799 种章节序列、42 种根 class</div></div>
+</article><article class="card" data-layer="L2 · 结构分析" data-text="structure_report.html 四个视图 + 搜索 + 展开文件清单 + 一键复制组名 + 点击打开原简历。内嵌 2,484 条数据。 结构家族 精确版式组 章节序列 重复与异常 文件链接为相对路径，需用本地浏览器打开">
+  <div class="head"><span class="tag">L2 · 结构分析</span><span class="kind">交互式报告</span><span class="size">176.8 KB · 4 列/键</span></div>
+  <h3>structure_report.html</h3>
+  <p class="sum">四个视图 + 搜索 + 展开文件清单 + 一键复制组名 + 点击打开原简历。内嵌 2,484 条数据。</p>
+  <div class="kv"><span>主键</span><b>file</b><span>上游</span><b>structure_groups.csv</b><span>下游</span><b>人工查阅</b></div>
+  <div class="detail"><div class="lab">字段 / 内容清单</div><div class="chips"><code>结构家族</code><code>精确版式组</code><code>章节序列</code><code>重复与异常</code></div>
+  <div class="lab">样例</div><div class="sample">含表格 2 个、脚本 1 个；约 167,013 字符</div>
+  <div class="lab">备注</div><div class="note">文件链接为相对路径，需用本地浏览器打开</div></div>
+</article><article class="card" data-layer="L2 · 结构分析" data-text="extraction_report.html 5 张 csv 的字段字典、抽取方法、非空率、质量校验与抽样结果。 交付表 主表字段字典 明细表字段字典 抽取方法 质量校验 抽样预览 使用建议 静态 html，9 个表格">
+  <div class="head"><span class="tag">L2 · 结构分析</span><span class="kind">质量报告</span><span class="size">21.1 KB · 7 列/键</span></div>
+  <h3>extraction_report.html</h3>
+  <p class="sum">5 张 CSV 的字段字典、抽取方法、非空率、质量校验与抽样结果。</p>
+  <div class="kv"><span>主键</span><b>—</b><span>上游</span><b>resumes.csv 等 5 张表</b><span>下游</span><b>人工查阅</b></div>
+  <div class="detail"><div class="lab">字段 / 内容清单</div><div class="chips"><code>交付表</code><code>主表字段字典</code><code>明细表字段字典</code><code>抽取方法</code><code>质量校验</code><code>抽样预览</code><code>使用建议</code></div>
+  <div class="lab">样例</div><div class="sample">抽样 20 份共 210 个字段值 100% 命中原文</div>
+  <div class="lab">备注</div><div class="note">静态 HTML，9 个表格</div></div>
+</article></div><div class="laytitle" data-layer="L3 · 岗位 JD">L3 · 岗位 JD</div><div class="grid"><article class="card" data-layer="L3 · 岗位 JD" data-text="jobfit_project/data/jobexample.csv 按 jdlist 顺序为 24 个岗位写好的完整英文 jd：岗位名、职责/技能/资质正文、必备技能词。每份 43–61 token，语料命中率 91–100%。 label title jd_text required_skills 示例文件，需复制/改名为 jobs.csv 才会被代码读取；中文 jd 无效">
+  <div class="head"><span class="tag">L3 · 岗位 JD</span><span class="kind">JD 清单 CSV</span><span class="size">14.2 KB · 24 行 · 4 列/键</span></div>
+  <h3>jobfit_project/data/jobexample.csv</h3>
+  <p class="sum">按 JDList 顺序为 24 个岗位写好的完整英文 JD：岗位名、职责/技能/资质正文、必备技能词。每份 43–61 token，语料命中率 91–100%。</p>
+  <div class="kv"><span>主键</span><b>label</b><span>上游</span><b>JDList</b><span>下游</span><b>重训时作为 jobs.csv</b></div>
+  <div class="detail"><div class="lab">字段 / 内容清单</div><div class="chips"><code>label</code><code>title</code><code>jd_text</code><code>required_skills</code></div>
+  <div class="lab">样例</div><div class="sample">HR | HR Generalist | HR generalist responsible for full cycle recruiting… | recruiting, payroll, benefits…</div>
+  <div class="lab">备注</div><div class="note">示例文件，需复制/改名为 jobs.csv 才会被代码读取；中文 JD 无效</div></div>
+</article><article class="card" data-layer="L3 · 岗位 JD" data-text="jobfit_project/data/jobs.example.csv 与 jobexample.csv 内容完全一致，沿用上一轮模板命名，避免新旧版本混淆。 label title jd_text required_skills 两份内容同步，任选其一改名即可">
+  <div class="head"><span class="tag">L3 · 岗位 JD</span><span class="kind">JD 清单 CSV（副本）</span><span class="size">14.2 KB · 24 行 · 4 列/键</span></div>
+  <h3>jobfit_project/data/jobs.example.csv</h3>
+  <p class="sum">与 jobexample.csv 内容完全一致，沿用上一轮模板命名，避免新旧版本混淆。</p>
+  <div class="kv"><span>主键</span><b>label</b><span>上游</span><b>JDList</b><span>下游</span><b>重训时作为 jobs.csv</b></div>
+  <div class="detail"><div class="lab">字段 / 内容清单</div><div class="chips"><code>label</code><code>title</code><code>jd_text</code><code>required_skills</code></div>
+  <div class="lab">样例</div><div class="sample">24 行全部填充完整 JD</div>
+  <div class="lab">备注</div><div class="note">两份内容同步，任选其一改名即可</div></div>
+</article></div><div class="laytitle" data-layer="L4 · 模型交付">L4 · 模型交付</div><div class="grid"><article class="card" data-layer="L4 · 模型交付" data-text="jobfit_project/outputs/jobfit.ckpt 自包含 checkpoint：模型参数 + 配置 + 词表 + 24 岗文本 + 训练/验证/测试划分 + 全库向量化矩阵 + 简历元信息 + 校准器 + 指标。加载后可直接做两个排序功能。 model cfg vocab label2id/id2label jobs splits num_mean/std x_ids/x_w/x_seg/x_num meta calibrator metrics best_epoch 45.3 mb；best_epoch=11；词表 30,002；划分 1721/367/396">
+  <div class="head"><span class="tag">L4 · 模型交付</span><span class="kind">PyTorch 权重</span><span class="size">45.3 MB · 12 列/键</span></div>
+  <h3>jobfit_project/outputs/jobfit.ckpt</h3>
+  <p class="sum">自包含 checkpoint：模型参数 + 配置 + 词表 + 24 岗文本 + 训练/验证/测试划分 + 全库向量化矩阵 + 简历元信息 + 校准器 + 指标。加载后可直接做两个排序功能。</p>
+  <div class="kv"><span>主键</span><b>—</b><span>上游</span><b>resumes.csv + tag.csv</b><span>下游</span><b>match-jobs / match-candidates</b></div>
+  <div class="detail"><div class="lab">字段 / 内容清单</div><div class="chips"><code>model</code><code>cfg</code><code>vocab</code><code>label2id/id2label</code><code>jobs</code><code>splits</code><code>num_mean/std</code><code>X_ids/X_w/X_seg/X_num</code><code>meta</code><code>calibrator</code><code>metrics</code><code>best_epoch</code></div>
+  <div class="lab">样例</div><div class="sample">准确率 0.836 · macro-F1 0.777 · P@10 0.875 · nDCG@10 0.890</div>
+  <div class="lab">备注</div><div class="note">45.3 MB；best_epoch=11；词表 30,002；划分 1721/367/396</div></div>
+</article><article class="card" data-layer="L4 · 模型交付" data-text="jobfit_project/outputs/training_report.json 全量训练的可读报告：17 轮历史、分类指标、逐岗排序指标、语料统计、校准参数。 history(17) test.classification test.candidate_ranking(24岗) corpus calibrator best_epoch 当前基线：acc 0.8359、macro-f1 0.7774、ece 0.0568">
+  <div class="head"><span class="tag">L4 · 模型交付</span><span class="kind">训练报告 JSON</span><span class="size">10.7 KB · 6 列/键</span></div>
+  <h3>jobfit_project/outputs/training_report.json</h3>
+  <p class="sum">全量训练的可读报告：17 轮历史、分类指标、逐岗排序指标、语料统计、校准参数。</p>
+  <div class="kv"><span>主键</span><b>—</b><span>上游</span><b>训练过程</b><span>下游</span><b>人工核对 / 基线对比</b></div>
+  <div class="detail"><div class="lab">字段 / 内容清单</div><div class="chips"><code>history(17)</code><code>test.classification</code><code>test.candidate_ranking(24岗)</code><code>corpus</code><code>calibrator</code><code>best_epoch</code></div>
+  <div class="lab">样例</div><div class="sample">test.candidate_ranking.precision@10 = 0.875</div>
+  <div class="lab">备注</div><div class="note">当前基线：acc 0.8359、macro-F1 0.7774、ECE 0.0568</div></div>
+</article><article class="card" data-layer="L4 · 模型交付" data-text="jobfit_project/configs/default.json 全部超参：数据文件名、max_len=384 / max_job_len=96、词表、模型维度、训练轮数与早停、score_mode=spread 等。 data_dir out_dir tag_file resume_file max_len max_job_len min_df max_vocab use_bigrams d_emb d_model cnn_kernels dropout init_temp seed epochs batch_size lr weight_decay warmup_ratio label_smoothing balanced margin_weight margin patience train_ratio val_ratio max_samples num_workers device score_mode jobs_file 默认 jobs.csv；score_mode 默认 spread（非饱和百分制）">
+  <div class="head"><span class="tag">L4 · 模型交付</span><span class="kind">配置 JSON</span><span class="size">658 B · 31 列/键</span></div>
+  <h3>jobfit_project/configs/default.json</h3>
+  <p class="sum">全部超参：数据文件名、max_len=384 / max_job_len=96、词表、模型维度、训练轮数与早停、score_mode=spread 等。</p>
+  <div class="kv"><span>主键</span><b>—</b><span>上游</span><b>—</b><span>下游</span><b>训练 / 推理</b></div>
+  <div class="detail"><div class="lab">字段 / 内容清单</div><div class="chips"><code>data_dir</code><code>out_dir</code><code>tag_file</code><code>resume_file</code><code>max_len</code><code>max_job_len</code><code>min_df</code><code>max_vocab</code><code>use_bigrams</code><code>d_emb</code><code>d_model</code><code>cnn_kernels</code><code>dropout</code><code>init_temp</code><code>seed</code><code>epochs</code><code>batch_size</code><code>lr</code><code>weight_decay</code><code>warmup_ratio</code><code>label_smoothing</code><code>balanced</code><code>margin_weight</code><code>margin</code><code>patience</code><code>train_ratio</code><code>val_ratio</code><code>max_samples</code><code>num_workers</code><code>device</code><code>score_mode</code></div>
+  <div class="lab">样例</div><div class="sample">score_mode: spread | epochs: 40 | patience: 6</div>
+  <div class="lab">备注</div><div class="note">jobs_file 默认 jobs.csv；score_mode 默认 spread（非饱和百分制）</div></div>
+</article><article class="card" data-layer="L4 · 模型交付" data-text="jobfit_project/jobfit/*.py（13 个模块）+ examples/ + tests/ config / utils / text / data / dataset / model / losses / train / evaluate / calibrate / inference / cli + 示例与自测。全部 .py 都在子目录内，根目录无 python 文件。  依赖仅 torch&gt;=2.0、numpy&gt;=1.24">
+  <div class="head"><span class="tag">L4 · 模型交付</span><span class="kind">Python 源码</span><span class="size">97.1 KB · 15 行</span></div>
+  <h3>jobfit_project/jobfit/*.py（13 个模块）+ examples/ + tests/</h3>
+  <p class="sum">config / utils / text / data / dataset / model / losses / train / evaluate / calibrate / inference / cli + 示例与自测。全部 .py 都在子目录内，根目录无 Python 文件。</p>
+  <div class="kv"><span>主键</span><b>—</b><span>上游</span><b>—</b><span>下游</span><b>训练 / 推理 / 自测</b></div>
+  <div class="detail"><div class="lab">字段 / 内容清单</div><div class="chips"><span class="muted">（非表格文件）</span></div>
+  <div class="lab">样例</div><div class="sample">核心 API：rank_jobs_for_resume() / rank_resumes_for_job()</div>
+  <div class="lab">备注</div><div class="note">依赖仅 torch&gt;=2.0、numpy&gt;=1.24</div></div>
+</article><article class="card" data-layer="L4 · 模型交付" data-text="jobfit_project.zip 干净副本：15 个 .py、配置、requirements、训练权重与报告、24 岗 jd 两份。不含 __pycache__ / .runtime / 4 字节残留文件。 21 个条目 32.3 mb；未压缩 47,633,182 b">
+  <div class="head"><span class="tag">L4 · 模型交付</span><span class="kind">交付压缩包</span><span class="size">32.3 MB · 1 列/键</span></div>
+  <h3>jobfit_project.zip</h3>
+  <p class="sum">干净副本：15 个 .py、配置、requirements、训练权重与报告、24 岗 JD 两份。不含 __pycache__ / .runtime / 4 字节残留文件。</p>
+  <div class="kv"><span>主键</span><b>—</b><span>上游</span><b>jobfit_project/</b><span>下游</span><b>分发 / 复制</b></div>
+  <div class="detail"><div class="lab">字段 / 内容清单</div><div class="chips"><code>21 个条目</code></div>
+  <div class="lab">样例</div><div class="sample">含 outputs/jobfit.ckpt（45.3 MB）与 data/jobexample.csv</div>
+  <div class="lab">备注</div><div class="note">32.3 MB；未压缩 47,633,182 B</div></div>
+</article><article class="card" data-layer="L4 · 模型交付" data-text="jobfit_project/requirements.txt 只依赖 torch&gt;=2.0 与 numpy&gt;=1.24，不依赖 pandas / sklearn / 分词模型 / transformers。 torch numpy 本机临时 venv 已被系统清理，当前解释器无 torch/numpy">
+  <div class="head"><span class="tag">L4 · 模型交付</span><span class="kind">依赖清单</span><span class="size">96 B · 2 列/键</span></div>
+  <h3>jobfit_project/requirements.txt</h3>
+  <p class="sum">只依赖 torch&gt;=2.0 与 numpy&gt;=1.24，不依赖 pandas / sklearn / 分词模型 / transformers。</p>
+  <div class="kv"><span>主键</span><b>—</b><span>上游</span><b>—</b><span>下游</span><b>环境安装</b></div>
+  <div class="detail"><div class="lab">字段 / 内容清单</div><div class="chips"><code>torch</code><code>numpy</code></div>
+  <div class="lab">样例</div><div class="sample">torch&gt;=2.0 | numpy&gt;=1.24</div>
+  <div class="lab">备注</div><div class="note">本机临时 venv 已被系统清理，当前解释器无 torch/numpy</div></div>
+</article></div><div class="laytitle" data-layer="L5 · 辅助记录">L5 · 辅助记录</div><div class="grid"><article class="card" data-layer="L5 · 辅助记录" data-text=".workbuddy/memory/2026-11-13.md、2026-11-14.md 项目工作日志：结构分组、csv 抽取、模型方案与实测指标、jd 接口规格与已发现缺陷。  非数据文件；append-only">
+  <div class="head"><span class="tag">L5 · 辅助记录</span><span class="kind">工作日志</span><span class="size">9.0 KB · 2 行</span></div>
+  <h3>.workbuddy/memory/2026-11-13.md、2026-11-14.md</h3>
+  <p class="sum">项目工作日志：结构分组、CSV 抽取、模型方案与实测指标、JD 接口规格与已发现缺陷。</p>
+  <div class="kv"><span>主键</span><b>—</b><span>上游</span><b>历次会话</b><span>下游</span><b>跨会话查阅</b></div>
+  <div class="detail"><div class="lab">字段 / 内容清单</div><div class="chips"><span class="muted">（非表格文件）</span></div>
+  <div class="lab">样例</div><div class="sample">记录了 --jd-text 分支未训练、中文 JD 失效等结论</div>
+  <div class="lab">备注</div><div class="note">非数据文件；append-only</div></div>
+</article><article class="card" data-layer="L5 · 辅助记录" data-text="17 个 4 字节残留文件（根目录 + jobfit_project/） 文件名形如 0buw265k / uv83ma_l，内容仅 4 字节，是运行环境探测遗留，不属于数据资产。  未打进 zip；不影响任何脚本；未擅自删除">
+  <div class="head"><span class="tag">L5 · 辅助记录</span><span class="kind">沙箱残留</span><span class="size">68 B · 17 行</span></div>
+  <h3>17 个 4 字节残留文件（根目录 + jobfit_project/）</h3>
+  <p class="sum">文件名形如 0buw265k / uv83ma_l，内容仅 4 字节，是运行环境探测遗留，不属于数据资产。</p>
+  <div class="kv"><span>主键</span><b>—</b><span>上游</span><b>—</b><span>下游</span><b>可忽略 / 按需清理</b></div>
+  <div class="detail"><div class="lab">字段 / 内容清单</div><div class="chips"><span class="muted">（非表格文件）</span></div>
+  <div class="lab">样例</div><div class="sample">0buw265k, 2go_hx2z, 2jgqc5qz, 6ogkfny0, bbs_31ez, elzk5rwj, f70tqq9d, fnfam6o9 …</div>
+  <div class="lab">备注</div><div class="note">未打进 zip；不影响任何脚本；未擅自删除</div></div>
+</article><article class="card" data-layer="L5 · 辅助记录" data-text="data_inventory.html data_inventory.csv 数据资产清单 本次生成 字段 主键 上下游 可筛选 报告">
+  <div class="head"><span class="tag">L5 · 辅助记录</span><span class="kind">清单文件</span><span class="size">50,580 B</span></div>
+  <h3>data_inventory.html / data_inventory.csv</h3>
+  <p class="sum">本次盘点产物：交互式 HTML 清单（分层卡片、搜索、字段展开、数据链路与主键表）+ 同内容的扁平 CSV（22 行 × 14 列，Excel 可筛选）。</p>
+  <div class="kv"><span>主键</span><b>文件路径</b><span>上游</span><b>全部数据文件</b><span>下游</span><b>人工查阅</b></div>
+  <div class="detail"><div class="lab">字段 / 内容清单</div><div class="chips"><code>层级</code><code>文件路径</code><code>类型</code><code>大小</code><code>数据行数</code><code>列数</code><code>字段/内容清单</code><code>主键</code><code>上游</code><code>下游</code><code>内容说明</code><code>备注</code><code>样例</code></div>
+  <div class="lab">备注</div><div class="note">只读盘点产物，未训练、未修改任何原始数据文件。</div></div>
+</article></div><div class="foot">共 22 项资产 · 同目录另有 data_inventory.csv 可用 Excel 筛选 · 4 字节残留文件与 .runtime/ 均为环境残留，非数据资产</div></div><script>
+const q=document.getElementById('q'),btns=document.querySelectorAll('.fbtn'),cards=[...document.querySelectorAll('.card')];
+let layer='ALL';
+function apply(){const s=q.value.trim().toLowerCase();cards.forEach(c=>{
+  const okL=layer==='ALL'||c.dataset.layer===layer;
+  const okQ=!s||c.dataset.text.includes(s);
+  c.style.display=(okL&&okQ)?'':'none';});
+  document.querySelectorAll('.laytitle').forEach(t=>{
+    const ls=t.dataset.layer;const vis=cards.some(c=>c.dataset.layer===ls&&c.style.display!=='none');
+    t.style.display=vis?'':'none';});}
+q.addEventListener('input',apply);
+btns.forEach(b=>b.onclick=()=>{btns.forEach(x=>x.classList.remove('on'));b.classList.add('on');layer=b.dataset.layer;apply()});
+cards.forEach(c=>c.querySelector('.head').onclick=()=>c.classList.toggle('open'));
+document.getElementById('expand').onclick=()=>{const open=!cards[0].classList.contains('open');cards.forEach(c=>c.classList.toggle('open',open));document.getElementById('expand').textContent=open?'收起全部':'展开全部字段'};
+</script></body></html>

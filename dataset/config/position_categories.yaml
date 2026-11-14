@@ -1,0 +1,188 @@
+# 30 个岗位类别（编号与需求表严格一致）
+position_order: [python_engineer, java_engineer, frontend_engineer, backend_engineer, algorithm_engineer, ai_engineer, data_analyst, data_engineer, product_manager, project_manager, software_tester, devops_engineer, uiux_designer, finance_staff, hr_specialist, marketing_operator, business_operator, embedded_engineer, security_engineer, software_architect, hardware_engineer, mechanical_engineer, electrical_engineer, sales_rep, customer_service, supply_chain_manager, legal_staff, education_trainer, construction_engineer, rnd_researcher]
+
+# 岗位典型资历偏好（0=应届 1=1-3年 2=3-5年 3=5-10年 4=10年以上）
+# 仅用于在保持全局年限配额精确不变的前提下做软性匹配，避免「1-3年软件架构师」这类不合理组合
+seniority_preference:
+  python_engineer: 2
+  java_engineer: 2
+  frontend_engineer: 1
+  backend_engineer: 2
+  algorithm_engineer: 2
+  ai_engineer: 2
+  data_analyst: 1
+  data_engineer: 2
+  product_manager: 2
+  project_manager: 3
+  software_tester: 1
+  devops_engineer: 2
+  uiux_designer: 1
+  finance_staff: 1
+  hr_specialist: 1
+  marketing_operator: 1
+  business_operator: 1
+  embedded_engineer: 2
+  security_engineer: 2
+  software_architect: 4
+  hardware_engineer: 2
+  mechanical_engineer: 2
+  electrical_engineer: 2
+  sales_rep: 1
+  customer_service: 0
+  supply_chain_manager: 3
+  legal_staff: 2
+  education_trainer: 1
+  construction_engineer: 2
+  rnd_researcher: 3
+
+categories:
+  python_engineer:
+    index: 1
+    name: "Python开发工程师"
+    family: "软件研发"
+    kb: "python_engineer.json"
+  java_engineer:
+    index: 2
+    name: "Java开发工程师"
+    family: "软件研发"
+    kb: "java_engineer.json"
+  frontend_engineer:
+    index: 3
+    name: "前端开发工程师"
+    family: "软件研发"
+    kb: "frontend_engineer.json"
+  backend_engineer:
+    index: 4
+    name: "后端开发工程师"
+    family: "软件研发"
+    kb: "backend_engineer.json"
+  algorithm_engineer:
+    index: 5
+    name: "算法工程师"
+    family: "算法与数据"
+    kb: "algorithm_engineer.json"
+  ai_engineer:
+    index: 6
+    name: "AI工程师"
+    family: "算法与数据"
+    kb: "ai_engineer.json"
+  data_analyst:
+    index: 7
+    name: "数据分析师"
+    family: "算法与数据"
+    kb: "data_analyst.json"
+  data_engineer:
+    index: 8
+    name: "数据工程师"
+    family: "算法与数据"
+    kb: "data_engineer.json"
+  product_manager:
+    index: 9
+    name: "产品经理"
+    family: "产品与项目"
+    kb: "product_manager.json"
+  project_manager:
+    index: 10
+    name: "项目经理"
+    family: "产品与项目"
+    kb: "project_manager.json"
+  software_tester:
+    index: 11
+    name: "软件测试工程师"
+    family: "质量与运维"
+    kb: "software_tester.json"
+  devops_engineer:
+    index: 12
+    name: "运维工程师"
+    family: "质量与运维"
+    kb: "devops_engineer.json"
+  uiux_designer:
+    index: 13
+    name: "UI/UX设计师"
+    family: "设计"
+    kb: "uiux_designer.json"
+  finance_staff:
+    index: 14
+    name: "财务人员"
+    family: "职能支持"
+    kb: "finance_staff.json"
+  hr_specialist:
+    index: 15
+    name: "人力资源"
+    family: "职能支持"
+    kb: "hr_specialist.json"
+  marketing_operator:
+    index: 16
+    name: "市场运营"
+    family: "市场与销售"
+    kb: "marketing_operator.json"
+  business_operator:
+    index: 17
+    name: "业务运营"
+    family: "市场与销售"
+    kb: "business_operator.json"
+  embedded_engineer:
+    index: 18
+    name: "嵌入式开发工程师"
+    family: "硬件与制造"
+    kb: "embedded_engineer.json"
+  security_engineer:
+    index: 19
+    name: "网络安全工程师"
+    family: "质量与运维"
+    kb: "security_engineer.json"
+  software_architect:
+    index: 20
+    name: "软件架构师"
+    family: "软件研发"
+    kb: "software_architect.json"
+  hardware_engineer:
+    index: 21
+    name: "电子硬件工程师"
+    family: "硬件与制造"
+    kb: "hardware_engineer.json"
+  mechanical_engineer:
+    index: 22
+    name: "机械工程师"
+    family: "硬件与制造"
+    kb: "mechanical_engineer.json"
+  electrical_engineer:
+    index: 23
+    name: "电气工程师"
+    family: "硬件与制造"
+    kb: "electrical_engineer.json"
+  sales_rep:
+    index: 24
+    name: "销售人员"
+    family: "市场与销售"
+    kb: "sales_rep.json"
+  customer_service:
+    index: 25
+    name: "客户服务人员"
+    family: "市场与销售"
+    kb: "customer_service.json"
+  supply_chain_manager:
+    index: 26
+    name: "供应链管理人员"
+    family: "职能支持"
+    kb: "supply_chain_manager.json"
+  legal_staff:
+    index: 27
+    name: "法务人员"
+    family: "职能支持"
+    kb: "legal_staff.json"
+  education_trainer:
+    index: 28
+    name: "教育培训人员"
+    family: "职能支持"
+    kb: "education_trainer.json"
+  construction_engineer:
+    index: 29
+    name: "建筑工程人员"
+    family: "硬件与制造"
+    kb: "construction_engineer.json"
+  rnd_researcher:
+    index: 30
+    name: "研究开发人员"
+    family: "算法与数据"
+    kb: "rnd_researcher.json"

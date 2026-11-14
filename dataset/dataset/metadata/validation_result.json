@@ -1,0 +1,159 @@
+{
+  "passed": true,
+  "errors": {},
+  "error_samples": {},
+  "warnings": {},
+  "warning_samples": {},
+  "error_total": 0,
+  "warning_total": 0,
+  "statistics": {
+    "stage": "pilot",
+    "resumes": 100,
+    "experiences": 742,
+    "questions": 1035,
+    "chains": 300,
+    "positions": {
+      "研究开发人员": 5,
+      "运维工程师": 4,
+      "Java开发工程师": 3,
+      "客户服务人员": 4,
+      "嵌入式开发工程师": 3,
+      "销售人员": 3,
+      "市场运营": 3,
+      "UI/UX设计师": 3,
+      "业务运营": 3,
+      "网络安全工程师": 3,
+      "项目经理": 4,
+      "AI工程师": 3,
+      "法务人员": 3,
+      "后端开发工程师": 4,
+      "建筑工程人员": 3,
+      "算法工程师": 4,
+      "供应链管理人员": 3,
+      "Python开发工程师": 3,
+      "数据工程师": 3,
+      "人力资源": 5,
+      "产品经理": 3,
+      "电气工程师": 3,
+      "教育培训人员": 3,
+      "电子硬件工程师": 4,
+      "机械工程师": 3,
+      "财务人员": 3,
+      "前端开发工程师": 3,
+      "数据分析师": 3,
+      "软件架构师": 3,
+      "软件测试工程师": 3
+    },
+    "career_levels": {
+      "senior": 18,
+      "junior": 22,
+      "expert": 12,
+      "fresh": 22,
+      "mid": 26
+    },
+    "resume_qualities": {
+      "contradictory": 10,
+      "normal": 44,
+      "high": 25,
+      "vague": 21
+    },
+    "dimensions": {
+      "risk_awareness": 82,
+      "data_evidence": 104,
+      "project_management": 62,
+      "achievement_verification": 87,
+      "business_understanding": 108,
+      "leadership": 58,
+      "professional_depth": 80,
+      "innovation": 50,
+      "problem_solving": 55,
+      "technical_implementation": 88,
+      "reflection": 58,
+      "technical_decision": 73,
+      "learning_ability": 29,
+      "teamwork": 41,
+      "personal_contribution": 60
+    },
+    "question_types": {
+      "risk_investigation": 73,
+      "data_verification": 144,
+      "decision_analysis": 111,
+      "clarification": 171,
+      "contribution_verification": 115,
+      "technical_deep_dive": 107,
+      "reflection": 106,
+      "problem_investigation": 108,
+      "scenario_analysis": 82,
+      "result_verification": 18
+    },
+    "experience_types": {
+      "education": 121,
+      "work_experience": 141,
+      "project_experience": 250,
+      "achievement": 30,
+      "skill_application": 56,
+      "internship": 68,
+      "research": 41,
+      "competition": 35
+    },
+    "priority": {
+      "high": 542,
+      "medium": 405,
+      "low": 88
+    },
+    "difficulty": {
+      "medium": 932,
+      "hard": 36,
+      "easy": 67
+    },
+    "duplicate_question_ratio": 0.0,
+    "template_concentration": 0.00773,
+    "distinct_question_signatures": 441,
+    "hard_gate_failed_questions": 0,
+    "avg_question_score": 94.0,
+    "avg_resume_score": 94.06,
+    "avg_experience_score": 85.86,
+    "avg_chain_score": 100.0
+  },
+  "hard_gates": [
+    "experience_link_valid",
+    "reference_exact_match",
+    "no_generic_question",
+    "no_cross_experience_mix",
+    "chain_experience_consistent"
+  ],
+  "scoring_rules": {
+    "resume": {
+      "information_completeness": 20,
+      "timeline_consistency": 20,
+      "position_match": 20,
+      "authenticity_expression": 15,
+      "experience_richness": 15,
+      "language_naturalness": 10
+    },
+    "experience": {
+      "description_clarity": 20,
+      "responsibility_clarity": 20,
+      "detail_richness": 20,
+      "achievement_verifiability": 20,
+      "probe_value": 20
+    },
+    "question": {
+      "experience_link_accuracy": 25,
+      "reference_accuracy": 20,
+      "targeting": 15,
+      "probe_depth": 12,
+      "position_relevance": 10,
+      "interview_practicality": 10,
+      "independence": 8
+    },
+    "chain": {
+      "single_experience": 25,
+      "progression": 20,
+      "purpose_clarity": 20,
+      "trigger_condition": 15,
+      "non_repetition": 10,
+      "evidence_based": 10
+    }
+  }
+}

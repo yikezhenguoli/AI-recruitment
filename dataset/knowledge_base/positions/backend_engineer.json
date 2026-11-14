@@ -1,0 +1,170 @@
+{
+  "position_id": "backend_engineer",
+  "index": 4,
+  "position_name": "后端开发工程师",
+  "family": "软件研发",
+  "core_responsibilities": [
+    "负责服务端系统设计与接口开发",
+    "设计存储方案与数据访问层",
+    "维护消息队列与异步链路",
+    "保障服务可用性与容量",
+    "排查跨服务调用故障",
+    "制定接口规范与错误码体系"
+  ],
+  "common_tasks": [
+    "设计微服务边界与 RPC 契约",
+    "实现分库分表与读写分离",
+    "接入服务注册发现与熔断降级",
+    "设计分布式锁与限流策略",
+    "完善链路追踪与结构化日志",
+    "编写容量评估与压测报告"
+  ],
+  "core_skills": [
+    "分布式系统基础",
+    "RPC 与序列化协议",
+    "数据库索引与事务",
+    "消息队列与事件驱动",
+    "服务治理与熔断限流",
+    "缓存与一致性哈希",
+    "容量规划与压测"
+  ],
+  "tools": [
+    "gRPC",
+    "Go",
+    "Kubernetes",
+    "Kafka",
+    "MySQL",
+    "Redis",
+    "Prometheus",
+    "Jaeger"
+  ],
+  "business_scenarios": [
+    "多租户 SaaS 平台",
+    "开放 API 网关",
+    "实时消息与推送",
+    "批量结算任务"
+  ],
+  "project_types": [
+    {
+      "name": "API 网关重构",
+      "goal": "统一鉴权限流与协议转换",
+      "tech_focus": [
+        "gRPC",
+        "Redis",
+        "Kubernetes"
+      ],
+      "typical_metrics": [
+        "网关平均转发耗时由35ms降至9ms",
+        "突发流量下错误率由6%降至0.3%"
+      ],
+      "difficulties": [
+        "限流粒度与热点租户",
+        "配置热更新一致性"
+      ]
+    },
+    {
+      "name": "分库分表改造",
+      "goal": "应对订单表数据量快速增长",
+      "tech_focus": [
+        "MySQL",
+        "ShardingSphere",
+        "Kafka"
+      ],
+      "typical_metrics": [
+        "单表数据量从2.4亿行降至3000万行",
+        "大促期间慢查询减少92%"
+      ],
+      "difficulties": [
+        "分片键选择",
+        "跨分片分页与聚合"
+      ]
+    },
+    {
+      "name": "异步事件总线",
+      "goal": "打通订单与库存履约链路",
+      "tech_focus": [
+        "Kafka",
+        "Go",
+        "幂等表"
+      ],
+      "typical_metrics": [
+        "消息积压峰值由18万条降至2000条以内",
+        "重复处理率降至0.02%"
+      ],
+      "difficulties": [
+        "消息顺序与重放",
+        "消费失败补偿"
+      ]
+    },
+    {
+      "name": "多租户资源隔离平台",
+      "goal": "为不同租户提供独立配额与降级策略",
+      "tech_focus": [
+        "Redis",
+        "Kubernetes",
+        "Go"
+      ],
+      "typical_metrics": [
+        "租户间故障影响面由全量降至单租户",
+        "资源利用率由38%提升至67%"
+      ],
+      "difficulties": [
+        "配额超卖判定",
+        "单租户突发流量"
+      ]
+    }
+  ],
+  "achievement_metrics": [
+    "网关平均转发耗时由35ms降至9ms",
+    "单表数据量从2.4亿行降至3000万行",
+    "消息积压峰值由18万条降至2000条以内",
+    "服务可用性由99.5%提升至99.95%",
+    "慢查询数量减少92%",
+    "资源利用率由38%提升至67%"
+  ],
+  "technical_difficulties": [
+    "分片键选择与跨分片查询",
+    "服务雪崩与熔断阈值",
+    "消息顺序性与重放",
+    "缓存热点与一致性",
+    "跨服务链路超时传递",
+    "容量评估与压测模型"
+  ],
+  "work_risks": [
+    "可用性指标缺少统计周期与故障定义",
+    "未说明网关重构中承担的边界",
+    "消息积压改善是否来自削峰或扩容未解释",
+    "资源利用率提升与延迟的关系未交代"
+  ],
+  "interview_dimensions": {
+    "technical_decision": 5,
+    "technical_implementation": 4,
+    "problem_solving": 4,
+    "risk_awareness": 3,
+    "data_evidence": 3,
+    "project_management": 2
+  },
+  "career_level_requirements": {
+    "fresh": {
+      "scope": "在指导下实现单服务接口与数据访问"
+    },
+    "junior": {
+      "scope": "独立承担服务模块与异步链路"
+    },
+    "mid": {
+      "scope": "负责存储与服务治理方案"
+    },
+    "senior": {
+      "scope": "主导后端架构演进与容量规划"
+    },
+    "expert": {
+      "scope": "制定分布式系统技术标准与演进路线"
+    }
+  },
+  "probe_topics": [
+    "服务熔断阈值",
+    "分片键设计",
+    "消息顺序性",
+    "容量压测模型"
+  ]
+}

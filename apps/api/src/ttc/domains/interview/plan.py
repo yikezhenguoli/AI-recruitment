@@ -1,9 +1,12 @@
-"""按候选人简历与岗位生成面试问题清单。
+"""按候选人简历与岗位生成初始面试问题，并构造实时追问策略。
 
-清单在建会话时生成一次并落进 ``voice_session.plan_json``：候选人门户据此
-展示「本轮问什么」，实时语音中继层据此拼系统指令。生成失败一律回退固定
-清单——建会话这一步不能因为模型不可用而失败。
+建会话时只生成 3～5 个初始问题。它们用于确定对话主题和岗位相关性，
+不是需要机械逐题执行的完整脚本。实时语音模型会根据候选人的实际回答，
+在当前岗位相关的主题内继续追问，或进入下一道初始问题。
 """
+
+from __future__ import annotations
+
 import json
 import logging
 from uuid import UUID
@@ -18,53 +21,81 @@ from ttc.core.errors import TTCError
 logger = logging.getLogger(__name__)
 
 SECTIONS = ("experience", "skill", "gap", "motivation")
-MAX_QUESTIONS = 6
+MIN_QUESTIONS = 3
+MAX_QUESTIONS = 5
+MAX_FOLLOWUPS_PER_TOPIC = 2
+MAX_TOTAL_QUESTIONS = 10
+STRATEGY = "initial-seeds-with-live-followups"
 
 FALLBACK_PLAN: dict = {
     "sections_order": ["intro", "experience", "wrap"],
     "questions": [
-        {"id": "q1", "section": "experience", "text": "请介绍你最相关的一段经历。",
-         "focus": "相关性与表达"},
-        {"id": "q2", "section": "experience", "text": "这段经历中你亲自负责什么？",
-         "focus": "个人贡献"},
-        {"id": "q3", "section": "wrap", "text": "你目前的求职意愿和到岗时间？",
-         "focus": "动机与时间"},
+        {
+            "id": "q1",
+            "section": "experience",
+            "text": "请介绍你最相关的一段经历。",
+            "focus": "相关性与表达",
+        },
+        {
+            "id": "q2",
+            "section": "experience",
+            "text": "这段经历中你亲自负责什么？",
+            "focus": "个人贡献",
+        },
+        {
+            "id": "q3",
+            "section": "motivation",
+            "text": "你目前的求职意愿和到岗时间？",
+            "focus": "动机与时间",
+        },
     ],
     "language_mode": {"primary": "zh", "mixed": False},
+    "strategy": STRATEGY,
 }
 
 
+def _text(value, limit: int) -> str:
+    return value.strip()[:limit] if isinstance(value, str) else ""
+
+
 def normalize_plan(data: dict) -> dict | None:
-    """校验模型输出；不合格返回 None，由调用方回退固定清单。"""
+    """校验模型输出；只接受 3～5 个初始问题，不合格时由调用方回退。"""
     if not isinstance(data, dict):
         return None
     questions: list[dict] = []
     for raw in data.get("questions", []) if isinstance(data.get("questions"), list) else []:
         if not isinstance(raw, dict):
             continue
-        text_value = raw.get("text")
-        if not isinstance(text_value, str):
-            continue
-        text_value = text_value.strip()
-        if not 4 <= len(text_value) <= 200:
+        text_value = _text(raw.get("text"), 200)
+        if len(text_value) < 4:
             continue
         section = raw.get("section")
         section = section if section in SECTIONS else "experience"
-        focus = raw.get("focus")
-        focus = focus.strip()[:40] if isinstance(focus, str) else ""
-        questions.append({"id": f"q{len(questions) + 1}", "section": section,
-                          "text": text_value, "focus": focus})
+        question = {
+            "id": f"q{len(questions) + 1}",
+            "section": section,
+            "text": text_value,
+            "focus": _text(raw.get("focus"), 80),
+        }
+        # 这两个字段用于实时模型判断是否值得继续深挖。旧模型不返回时保持兼容。
+        for key, limit in (("job_relevance", 160), ("resume_anchor", 160)):
+            value = _text(raw.get(key), limit)
+            if value:
+                question[key] = value
+        questions.append(question)
         if len(questions) == MAX_QUESTIONS:
             break
-    if not questions:
+    if len(questions) < MIN_QUESTIONS:
         return None
-    profile = data.get("profile")
-    profile = profile.strip()[:200] if isinstance(profile, str) else ""
+    profile = _text(data.get("profile"), 200)
     return {
-        "sections_order": list(dict.fromkeys(["intro", *(q["section"] for q in questions), "wrap"])),
+        "sections_order": list(
+            dict.fromkeys(["intro", *(q["section"] for q in questions), "wrap"])
+        ),
         "questions": questions,
         "profile": profile,
         "language_mode": {"primary": "zh", "mixed": False},
+        "strategy": STRATEGY,
     }
 
 
@@ -79,83 +110,226 @@ def parse_plan(value) -> dict:
 
 
 def plan_from_db(value) -> dict:
-    """从库里读问题清单；缺失或不合法就回退固定清单。"""
+    """读取已有会话的初始问题；旧会话缺失或损坏时回退固定问题。"""
     plan = parse_plan(value)
     return plan if plan.get("questions") else FALLBACK_PLAN
 
 
 def session_instructions(plan: dict, job_title: str | None = None) -> str:
-    """把清单拼成实时语音的系统指令。"""
+    """把初始问题和动态追问规则拼成实时语音系统指令。"""
     if not isinstance(plan, dict):
         plan = FALLBACK_PLAN
-    questions = [item for item in plan.get("questions", [])
-                 if isinstance(item, dict) and str(item.get("text", "")).strip()]
+    questions = [
+        item
+        for item in plan.get("questions", [])
+        if isinstance(item, dict) and _text(item.get("text"), 200)
+    ][:MAX_QUESTIONS]
     if not questions:
         return session_instructions(FALLBACK_PLAN, job_title)
+
     lines = [
-        "你是招聘初筛沟通助手。开场用一句话说明这是一轮初步沟通，不做录用决定。",
-        "只按顺序询问下面的问题；每题问完可以追问一次细节，但不要引入清单之外的新主题。",
-        "每次开口都要把一个问题完整说完，不要只说「那我问第二个问题」就停下等回应；"
-        "候选人沉默时，主动重复或换个说法再问一次。",
-        "候选人中断或说没听清时，直接重述当前问题，不要跳过。",
-        "不要要求身份证、住址等敏感信息，也不要询问性别、年龄、婚育、民族、宗教、残障。",
-        "候选人说的内容与简历不一致时记为待核实，不要当场下结论。",
+        "你是招聘初筛沟通助手。开场用一句话说明这是一轮初步沟通，不做录用决定，"
+        "然后从第一道初始问题开始。",
+        "初始问题只用于确定对话主题，不是必须逐字朗读的固定脚本。每次只问一个问题，"
+        "根据候选人的实际回答实时决定继续深挖、澄清、切换话题或收尾。",
     ]
-    title = job_title.strip() if isinstance(job_title, str) else ""
+    title = _text(job_title, 160)
+    profile = _text(plan.get("profile"), 200)
     if title:
         lines.append(f"应聘岗位：{title}")
-    profile = plan.get("profile")
-    if isinstance(profile, str) and profile.strip():
-        lines.append(f"候选人简历要点（仅供你组织提问，不要逐字念出）：{profile.strip()}")
-    lines.append("问题清单：")
+    if profile:
+        lines.append(f"候选人简历要点（仅供你组织提问，不要逐字念出）：{profile}")
+
+    job_context = plan.get("job_context")
+    if isinstance(job_context, dict):
+        required_skills = job_context.get("required_skills")
+        responsibilities = job_context.get("responsibilities")
+        preferred_skills = job_context.get("preferred_skills")
+        jd_excerpt = _text(job_context.get("jd_text"), 6000)
+        if isinstance(required_skills, list) and required_skills:
+            lines.append(
+                "岗位必备技能："
+                + "、".join(
+                    str(item).strip()[:80] for item in required_skills[:20] if str(item).strip()
+                )
+            )
+        if isinstance(preferred_skills, list) and preferred_skills:
+            lines.append(
+                "岗位优先技能："
+                + "、".join(
+                    str(item).strip()[:80] for item in preferred_skills[:20] if str(item).strip()
+                )
+            )
+        if isinstance(responsibilities, list) and responsibilities:
+            lines.append(
+                "岗位核心职责："
+                + "；".join(
+                    str(item).strip()[:200] for item in responsibilities[:8] if str(item).strip()
+                )
+            )
+        if jd_excerpt:
+            lines.append(f"岗位原文快照（判断相关性时参考）：\n{jd_excerpt}")
+
+    lines.append("初始问题：")
     for index, item in enumerate(questions, 1):
-        focus = str(item.get("focus", "")).strip()
-        suffix = f"（关注：{focus}）" if focus else ""
-        lines.append(f"{index}. {str(item['text']).strip()}{suffix}")
+        details = []
+        focus = _text(item.get("focus"), 80)
+        relevance = _text(item.get("job_relevance"), 160)
+        anchor = _text(item.get("resume_anchor"), 160)
+        if focus:
+            details.append(f"关注：{focus}")
+        if relevance:
+            details.append(f"岗位关联：{relevance}")
+        if anchor:
+            details.append(f"简历锚点：{anchor}")
+        suffix = f"（{'；'.join(details)}）" if details else ""
+        lines.append(f"{index}. {_text(item.get('text'), 200)}{suffix}")
+
+    lines.extend(
+        [
+            "动态推进规则：",
+            "1. 候选人回答充分覆盖当前问题的岗位要求、个人贡献、过程和可验证结果时，"
+            "进入下一道初始问题，避免为了追问而追问。",
+            "2. 回答与岗位高度相关但过于笼统、缺少个人职责、技术实现、指标依据、"
+            "关键决策或异常处理时，先围绕当前主题提出一个更具体的问题。",
+            "3. 回答偏离岗位或答非所问时，可以简短澄清后把话题拉回当前招聘要求，"
+            "不要把面试扩展成无关聊天。",
+            "4. 回答中出现矛盾、模糊指标或无法确认的事实时应继续核实；结论记为待核实，"
+            "不要当场指控或推断动机。",
+            f"5. 每道初始问题最多追问 {MAX_FOLLOWUPS_PER_TOPIC} 层；"
+            f"初始问题和追问合计不超过 {MAX_TOTAL_QUESTIONS} 个。",
+            "6. 信息已经充分、追问预算用尽或通话接近时限时，简短总结并礼貌收尾。",
+            "硬性边界：",
+            "- 每次开口只提出一个问题，把问题完整说完，不要只报题号或停在半句。",
+            "- 不重复候选人已经完整回答过的问题，不虚构简历和回答中不存在的事实。",
+            "- 不要求身份证、住址等敏感信息，不询问性别、年龄、婚育、民族、宗教、残障。",
+            "- 只围绕当前岗位和候选人经历开展追问，不做录用决定，表达流畅度不能替代能力判断。",
+            "- 候选人沉默或说没听清时，换一种说法重述当前问题，不要直接跳到下一题。",
+        ]
+    )
     return "\n".join(lines)
 
 
 async def latest_resume_text(session: AsyncSession, candidate_id: UUID) -> str:
-    row = (await session.execute(
-        text("SELECT v.text_uri FROM resume_version v JOIN resume r ON r.id = v.resume_id "
-             "WHERE r.candidate_id = :candidate AND v.status = 'done' AND v.text_uri IS NOT NULL "
-             "ORDER BY v.version_no DESC, v.parsed_at DESC NULLS LAST LIMIT 1"),
-        {"candidate": candidate_id},
-    )).mappings().one_or_none()
+    row = (
+        (
+            await session.execute(
+                text(
+                    "SELECT v.text_uri FROM resume_version v "
+                    "JOIN resume r ON r.id = v.resume_id "
+                    "WHERE r.candidate_id = :candidate AND v.status = 'done' "
+                    "AND v.text_uri IS NOT NULL "
+                    "ORDER BY v.version_no DESC, v.parsed_at DESC NULLS LAST LIMIT 1"
+                ),
+                {"candidate": candidate_id},
+            )
+        )
+        .mappings()
+        .one_or_none()
+    )
     if row is None:
         return ""
     data = await Storage().get(row["text_uri"])
     return data.decode("utf-8", errors="replace")
 
 
-async def current_jd(session: AsyncSession, job_id: UUID) -> str:
-    row = (await session.execute(
-        text("SELECT j.title, v.jd_text FROM job j "
-             "LEFT JOIN job_version v ON v.id = j.current_version_id WHERE j.id = :job"),
-        {"job": job_id},
-    )).mappings().one_or_none()
+def _string_list(value, limit: int = 20) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [
+        str(item).strip()[:200]
+        for item in value[:limit]
+        if isinstance(item, (str, int, float)) and str(item).strip()
+    ]
+
+
+async def current_job_context(session: AsyncSession, job_id: UUID) -> dict:
+    """冻结本次会话使用的岗位版本、职责和技能快照。"""
+    row = (
+        (
+            await session.execute(
+                text(
+                    "SELECT j.title, j.current_version_id, v.id AS version_id, "
+                    "v.jd_text, v.structured FROM job j "
+                    "LEFT JOIN job_version v ON v.id = j.current_version_id "
+                    "WHERE j.id = :job"
+                ),
+                {"job": job_id},
+            )
+        )
+        .mappings()
+        .one_or_none()
+    )
     if row is None:
+        return {}
+    structured = row["structured"]
+    if isinstance(structured, str):
+        try:
+            structured = json.loads(structured)
+        except ValueError:
+            structured = {}
+    if not isinstance(structured, dict):
+        structured = {}
+    version_id = row["version_id"] or row["current_version_id"]
+    return {
+        "job_version_id": str(version_id) if version_id is not None else None,
+        "title": _text(row["title"], 160),
+        "jd_text": _text(row["jd_text"], 6000),
+        "responsibilities": _string_list(structured.get("responsibilities")),
+        "required_skills": _string_list(structured.get("required_skills")),
+        "preferred_skills": _string_list(structured.get("preferred_skills")),
+        "education_requirements": structured.get("education_requirements"),
+    }
+
+
+async def current_jd(session: AsyncSession, job_id: UUID) -> str:
+    """兼容旧调用：返回岗位标题和当前 JD 文本。"""
+    context = await current_job_context(session, job_id)
+    if not context:
         return ""
-    return f"{row['title']}\n{row['jd_text'] or ''}".strip()
+    return f"{context.get('title', '')}\n{context.get('jd_text', '')}".strip()
 
 
-async def build_plan(session: AsyncSession, candidate_id: UUID, job_id: UUID,
-                     scenario: str = "screen") -> dict:
-    """简历 + 岗位 → 问题清单；任何失败都回退固定清单。"""
+def _fallback_with_context(job_context: dict | None) -> dict:
+    plan = {
+        **FALLBACK_PLAN,
+        "questions": [{**item} for item in FALLBACK_PLAN["questions"]],
+        "source": "fallback",
+        "strategy": STRATEGY,
+    }
+    if job_context:
+        plan["job_context"] = job_context
+    return plan
+
+
+async def build_plan(
+    session: AsyncSession, candidate_id: UUID, job_id: UUID, scenario: str = "screen"
+) -> dict:
+    """简历 + 岗位 -> 3～5 个初始问题；后续追问由实时模型按对话生成。"""
+    job_context = await current_job_context(session, job_id)
     resume_text = await latest_resume_text(session, candidate_id)
     if not resume_text.strip():
-        logger.warning("候选人 %s 没有可用的简历文本，面试使用固定问题清单", candidate_id)
-        return {**FALLBACK_PLAN, "source": "fallback"}
-    jd_text = await current_jd(session, job_id)
+        logger.warning("候选人 %s 没有可用的简历文本，面试使用固定初始问题", candidate_id)
+        return _fallback_with_context(job_context)
+    jd_text = (
+        f"{job_context.get('title', '')}\n{job_context.get('jd_text', '')}".strip()
+        if job_context
+        else ""
+    )
     try:
-        data = await LLMAdapter().build_interview_plan(resume_text, jd_text, scenario)
+        data = await LLMAdapter().build_interview_plan(
+            resume_text, jd_text, scenario, job_context=job_context
+        )
     except TTCError as exc:
-        logger.warning("面试问题生成失败，回退固定清单: %s", exc.message)
-        return {**FALLBACK_PLAN, "source": "fallback"}
+        logger.warning("面试初始问题生成失败，回退固定问题: %s", exc.message)
+        return _fallback_with_context(job_context)
     plan = normalize_plan(data)
     if plan is None:
-        logger.warning("面试问题生成结果不符合契约，回退固定清单: %s",
-                       json.dumps(data, ensure_ascii=False)[:300])
-        return {**FALLBACK_PLAN, "source": "fallback"}
+        logger.warning(
+            "面试初始问题未达到 3～5 道门槛，回退固定问题：%s",
+            json.dumps(data, ensure_ascii=False)[:300],
+        )
+        return _fallback_with_context(job_context)
     plan["source"] = "llm"
+    plan["job_context"] = job_context
     return plan
