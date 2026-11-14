@@ -69,6 +69,7 @@ export interface ResumeSummary {
   file_name: string
   parse_status: string
   created_at: string
+  extractor_model?: string | null
 }
 
 export interface ResumeVersionInfo {
