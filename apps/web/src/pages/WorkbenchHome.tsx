@@ -220,7 +220,11 @@ export default function WorkbenchHome() {
               </span>
               <span className="lg2-trust">
                 <ShieldCheck size={14} aria-hidden="true" />
-                {user ? `${user.display_name} (${user.role})` : '双账本独立计算 · 人工最终复核'}
+                {user
+                  ? user.display_name.toLowerCase().includes(`(${user.role.toLowerCase()})`)
+                    ? user.display_name
+                    : `${user.display_name} (${user.role})`
+                  : '双账本独立计算 · 人工最终复核'}
               </span>
             </div>
           </div>

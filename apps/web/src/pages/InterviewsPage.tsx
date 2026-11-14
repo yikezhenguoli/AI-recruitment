@@ -346,6 +346,7 @@ export default function InterviewsPage() {
         </div>
       )}
 
+      <div className="ttc-table-card">
       <div className="ttc-table-scroll ttc-table-container" tabIndex={0} role="region" aria-label="面试排期列表">
         <table className="ttc-result-table">
           <thead>
@@ -442,6 +443,7 @@ export default function InterviewsPage() {
             )}
           </tbody>
         </table>
+      </div>
       </div>
     </div>
   )

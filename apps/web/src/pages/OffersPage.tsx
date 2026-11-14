@@ -273,6 +273,7 @@ export default function OffersPage() {
         </div>
       )}
 
+      <div className="ttc-table-card">
       <div className="ttc-table-scroll ttc-table-container" tabIndex={0} role="region" aria-label="Offer 列表">
         <table className="ttc-result-table">
           <thead>
@@ -344,6 +345,7 @@ export default function OffersPage() {
             )}
           </tbody>
         </table>
+      </div>
       </div>
 
       {selected && (

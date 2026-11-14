@@ -203,6 +203,7 @@ export default function TeamPage() {
         </div>
       </article>
 
+      <div className="ttc-table-card">
       <div className="ttc-table-scroll">
         <table className="ttc-result-table">
           <thead>
@@ -267,6 +268,7 @@ export default function TeamPage() {
             )}
           </tbody>
         </table>
+      </div>
       </div>
 
       <article className="ttc-card">
