@@ -38,8 +38,8 @@ TTC 是一套面向企业招聘与候选人求职的双端 AI 辅助平台。系
 | `apps/candidate-web` | React 18、TypeScript、Vite、Tailwind | 候选人门户，默认端口 `5175` |
 | `dataset` | Python 标准库、JSON/JSONL、YAML | 模拟简历、经历单元、面试问题和追问链流水线 |
 | `resume-match` | PyTorch、Transformers | 24 类英文简历岗位分类模型，由 API 以子进程调用 |
-| `RISMv1` | 历史研究快照 | 冻结的简历意图/模型实验资产，主应用不依赖 |
-| `RISMv2` | Python 标准库 | 可追溯的数据标注与处理工具，当前等待人工审核 |
+| `RISMv1` | 本地研究快照 | 冻结的简历意图/模型实验资产，已排除出版本库 |
+| `RISMv2` | 本地研究工具 | 可追溯的数据标注与处理工具，已排除出版本库 |
 | `resume_html` | 归档资产 | 历史简历/JobFit 演示工程，不是当前双端应用的运行依赖 |
 | `docs` | Markdown、图片 | 接口审计、数据资产和架构材料 |
 
@@ -173,8 +173,8 @@ AI-recruitment/
 │   └── candidate-web/               # 候选人门户
 ├── dataset/                         # 模拟简历与面试数据流水线
 ├── resume-match/                     # 简历分类模型
-├── RISMv1/                           # 冻结的历史研究资产
-├── RISMv2/                           # 数据标注与处理工具
+├── RISMv1/                           # 本地历史研究资产（gitignored）
+├── RISMv2/                           # 本地数据标注工具（gitignored）
 ├── resume_html/                      # 归档演示工程
 ├── docs/                             # 架构、接口与数据文档
 ├── files/                            # 示例简历
@@ -478,8 +478,9 @@ python3 scripts/run_pipeline.py --validate-only --strict
 ### `RISMv1` 与 `RISMv2`
 
 `RISMv1` 是冻结的历史研究快照；`RISMv2` 提供可追溯的 Claim、Gap、追问方向和策略
-数据处理工具。RISMv2 当前处于等待人工审核状态，正式数据集按设计要求保持 0 条，
-未经审核的候选结果不会进入正式训练集。说明见 `RISMv2/README_RISM002.md`。
+数据处理工具。两者及其 CSV/ZIP 数据资产仅在本地保留，不进入远程版本库。RISMv2 当前
+处于等待人工审核状态，正式数据集按设计要求保持 0 条，未经审核的候选结果不会进入正式
+训练集。需要查看说明时，请使用本地 `RISMv2/README_RISM002.md`。
 
 ## 当前边界
 
@@ -510,7 +511,7 @@ python3 scripts/run_pipeline.py --validate-only --strict
 - 数据生成流水线：[dataset/README.md](dataset/README.md)
 - 数据资产说明：[docs/data-assets.md](docs/data-assets.md)
 - 简历分类模型：[resume-match/README-train.md](resume-match/README-train.md)
-- RISM-002 数据工具：[RISMv2/README_RISM002.md](RISMv2/README_RISM002.md)
+- RISM-002 数据工具：本地 `RISMv2/README_RISM002.md`（不随远程仓库发布）
 - 历史接口审计：[docs/API_CONTRACT.md](docs/API_CONTRACT.md)
 - 架构图：[docs/architecture.png](docs/architecture.png)
 - 设计说明书：[TTC_AI人才挖掘平台_详细设计说明书(6).pdf](<TTC_AI人才挖掘平台_详细设计说明书(6).pdf>)
