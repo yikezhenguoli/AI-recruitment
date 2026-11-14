@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
   Bell,
   Briefcase,
   ChevronRight,
   LayoutDashboard,
+  LogOut,
   Menu,
   Mic,
   Settings,
@@ -14,40 +15,30 @@ import {
   Users,
   X,
 } from 'lucide-react'
-import { getHealth } from '../../api/client'
+import { getHealth, getReadiness } from '../../api/client'
+import { logout, me } from '../../api/auth'
+import { refreshToken, useAuthStore } from '../../store/authStore'
+import type { Role } from '../../types'
 import { CursorTrail } from '../visual/CursorTrail'
+import { ErrorBoundary } from './ErrorBoundary'
 import { PageTransition } from './PageTransition'
 
-const NAV_GROUPS = [
-  {
-    label: '工作空间',
-    items: [
-      { label: '工作台首页', path: '/', icon: LayoutDashboard, end: true },
-      { label: '岗位管理', path: '/jobs', icon: Briefcase },
-      { label: '候选人', path: '/candidates', icon: Users },
-    ],
-  },
-  {
-    label: '评估与治理',
-    items: [
-      { label: '语音会话', path: '/sessions', icon: Mic },
-      { label: '管理后台', path: '/admin', icon: Settings },
-    ],
-  },
-]
+const ROLE_LABEL: Record<Role, string> = {
+  admin: '管理员',
+  hr: '招聘管理员',
+  candidate: '候选人',
+}
 
 function resolvePageTitle(pathname: string): string {
   if (pathname === '/') return '工作台首页'
   if (pathname === '/jobs') return '岗位管理'
   if (pathname === '/jobs/new') return '新建岗位'
-  if (/^\/jobs\/[^/]+\/edit$/.test(pathname)) return '编辑岗位'
   if (/^\/jobs\/[^/]+$/.test(pathname)) return '岗位详情'
   if (pathname === '/candidates') return '候选人'
   if (/^\/candidates\/[^/]+\/evidence$/.test(pathname)) return '证据中心'
   if (/^\/candidates\/[^/]+\/report$/.test(pathname)) return '评估报告'
   if (/^\/candidates\/[^/]+$/.test(pathname)) return '候选人详情'
   if (pathname === '/sessions') return '语音会话'
-  if (/^\/sessions\/[^/]+$/.test(pathname)) return '会话详情'
   if (pathname === '/admin') return '管理后台'
   return '招聘工作台'
 }
@@ -57,11 +48,50 @@ export function AppLayout() {
   const [scrolled, setScrolled] = useState(false)
   const scrolledRef = useRef(false)
   const location = useLocation()
+  const navigate = useNavigate()
+  const storedUser = useAuthStore((state) => state.user)
+  const setUser = useAuthStore((state) => state.setUser)
+  const clear = useAuthStore((state) => state.clear)
   const title = resolvePageTitle(location.pathname)
-  const isSessions = location.pathname === '/sessions' || location.pathname.startsWith('/sessions/')
+  const isSessions = location.pathname === '/sessions'
 
-  // Passive scroll listener with rAF coalescing; only a boolean re-render.
-  // Never intercepts or hijacks scrolling.
+  const meQuery = useQuery({
+    queryKey: ['me'],
+    queryFn: me,
+    retry: 0,
+    staleTime: 60_000,
+  })
+
+  useEffect(() => {
+    if (meQuery.data) setUser(meQuery.data)
+  }, [meQuery.data, setUser])
+
+  const user = meQuery.data ?? storedUser
+  const role = user?.role ?? 'hr'
+  const displayName = user?.display_name ?? '招聘管理员'
+  const roleLabel = ROLE_LABEL[role]
+  const initials = displayName.slice(0, 2).toUpperCase()
+
+  const navGroups = [
+    {
+      label: '工作空间',
+      items: [
+        { label: '工作台首页', path: '/', icon: LayoutDashboard, end: true },
+        { label: '岗位管理', path: '/jobs', icon: Briefcase },
+        { label: '候选人', path: '/candidates', icon: Users },
+      ],
+    },
+    {
+      label: '评估与治理',
+      items: [
+        { label: '语音会话', path: '/sessions', icon: Mic },
+        ...(role === 'admin'
+          ? [{ label: '管理后台', path: '/admin', icon: Settings }]
+          : []),
+      ],
+    },
+  ]
+
   useEffect(() => {
     let frame = 0
     const sync = () => {
@@ -84,8 +114,14 @@ export function AppLayout() {
   }, [])
 
   const healthQuery = useQuery({
-    queryKey: ['health'],
+    queryKey: ['health', 'live'],
     queryFn: getHealth,
+    retry: 1,
+    refetchInterval: 30_000,
+  })
+  const readyQuery = useQuery({
+    queryKey: ['health', 'ready'],
+    queryFn: getReadiness,
     retry: 1,
     refetchInterval: 30_000,
   })
@@ -94,11 +130,17 @@ export function AppLayout() {
     ? { label: '检测后端…', tone: 'neutral' }
     : healthQuery.isError
       ? { label: '后端未连接', tone: 'danger' }
-      : healthQuery.data?.llm_configured
-        ? { label: '后端就绪 · DeepSeek 已配置', tone: 'ok' }
-        : { label: '后端就绪 · LLM 待配置', tone: 'warn' }
+      : readyQuery.isError
+        ? { label: '后端在线 · 数据库异常', tone: 'warn' }
+        : { label: '后端就绪 · /api/v1', tone: 'ok' }
 
   const closeMobile = () => setMobileOpen(false)
+
+  const onLogout = async () => {
+    await logout(refreshToken())
+    clear()
+    navigate('/login', { replace: true })
+  }
 
   return (
     <div className="ttc-app">
@@ -123,9 +165,14 @@ export function AppLayout() {
               <div className="ttc-brand-name">
                 TTC <span>才多对</span>
               </div>
-              <div className="ttc-brand-sub">TALENT TRUST & CONNECT</div>
+              <div className="ttc-brand-sub">TALENT TRUST &amp; CONNECT</div>
             </div>
-            <button type="button" className="ttc-icon-btn lg:hidden" onClick={closeMobile} aria-label="关闭导航">
+            <button
+              type="button"
+              className="ttc-icon-btn lg:hidden"
+              onClick={closeMobile}
+              aria-label="关闭导航"
+            >
               <X size={18} />
             </button>
           </div>
@@ -133,7 +180,7 @@ export function AppLayout() {
           <div className="ttc-workspace-label">招聘管理中心</div>
 
           <nav className="ttc-nav" aria-label="主导航">
-            {NAV_GROUPS.map((group) => (
+            {navGroups.map((group) => (
               <section className="ttc-nav-group" key={group.label}>
                 <div className="ttc-nav-group-title">{group.label}</div>
                 {group.items.map((item) => {
@@ -144,7 +191,9 @@ export function AppLayout() {
                       to={item.path}
                       end={item.end}
                       onClick={closeMobile}
-                      className={({ isActive }) => `ttc-nav-link ${isActive ? 'is-active' : ''}`}
+                      className={({ isActive }) =>
+                        `ttc-nav-link ${isActive ? 'is-active' : ''}`
+                      }
                     >
                       <Icon size={17} />
                       <span>{item.label}</span>
@@ -162,16 +211,24 @@ export function AppLayout() {
               </span>
               <div>
                 <strong>P0 · AI 招聘闭环</strong>
-                <span>岗位解析 → 简历筛选 → 评估报告</span>
+                <span>岗位 → 简历解析 → 匹配评估</span>
               </div>
             </div>
             <div className="ttc-profile">
-              <span className="ttc-avatar">HR</span>
+              <span className="ttc-avatar">{initials}</span>
               <div>
-                <strong>招聘管理员</strong>
-                <span>企业工作空间</span>
+                <strong>{displayName}</strong>
+                <span>{roleLabel} · {user?.tenant_id?.slice(0, 8) ?? 'ttc'}</span>
               </div>
-              <ShieldCheck size={16} className="ttc-profile-shield" />
+              <button
+                type="button"
+                className="ttc-icon-btn"
+                onClick={() => void onLogout()}
+                aria-label="退出登录"
+                title="退出登录"
+              >
+                <LogOut size={16} />
+              </button>
             </div>
           </div>
         </div>
@@ -205,25 +262,38 @@ export function AppLayout() {
                 <Bell size={17} />
               </button>
               <div className="ttc-topbar-divider" />
-              <span className="ttc-avatar ttc-avatar-sm">HR</span>
+              <span className="ttc-avatar ttc-avatar-sm">{initials}</span>
               <div className="ttc-topbar-user">
-                <strong>招聘管理员</strong>
-                <span>管理员</span>
+                <strong>{displayName}</strong>
+                <span>{roleLabel}</span>
               </div>
+              <button
+                type="button"
+                className="ttc-icon-btn"
+                onClick={() => void onLogout()}
+                aria-label="退出登录"
+                title="退出登录"
+              >
+                <LogOut size={17} />
+              </button>
             </div>
           </div>
         </header>
 
         <main className="ttc-content">
-          {isSessions ? <Outlet /> : (
-            <PageTransition>
+          <ErrorBoundary>
+            {isSessions ? (
               <Outlet />
-            </PageTransition>
-          )}
+            ) : (
+              <PageTransition>
+                <Outlet />
+              </PageTransition>
+            )}
+          </ErrorBoundary>
         </main>
 
         <footer className="ttc-footer">
-          <span>© 2026 TTC · Talent Trust & Connect</span>
+          <span>© 2026 TTC · Talent Trust &amp; Connect</span>
           <span>AI 辅助决策 · 人工最终复核</span>
         </footer>
       </div>

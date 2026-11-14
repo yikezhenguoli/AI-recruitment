@@ -2786,3 +2786,281 @@ main.ttc-content {
     justify-content: space-between;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   /api/v1 迁移新增的表单、列表、报告与登录样式
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.ttc-login {
+  position: relative;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 32px 18px;
+  background:
+    radial-gradient(circle at 16% 12%, rgba(120, 200, 255, .34), transparent 42%),
+    radial-gradient(circle at 86% 82%, rgba(124, 160, 255, .28), transparent 46%),
+    linear-gradient(150deg, #f7fbff, #eaf5ff 58%, #f4f9ff);
+  overflow: hidden;
+}
+.ttc-login-glow {
+  position: absolute;
+  width: 620px;
+  height: 620px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(80, 175, 255, .22), transparent 68%);
+  filter: blur(18px);
+  pointer-events: none;
+}
+.ttc-login-card {
+  position: relative;
+  width: min(460px, 100%);
+  padding: 30px;
+  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, .9);
+  background: rgba(255, 255, 255, .78);
+  box-shadow: 0 30px 80px rgba(18, 70, 120, .18), inset 0 1px 0 #fff;
+  backdrop-filter: blur(22px) saturate(1.2);
+}
+.ttc-login-brand { display: flex; align-items: center; gap: 12px; }
+.ttc-login-mark {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  color: #fff;
+  background: linear-gradient(135deg, #4eb4ff, #1f6fd0);
+  box-shadow: 0 10px 22px rgba(38, 124, 211, .3);
+}
+.ttc-login-brand strong { display: block; color: #143a5e; font-size: 17px; letter-spacing: -.02em; }
+.ttc-login-brand strong span { font-weight: 600; color: #4a6c8b; }
+.ttc-login-brand small { display: block; margin-top: 2px; color: #8ba2b8; font-size: 9px; letter-spacing: .18em; }
+.ttc-login-head { margin: 26px 0 20px; }
+.ttc-login-head h1 { margin: 10px 0 8px; color: #173c62; font-size: 28px; font-weight: 800; letter-spacing: -.04em; }
+.ttc-login-head p { margin: 0; color: #6f869d; font-size: 13px; line-height: 1.7; }
+.ttc-login-form { display: grid; gap: 14px; }
+.ttc-login-form label { display: grid; gap: 7px; }
+.ttc-login-form label span { color: #4c6b88; font-size: 12px; font-weight: 600; }
+.ttc-login-form input,
+.ttc-field input,
+.ttc-field textarea,
+.ttc-tool-block textarea,
+.ttc-inline-form input,
+.ttc-rate-input input {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(86, 150, 205, .24);
+  background: rgba(255, 255, 255, .82);
+  color: #173c62;
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+  transition: border-color .18s ease, box-shadow .18s ease;
+}
+.ttc-field textarea,
+.ttc-tool-block textarea { min-height: 84px; resize: vertical; line-height: 1.65; }
+.ttc-login-form input:focus,
+.ttc-field input:focus,
+.ttc-field textarea:focus,
+.ttc-tool-block textarea:focus,
+.ttc-inline-form input:focus,
+.ttc-rate-input input:focus {
+  border-color: rgba(47, 128, 211, .62);
+  box-shadow: 0 0 0 3px rgba(89, 173, 247, .18);
+}
+.ttc-login-submit { width: 100%; justify-content: center; margin-top: 4px; }
+.ttc-login-hint {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(236, 247, 255, .8);
+  border: 1px solid rgba(120, 180, 230, .22);
+  color: #54718c;
+  font-size: 11px;
+  line-height: 1.65;
+}
+.ttc-login-hint strong { display: block; color: #2f5878; font-size: 11px; }
+.ttc-login-hint span { display: block; }
+
+.ttc-form-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.ttc-job-form { display: grid; gap: 18px; }
+.ttc-field { display: grid; gap: 7px; }
+.ttc-field > span { color: #4c6b88; font-size: 12px; font-weight: 600; }
+.ttc-checkbox { display: flex; align-items: flex-start; gap: 10px; color: #4c6b88; font-size: 12px; line-height: 1.6; }
+.ttc-checkbox input { width: 16px; height: 16px; margin-top: 2px; accent-color: #2f80d3; }
+.ttc-checkbox small { display: block; color: #8ba2b8; font-size: 11px; }
+.ttc-inline-form { display: grid; grid-template-columns: 1.4fr 1fr .6fr auto; gap: 8px; margin-top: 16px; }
+.ttc-inline-form input { min-height: 36px; padding: 6px 10px; font-size: 12px; }
+.ttc-jd-tools { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 16px; }
+.ttc-tool-block { display: grid; gap: 10px; padding: 14px; border-radius: 18px; background: rgba(240, 248, 255, .62); border: 1px solid rgba(120, 180, 230, .2); }
+.ttc-tool-block h3 { display: flex; align-items: center; gap: 7px; margin: 0; color: #2b5273; font-size: 13px; font-weight: 700; }
+.ttc-tool-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ttc-tool-actions label { display: flex; align-items: center; gap: 6px; color: #71889e; font-size: 11px; }
+.ttc-tool-actions select { min-height: 30px; padding: 2px 8px; border-radius: 9px; border: 1px solid rgba(86, 150, 205, .24); background: #fff; color: #2b5273; }
+.ttc-extract-result { margin-top: 16px; }
+.ttc-extract-result h3 { margin: 0 0 8px; color: #2b5273; font-size: 13px; }
+.ttc-json-preview {
+  max-height: 280px;
+  overflow: auto;
+  margin: 8px 0 0;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(237, 246, 255, .8);
+  border: 1px solid rgba(120, 180, 230, .2);
+  color: #3c5d7b;
+  font-family: var(--lg2-mono, ui-monospace, monospace);
+  font-size: 11px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.ttc-version-list { display: grid; gap: 10px; margin-top: 18px; }
+.ttc-version-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(120, 180, 230, .18);
+  background: rgba(255, 255, 255, .7);
+}
+.ttc-version-row.is-current { border-color: rgba(72, 170, 140, .42); background: rgba(240, 252, 247, .78); }
+.ttc-version-row strong { display: flex; align-items: center; gap: 8px; color: #24486a; font-size: 12px; }
+.ttc-version-row span { color: #8299af; font-size: 11px; }
+.ttc-version-row p { margin: 6px 0 0; color: #6c859b; font-size: 11px; line-height: 1.6; }
+.ttc-weight-list { display: grid; gap: 8px; margin: 14px 0; }
+.ttc-weight-row { display: grid; grid-template-columns: 1fr 76px 18px; align-items: center; gap: 8px; }
+.ttc-weight-row strong { display: block; color: #2b5273; font-size: 12px; }
+.ttc-weight-row small { color: #8ba2b8; font-size: 10px; }
+.ttc-weight-row input { min-height: 34px; text-align: right; }
+.ttc-weight-row em { color: #8299af; font-style: normal; font-size: 11px; }
+.ttc-result-table td:nth-child(3),
+.ttc-result-table td:nth-child(7),
+.ttc-result-table .ttc-text-link,
+.ttc-result-table .ttc-stage-pill { white-space: nowrap; }
+.ttc-job-card-foot { flex-wrap: wrap; gap: 8px; }
+.ttc-job-card-foot .ttc-card-actions { flex-wrap: nowrap; }
+.ttc-job-card-foot .ttc-btn { white-space: nowrap; }
+.ttc-filter-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.ttc-filter-chips .ttc-chip { cursor: pointer; border: 1px solid rgba(120, 180, 230, .24); background: rgba(255, 255, 255, .68); }
+.ttc-job-grid-compact { display: grid; gap: 8px; margin-top: 14px; }
+.ttc-job-pick-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(120, 180, 230, .2);
+  background: rgba(255, 255, 255, .72);
+  text-align: left;
+  cursor: pointer;
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+.ttc-job-pick-card:hover { transform: translateY(-1px); border-color: rgba(47, 128, 211, .4); box-shadow: 0 10px 24px rgba(44, 110, 175, .1); }
+.ttc-job-pick-card div { flex: 1; }
+.ttc-job-pick-card strong { display: block; color: #24486a; font-size: 13px; }
+.ttc-job-pick-card span { color: #8299af; font-size: 11px; }
+.ttc-selected-job {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(120, 180, 230, .2);
+  background: rgba(255, 255, 255, .72);
+}
+.ttc-selected-job div { flex: 1; }
+.ttc-selected-job strong { display: block; color: #24486a; font-size: 14px; }
+.ttc-selected-job span { color: #8299af; font-size: 11px; }
+.ttc-dropzone input[type="file"] { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+.ttc-dropzone { position: relative; cursor: pointer; }
+.ttc-candidate-list { display: grid; gap: 8px; margin-top: 14px; }
+.ttc-candidate-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(120, 180, 230, .16);
+  background: rgba(255, 255, 255, .66);
+}
+.ttc-candidate-row > div:not(.ttc-card-actions) { flex: 1; }
+.ttc-candidate-row strong { display: block; color: #24486a; font-size: 12px; }
+.ttc-candidate-row span { color: #8299af; font-size: 11px; }
+.ttc-resume-list { display: grid; gap: 8px; margin-top: 12px; }
+.ttc-resume-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 13px; border: 1px solid rgba(120, 180, 230, .18); background: rgba(255, 255, 255, .66); }
+.ttc-resume-row.is-active { border-color: rgba(47, 128, 211, .4); background: rgba(239, 248, 255, .82); }
+.ttc-resume-main { display: flex; align-items: center; gap: 10px; flex: 1; border: 0; background: transparent; padding: 0; text-align: left; cursor: pointer; color: #2b5273; }
+.ttc-resume-main strong { display: block; font-size: 12px; }
+.ttc-resume-main span { color: #8299af; font-size: 11px; }
+.ttc-claim-list { display: grid; gap: 10px; margin-top: 12px; max-height: 520px; overflow: auto; }
+.ttc-claim-card { padding: 12px 14px; border-radius: 14px; border: 1px solid rgba(120, 180, 230, .18); background: rgba(255, 255, 255, .68); }
+.ttc-claim-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.ttc-claim-card p { margin: 8px 0 0; color: #3c5d7b; font-size: 12px; line-height: 1.7; white-space: pre-wrap; }
+.ttc-assessment-summary { display: grid; grid-template-columns: 180px 1fr; gap: 22px; margin-top: 16px; }
+.ttc-score-hero {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 18px;
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(233, 246, 255, .95), rgba(255, 255, 255, .82));
+  border: 1px solid rgba(120, 180, 230, .24);
+}
+.ttc-score-hero span { color: #71889e; font-size: 11px; }
+.ttc-score-hero strong { color: #1769b9; font-size: 40px; font-weight: 800; letter-spacing: -.05em; line-height: 1; }
+.ttc-score-hero small { color: #8299af; font-size: 11px; }
+.ttc-report-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.ttc-report-facts > div { padding: 12px 14px; border-radius: 14px; background: rgba(255, 255, 255, .66); border: 1px solid rgba(120, 180, 230, .16); }
+.ttc-report-facts span { display: block; color: #8299af; font-size: 11px; }
+.ttc-report-facts strong { color: #24486a; font-size: 18px; }
+.ttc-explanation-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 14px; }
+.ttc-explanation-grid strong { color: #2b5273; font-size: 12px; }
+.ttc-explanation-list { margin: 6px 0 0; padding-left: 16px; color: #54718c; font-size: 12px; line-height: 1.7; }
+.ttc-evidence-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+.ttc-evidence-card p { margin: 10px 0; color: #54718c; font-size: 12px; line-height: 1.7; }
+.ttc-evidence-meta { display: flex; gap: 14px; flex-wrap: wrap; color: #8299af; font-size: 11px; }
+.ttc-source-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 12px 0; border-bottom: 1px dashed rgba(120, 180, 230, .22); }
+.ttc-source-row > div:first-child { flex: 1; min-width: 140px; }
+.ttc-source-row strong { display: block; color: #24486a; font-size: 13px; }
+.ttc-source-row span { color: #8299af; font-size: 11px; }
+.ttc-rate-input { display: flex; align-items: center; gap: 8px; color: #71889e; font-size: 11px; }
+.ttc-rate-input input { width: 74px; min-height: 34px; text-align: right; }
+.ttc-revision-form { display: grid; gap: 12px; margin-top: 14px; }
+.ttc-privacy-note { display: flex; align-items: center; gap: 8px; margin-top: 14px; padding: 10px 12px; border-radius: 12px; background: rgba(236, 247, 255, .7); color: #54718c; font-size: 11px; }
+.ttc-inline-error-text { color: #b4233b; font-size: 11px; }
+.ttc-results-foot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; color: #71889e; font-size: 11px; }
+.ttc-stage-pill { display: inline-flex; margin-left: 8px; padding: 1px 8px; border-radius: 999px; background: rgba(236, 247, 255, .9); color: #3c7fb8; font-size: 10px; }
+.ttc-stage-done { background: rgba(232, 248, 242, .9); color: #0c7a61; }
+.ttc-stage-error { background: rgba(253, 236, 239, .9); color: #b4233b; }
+.ttc-stage-evaluating, .ttc-stage-parsing { background: rgba(255, 246, 226, .9); color: #a96700; }
+.ttc-plain-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.ttc-plain-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: 12px; background: rgba(255, 255, 255, .62); border: 1px solid rgba(120, 180, 230, .16); }
+.ttc-plain-list strong { color: #24486a; font-size: 12px; }
+.ttc-plain-list span { color: #8299af; font-size: 11px; }
+.ttc-timeline { display: grid; gap: 12px; margin-top: 12px; }
+.ttc-timeline-item { display: flex; gap: 10px; }
+.ttc-timeline-item > div { flex: 1; }
+.ttc-timeline-item strong { display: block; color: #24486a; font-size: 12px; }
+.ttc-timeline-item span { color: #8299af; font-size: 11px; }
+.ttc-timeline-item p { margin: 4px 0 0; color: #54718c; font-size: 11px; line-height: 1.6; }
+
+@media (max-width: 900px) {
+  .ttc-form-grid, .ttc-jd-tools, .ttc-assessment-summary, .ttc-explanation-grid { grid-template-columns: 1fr; }
+  .ttc-inline-form { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 640px) {
+  .ttc-login-card { padding: 22px; }
+  .ttc-report-facts { grid-template-columns: 1fr; }
+  .ttc-version-row, .ttc-resume-row, .ttc-candidate-row { flex-direction: column; align-items: flex-start; }
+  .ttc-inline-form { grid-template-columns: 1fr; }
+}

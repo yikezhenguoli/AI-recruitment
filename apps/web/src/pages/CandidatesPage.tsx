@@ -1,181 +1,342 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   AlertCircle,
   ArrowRight,
   Briefcase,
+  CheckCircle2,
   FileText,
+  Loader2,
   Plus,
   RefreshCw,
+  Sparkles,
+  Upload,
+  UserPlus,
   Users,
+  XCircle,
 } from 'lucide-react'
-import { ResumeUpload } from '../components/ResumeUpload'
-import { ProcessingPanel } from '../components/candidates/ProcessingPanel'
-import { CandidateResults } from '../components/candidates/CandidateResults'
-import { getSessionResults } from '../api/candidates'
-import { getSavedJob, listSavedJobs } from '../api/jobs'
-import { closeResumeSession } from '../api/resumes'
+import { listJobs, getJob } from '../api/jobs'
+import {
+  createCandidate,
+  listCandidateResumes,
+  listCandidates,
+} from '../api/candidates'
+import { uploadResume } from '../api/resumes'
+import { getAssessment, matchResume } from '../api/assessments'
+import { watchTask } from '../api/progress'
 import { getApiErrorMessage } from '../lib/apiError'
 import { formatDateTime } from '../lib/format'
-import { useSessionStore } from '../store/sessionStore'
-import type {
-  GraduationYearFilterConfig,
-  SessionResultsResponse,
-} from '../types'
+import { PARSE_STATUS_LABEL, JOB_STATUS_LABEL } from '../types'
+import type { Candidate, ParseStatus } from '../types'
 
-const DEFAULT_GRADUATION_FILTER: GraduationYearFilterConfig = {
-  enabled: false,
-  accepted_years: [],
-  unknown_year_behavior: 'manual_review',
-  degree_selection: 'highest_relevant_degree',
+type RowStage =
+  | 'creating'
+  | 'uploading'
+  | 'queued'
+  | 'parsing'
+  | 'evaluating'
+  | 'done'
+  | 'error'
+
+interface BatchRow {
+  candidateId: string
+  name: string
+  fileName: string
+  stage: RowStage
+  taskId?: string
+  resumeId?: string
+  parseStatus?: ParseStatus
+  score?: number | null
+  category?: string
+  confidence?: number
+  summary?: string
+  assessmentId?: string
+  error?: string
 }
 
-type PageStage = 'select' | 'upload' | 'processing' | 'results'
+const STAGE_LABEL: Record<RowStage, string> = {
+  creating: '创建候选人',
+  uploading: '上传简历',
+  queued: '等待解析',
+  parsing: '解析简历',
+  evaluating: '匹配评估',
+  done: '已完成',
+  error: '失败',
+}
+
+const FINAL_STAGES: RowStage[] = ['done', 'error']
+
+function fileStem(name: string): string {
+  return name.replace(/\.[^.]+$/, '').slice(0, 80) || '候选人'
+}
 
 export default function CandidatesPage() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const session = useSessionStore((state) => state.session)
-  const setSession = useSessionStore((state) => state.setSession)
-  const clearSession = useSessionStore((state) => state.clearSession)
-
-  const queryJob = searchParams.get('job') || ''
-  const [selectedJobName, setSelectedJobName] = useState(queryJob || session?.jobName || '')
-  const [stage, setStage] = useState<PageStage>(session ? 'processing' : queryJob ? 'upload' : 'select')
-  const [results, setResults] = useState<SessionResultsResponse | null>(null)
-  const [initializing, setInitializing] = useState(Boolean(session))
+  const queryClient = useQueryClient()
+  const jobId = searchParams.get('job') || ''
+  const [files, setFiles] = useState<File[]>([])
+  const [rows, setRows] = useState<Record<string, BatchRow>>({})
+  const [batchRunning, setBatchRunning] = useState(false)
   const [pageError, setPageError] = useState<string | null>(null)
-  const sessionStartedHereRef = useRef(false)
+  const cleanupsRef = useRef<Array<() => void>>([])
+  const evaluatedRef = useRef<Set<string>>(new Set())
+
+  useEffect(
+    () => () => {
+      cleanupsRef.current.forEach((cleanup) => cleanup())
+      cleanupsRef.current = []
+    },
+    [],
+  )
 
   const jobsQuery = useQuery({
-    queryKey: ['savedJobs'],
-    queryFn: listSavedJobs,
+    queryKey: ['jobs', 'candidates'],
+    queryFn: () => listJobs({ limit: 100 }),
   })
-
   const jobQuery = useQuery({
-    queryKey: ['savedJob', selectedJobName],
-    queryFn: () => getSavedJob(selectedJobName),
-    enabled: Boolean(selectedJobName),
+    queryKey: ['job', jobId],
+    queryFn: () => getJob(jobId),
+    enabled: Boolean(jobId),
+  })
+  const candidatesQuery = useQuery({
+    queryKey: ['candidates', jobId],
+    queryFn: () => listCandidates({ job_id: jobId, limit: 100 }),
+    enabled: Boolean(jobId),
   })
 
-  useEffect(() => {
-    if (!session) {
-      setInitializing(false)
-      setResults(null)
-      if (stage === 'processing' || stage === 'results') {
-        setStage(selectedJobName ? 'upload' : 'select')
-      }
-      return
-    }
+  const job = jobQuery.data
+  const existing = candidatesQuery.data ?? []
+  const rowsList = Object.values(rows)
 
-    // A session created by this page's upload action is already owned by the
-    // mounted ProcessingPanel; do not unmount it for an immediate result fetch.
-    if (sessionStartedHereRef.current) {
-      sessionStartedHereRef.current = false
-      setInitializing(false)
-      return
-    }
-
-    let cancelled = false
-    setInitializing(true)
-    setPageError(null)
-
-    getSessionResults(session.sessionId)
-      .then((response) => {
-        if (cancelled) return
-        setResults(response)
-        setStage(response.status === 'done' && response.results.length > 0 ? 'results' : 'processing')
-      })
-      .catch((error: unknown) => {
-        if (cancelled) return
-        clearSession()
-        setResults(null)
-        setSelectedJobName((current) => current || '')
-        setStage(selectedJobName ? 'upload' : 'select')
-        setPageError(
-          `上一次筛选会话已失效，请重新上传简历。${getApiErrorMessage(error, '')}`,
-        )
-      })
-      .finally(() => {
-        if (!cancelled) setInitializing(false)
-      })
-
-    return () => {
-      cancelled = true
-    }
-    // The effect intentionally runs only when the persisted session changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.sessionId])
-
-  const roleTitle =
-    jobQuery.data?.structured.role_title ||
-    session?.jobRoleTitle ||
-    '未选择岗位'
-
-  const selectJob = async (name: string) => {
-    if (session) {
-      try {
-        await closeResumeSession(session.sessionId)
-      } catch {
-        // A stale session can already be gone; local reset is enough.
-      }
-      clearSession()
-    }
-    setSelectedJobName(name)
-    setSearchParams({ job: name })
-    setStage('upload')
-    setResults(null)
-    setPageError(null)
-  }
-
-  const handleProcessingStarted = (sessionId: string, totalFiles: number) => {
-    const job = jobQuery.data
-    sessionStartedHereRef.current = true
-    setSession({
-      sessionId,
-      jobName: job?.name || selectedJobName,
-      jobRoleTitle: job?.structured.role_title,
-      totalFiles,
-      startedAt: new Date().toISOString(),
+  const updateRow = (candidateId: string, patch: Partial<BatchRow>) => {
+    setRows((prev) => {
+      const row = prev[candidateId]
+      if (!row) return prev
+      return { ...prev, [candidateId]: { ...row, ...patch } }
     })
-    setStage('processing')
-    setPageError(null)
   }
 
-  const handleComplete = (finalResults: SessionResultsResponse) => {
-    setResults(finalResults)
-    setStage('results')
+  const evaluate = async (row: BatchRow, resumeId: string, force = false) => {
+    if (!force && evaluatedRef.current.has(row.candidateId)) return
+    evaluatedRef.current.add(row.candidateId)
+    updateRow(row.candidateId, { stage: 'evaluating', resumeId })
+    try {
+      const match = await matchResume(resumeId, {
+        job_id: jobId,
+        explain: true,
+        top_k: 5,
+      })
+      const assessment = await getAssessment(match.assessment_id)
+      const dimensions = assessment.report.match_ledger?.dimensions ?? []
+      const summary =
+        match.explanation?.summary ||
+        dimensions.find((item) => item.score != null)?.reasoning ||
+        ''
+      updateRow(row.candidateId, {
+        stage: 'done',
+        score: match.match_score,
+        category: match.category,
+        confidence: match.confidence,
+        summary,
+        assessmentId: match.assessment_id,
+      })
+    } catch (err: unknown) {
+      evaluatedRef.current.delete(row.candidateId)
+      updateRow(row.candidateId, {
+        stage: 'error',
+        error: getApiErrorMessage(err, '匹配评估失败。'),
+      })
+    }
   }
 
-  const handleNewBatch = async () => {
-    if (session) {
+  const pollResume = (candidateId: string, resumeId: string, row: BatchRow) => {
+    let attempts = 0
+    const timer = window.setInterval(async () => {
+      attempts += 1
       try {
-        await closeResumeSession(session.sessionId)
+        const resumes = await listCandidateResumes(candidateId)
+        const target = resumes.find((item) => item.id === resumeId)
+        if (!target) return
+        updateRow(candidateId, { parseStatus: target.parse_status })
+        if (target.parse_status === 'done') {
+          window.clearInterval(timer)
+          await evaluate(row, resumeId)
+        } else if (target.parse_status === 'failed') {
+          window.clearInterval(timer)
+          updateRow(candidateId, { stage: 'error', error: '后端解析失败，请查看 resume 状态或重试。' })
+        }
       } catch {
-        // ignore stale sessions
+        // 轮询失败时保持原状态，下一次继续。
+      }
+      if (attempts >= 120) {
+        window.clearInterval(timer)
+        updateRow(candidateId, {
+          stage: 'error',
+          error: '解析超时（10 分钟）。请确认 worker 正在运行。',
+        })
+      }
+    }, 3000)
+    cleanupsRef.current.push(() => window.clearInterval(timer))
+  }
+
+  const watchParseTask = (
+    candidateId: string,
+    taskId: string,
+    resumeId: string,
+    row: BatchRow,
+  ) => {
+    const cleanup = watchTask(taskId, {
+      onEvent: (event) => {
+        if (event.type === 'progress') {
+          updateRow(candidateId, {
+            stage: event.stage === 'running' ? 'parsing' : 'queued',
+          })
+        } else if (event.type === 'done') {
+          updateRow(candidateId, { stage: 'evaluating' })
+          void evaluate(row, resumeId)
+        } else if (event.type === 'error') {
+          updateRow(candidateId, {
+            stage: 'error',
+            error: event.message || '简历解析任务失败。',
+          })
+        }
+      },
+      onError: (message) => {
+        // WebSocket 失败不直接判死；轮询会继续兜底。
+        updateRow(candidateId, { error: `${message} 已切换轮询。` })
+      },
+    })
+    cleanupsRef.current.push(cleanup)
+    pollResume(candidateId, resumeId, row)
+  }
+
+  const processFile = async (file: File) => {
+    const displayName = fileStem(file.name)
+    let candidateId = ''
+    try {
+      const candidate = await createCandidate({
+        display_name: displayName,
+        job_id: jobId,
+        source: 'upload',
+        is_synthetic: true,
+      })
+      candidateId = candidate.id
+      setRows((prev) => ({
+        ...prev,
+        [candidateId]: {
+          candidateId,
+          name: displayName,
+          fileName: file.name,
+          stage: 'uploading',
+        },
+      }))
+      const uploaded = await uploadResume(candidateId, jobId, file)
+      updateRow(candidateId, {
+        stage: 'queued',
+        taskId: uploaded.task_id,
+        resumeId: uploaded.resume_id,
+        parseStatus: uploaded.parse_status,
+      })
+      const row: BatchRow = {
+        candidateId,
+        name: displayName,
+        fileName: file.name,
+        stage: 'queued',
+      }
+      if (uploaded.task_id) {
+        watchParseTask(candidateId, uploaded.task_id, uploaded.resume_id, row)
+      } else {
+        pollResume(candidateId, uploaded.resume_id, row)
+      }
+    } catch (err: unknown) {
+      const message = getApiErrorMessage(err, '上传或创建候选人失败。')
+      if (candidateId) {
+        updateRow(candidateId, { stage: 'error', error: message })
+      } else {
+        setPageError(message)
       }
     }
-    clearSession()
-    setResults(null)
-    setStage(selectedJobName ? 'upload' : 'select')
+  }
+
+  const startBatch = async () => {
+    if (!jobId || files.length === 0) return
+    setPageError(null)
+    setBatchRunning(true)
+    try {
+      for (const file of files) {
+        await processFile(file)
+      }
+      setFiles([])
+    } finally {
+      setBatchRunning(false)
+      await queryClient.invalidateQueries({ queryKey: ['candidates', jobId] })
+    }
+  }
+
+  const rerunCandidate = async (candidate: Candidate) => {
+    setPageError(null)
+    try {
+      const resumes = await listCandidateResumes(candidate.id)
+      const resume = resumes[0]
+      if (!resume) {
+        setPageError(`${candidate.display_name} 没有简历，无法评估。`)
+        return
+      }
+      setRows((prev) => ({
+        ...prev,
+        [candidate.id]: {
+          candidateId: candidate.id,
+          name: candidate.display_name,
+          fileName: resume.file_name,
+          stage: 'evaluating',
+          resumeId: resume.id,
+          parseStatus: resume.parse_status,
+        },
+      }))
+      await evaluate(
+        {
+          candidateId: candidate.id,
+          name: candidate.display_name,
+          fileName: resume.file_name,
+          stage: 'evaluating',
+        },
+        resume.id,
+        true,
+      )
+    } catch (err: unknown) {
+      setPageError(getApiErrorMessage(err, '读取候选人简历失败。'))
+    }
+  }
+
+  const selectJob = (nextJobId: string) => {
+    setSearchParams(nextJobId ? { job: nextJobId } : {})
+    setRows({})
+    setFiles([])
     setPageError(null)
   }
 
-  const handleChangeJob = async () => {
-    if (session) {
-      try {
-        await closeResumeSession(session.sessionId)
-      } catch {
-        // ignore stale sessions
+  const onFiles = (list: FileList | null) => {
+    if (!list) return
+    const next: File[] = []
+    for (const file of Array.from(list)) {
+      const lower = file.name.toLowerCase()
+      if (!lower.endsWith('.pdf') && !lower.endsWith('.docx') && !lower.endsWith('.txt')) {
+        setPageError(`不支持的文件类型：${file.name}（仅 PDF / DOCX / TXT）。`)
+        continue
       }
-      clearSession()
+      if (file.size > 20 * 1024 * 1024) {
+        setPageError(`文件超过 20 MB：${file.name}`)
+        continue
+      }
+      next.push(file)
     }
-    setSelectedJobName('')
-    setResults(null)
-    setStage('select')
-    setSearchParams({})
-    setPageError(null)
+    setFiles((prev) => [...prev, ...next])
   }
+
+  const resolved = rowsList.filter((row) => FINAL_STAGES.includes(row.stage)).length
+  const progress =
+    rowsList.length > 0 ? Math.round((resolved / rowsList.length) * 100) : 0
 
   return (
     <div className="ttc-page">
@@ -185,22 +346,29 @@ export default function CandidatesPage() {
             <span className="hero-eyebrow-dot" />
             CANDIDATE PIPELINE
             <span className="hero-eyebrow-line" />
-            <span>AI SCREENING</span>
+            <span>/api/v1/candidates</span>
           </div>
           <h1>候选人筛选</h1>
-          <p>选择岗位、批量上传简历，实时查看 DeepSeek 解析与评分进度，并查看真实排名。</p>
+          <p>
+            选择岗位后批量上传简历；后端 worker 解析 claims，小模型 + DeepSeek 生成匹配结果，
+            失败时如实显示原因。
+          </p>
         </div>
         <div className="ttc-heading-actions">
-          {stage !== 'select' && (
-            <button type="button" className="ttc-btn ttc-btn-secondary" onClick={() => void handleChangeJob()}>
-              <RefreshCw size={15} />
-              更换岗位
-            </button>
-          )}
           <Link to="/jobs" className="ttc-btn ttc-btn-secondary">
             <Briefcase size={15} />
             岗位管理
           </Link>
+          {jobId && (
+            <button
+              type="button"
+              className="ttc-btn ttc-btn-secondary"
+              onClick={() => selectJob('')}
+            >
+              <RefreshCw size={15} />
+              更换岗位
+            </button>
+          )}
         </div>
       </section>
 
@@ -211,172 +379,321 @@ export default function CandidatesPage() {
         </div>
       )}
 
-      {initializing && (
-        <div className="ttc-card ttc-card-pad ttc-skeleton-block">
-          <span className="ttc-muted">正在恢复上一次筛选会话…</span>
-        </div>
-      )}
-
-      {!initializing && stage === 'select' && (
+      {!jobId && (
         <section className="ttc-card ttc-card-pad">
           <div className="ttc-card-header">
             <div>
-              <h2 className="ttc-card-title">选择招聘岗位</h2>
-              <p className="ttc-card-sub">从已保存岗位中选择一个，使用其 JD 与评分维度进行筛选</p>
+              <h2 className="ttc-card-title">选择岗位</h2>
+              <p className="ttc-card-sub">候选人必须归属岗位；岗位来自 /api/v1/jobs</p>
             </div>
-            <Link to="/jobs/new" className="ttc-btn ttc-btn-primary ttc-btn-sm">
-              <Plus size={14} />
-              新建岗位
-            </Link>
           </div>
-
-          {jobsQuery.isLoading && (
-            <div className="ttc-job-grid ttc-job-grid-compact">
-              <div className="ttc-skeleton-card" />
-              <div className="ttc-skeleton-card" />
-            </div>
-          )}
-
+          {jobsQuery.isLoading && <p className="ttc-muted">正在读取岗位…</p>}
           {jobsQuery.isError && (
             <div className="ttc-inline-error">
               <AlertCircle size={16} />
-              <div>
-                <strong>无法读取岗位列表</strong>
-                <span>{getApiErrorMessage(jobsQuery.error, '请确认后端服务已启动。')}</span>
-              </div>
+              <span>{getApiErrorMessage(jobsQuery.error, '读取岗位失败。')}</span>
             </div>
           )}
-
-          {!jobsQuery.isLoading && !jobsQuery.isError && (jobsQuery.data ?? []).length === 0 && (
-            <div className="ttc-empty-state">
-              <Briefcase size={24} />
-              <strong>还没有可用的岗位</strong>
-              <span>请先创建岗位并完成 JD 解析，再开始候选人筛选。</span>
+          {!jobsQuery.isLoading && (jobsQuery.data ?? []).length === 0 && (
+            <div className="ttc-empty-state ttc-empty-compact">
+              <Briefcase size={22} />
+              <strong>还没有岗位</strong>
               <Link to="/jobs/new" className="ttc-btn ttc-btn-primary ttc-btn-sm">
                 <Plus size={14} />
-                创建岗位
+                新建岗位
               </Link>
             </div>
           )}
-
-          {!jobsQuery.isLoading && !jobsQuery.isError && (jobsQuery.data ?? []).length > 0 && (
-            <div className="ttc-job-grid ttc-job-grid-compact">
-              {(jobsQuery.data ?? []).map((job) => (
-                <article key={job.name} className="ttc-job-card ttc-job-pick-card">
-                  <div className="ttc-job-card-top">
-                    <span className="ttc-job-icon">
-                      <Briefcase size={18} />
-                    </span>
-                    <span className="ttc-badge ttc-badge-blue">已保存</span>
-                  </div>
-                  <h3>{job.role_title}</h3>
-                  <p>{job.name}</p>
-                  <div className="ttc-job-card-foot">
-                    <span>更新于 {formatDateTime(job.updated_at)}</span>
-                    <button
-                      type="button"
-                      className="ttc-text-link"
-                      onClick={() => void selectJob(job.name)}
-                    >
-                      选择此岗位 <ArrowRight size={13} />
-                    </button>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
+          <div className="ttc-job-grid-compact">
+            {(jobsQuery.data ?? []).map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className="ttc-job-pick-card"
+                onClick={() => selectJob(item.id)}
+              >
+                <span className="ttc-job-icon">
+                  <Briefcase size={17} />
+                </span>
+                <div>
+                  <strong>{item.title}</strong>
+                  <span>
+                    {item.department || '未设置部门'} · {JOB_STATUS_LABEL[item.status]}
+                  </span>
+                </div>
+                <ArrowRight size={16} />
+              </button>
+            ))}
+          </div>
         </section>
       )}
 
-      {!initializing && stage === 'upload' && selectedJobName && (
+      {jobId && (
         <>
-          {jobQuery.isLoading && (
-            <div className="ttc-card ttc-card-pad ttc-skeleton-block">
-              <span className="ttc-muted">正在加载岗位信息…</span>
+          <section className="ttc-selected-job">
+            <span className="ttc-job-icon">
+              <Briefcase size={18} />
+            </span>
+            <div>
+              <strong>{job?.title ?? '正在读取岗位…'}</strong>
+              <span>
+                {job ? `${JOB_STATUS_LABEL[job.status]} · ${job.department || '未设置部门'}` : ''}
+              </span>
             </div>
-          )}
+            <Link to={`/jobs/${jobId}`} className="ttc-text-link">
+              查看岗位
+              <ArrowRight size={14} />
+            </Link>
+          </section>
 
-          {jobQuery.isError && (
-            <div className="ttc-error-panel">
-              <AlertCircle size={18} />
+          <section className="ttc-upload-panel">
+            <div className="ttc-upload-head">
               <div>
-                <strong>岗位信息读取失败</strong>
-                <span>{getApiErrorMessage(jobQuery.error, '该岗位可能已被删除。')}</span>
+                <div className="ttc-mini-heading">
+                  <Upload size={14} />
+                  RESUME INTAKE
+                </div>
+                <h2>批量上传简历</h2>
+                <p>
+                  每个文件会创建一个合成候选人、上传简历并提交解析任务；仅支持 PDF / DOCX /
+                  TXT，单文件 ≤ 20 MB。
+                </p>
               </div>
-              <button type="button" className="ttc-btn ttc-btn-secondary ttc-btn-sm" onClick={() => void handleChangeJob()}>
-                重新选择
+              <span className="ttc-badge ttc-badge-blue">{files.length} 个待上传</span>
+            </div>
+
+            <label className="ttc-dropzone">
+              <input
+                type="file"
+                multiple
+                accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+                onChange={(event) => onFiles(event.target.files)}
+              />
+              <Upload size={26} />
+              <strong>点击选择或拖入简历文件</strong>
+              <span>上传后由后端 worker 解析，不使用前端模拟数据。</span>
+            </label>
+
+            {files.length > 0 && (
+              <div className="ttc-file-list">
+                {files.map((file, index) => (
+                  <div className="ttc-file-row" key={`${file.name}-${index}`}>
+                    <FileText size={16} />
+                    <span>{file.name}</span>
+                    <small>{(file.size / 1024).toFixed(0)} KB</small>
+                    <button
+                      type="button"
+                      className="ttc-btn ttc-btn-secondary ttc-btn-sm"
+                      onClick={() =>
+                        setFiles((prev) => prev.filter((_, itemIndex) => itemIndex !== index))
+                      }
+                    >
+                      移除
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="ttc-upload-actions">
+              <button
+                type="button"
+                className="ttc-btn ttc-btn-secondary"
+                onClick={() => setRows({})}
+                disabled={rowsList.length === 0 || batchRunning}
+              >
+                清空本次结果
+              </button>
+              <button
+                type="button"
+                className="ttc-btn ttc-btn-primary"
+                onClick={() => void startBatch()}
+                disabled={files.length === 0 || batchRunning}
+              >
+                {batchRunning ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Sparkles size={16} />
+                )}
+                开始解析与匹配
               </button>
             </div>
-          )}
+          </section>
 
-          {jobQuery.data && (
-            <>
-              <div className="ttc-selected-job">
+          {rowsList.length > 0 && (
+            <section className="ttc-results-panel">
+              <div className="ttc-results-head">
                 <div>
-                  <span className="ttc-mini-heading">
-                    <Briefcase size={14} />
-                    当前岗位
-                  </span>
-                  <strong>{jobQuery.data.structured.role_title}</strong>
-                  <span>{jobQuery.data.name}</span>
+                  <h2>本次处理进度</h2>
+                  <p>
+                    {resolved} / {rowsList.length} 已完成 · WebSocket 实时进度 + 轮询兜底
+                  </p>
                 </div>
-                <Link
-                  to={`/jobs/${encodeURIComponent(jobQuery.data.name)}`}
-                  className="ttc-text-link"
-                >
-                  查看岗位详情 <ArrowRight size={13} />
-                </Link>
+                <span className="ttc-badge ttc-badge-blue">{progress}%</span>
               </div>
-
-              <ResumeUpload
-                jdText={jobQuery.data.jd_text}
-                jdStructured={jobQuery.data.structured}
-                scoringSchema={jobQuery.data.scoring_schema}
-                graduationFilter={DEFAULT_GRADUATION_FILTER}
-                onProcessingStarted={handleProcessingStarted}
-              />
-            </>
+              <div className="ttc-progress-track">
+                <i style={{ width: `${progress}%` }} />
+              </div>
+              <div className="ttc-table-scroll">
+                <table className="ttc-result-table">
+                  <thead>
+                    <tr>
+                      <th>候选人</th>
+                      <th>文件</th>
+                      <th>解析</th>
+                      <th>匹配分</th>
+                      <th>类别</th>
+                      <th>结论</th>
+                      <th />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rowsList.map((row) => (
+                      <tr key={row.candidateId}>
+                        <td>
+                          <strong>{row.name}</strong>
+                          <span className={`ttc-stage-pill ttc-stage-${row.stage}`}>
+                            {STAGE_LABEL[row.stage]}
+                          </span>
+                        </td>
+                        <td>
+                          <span className="ttc-muted">{row.fileName}</span>
+                        </td>
+                        <td>
+                          {row.parseStatus
+                            ? PARSE_STATUS_LABEL[row.parseStatus]
+                            : row.stage === 'error'
+                              ? '—'
+                              : '处理中'}
+                        </td>
+                        <td>
+                          <span className="ttc-score-badge">
+                            {row.score != null ? row.score.toFixed(1) : '—'}
+                          </span>
+                        </td>
+                        <td>
+                          {row.category ?? '—'}
+                          {row.confidence != null && (
+                            <small className="ttc-muted">
+                              {' '}
+                              ({Math.round(row.confidence * 100)}%)
+                            </small>
+                          )}
+                        </td>
+                        <td>
+                          {row.error ? (
+                            <span className="ttc-inline-error-text">{row.error}</span>
+                          ) : (
+                            <span className="ttc-muted">
+                              {row.summary || (row.stage === 'done' ? '已完成' : '处理中…')}
+                            </span>
+                          )}
+                        </td>
+                        <td>
+                          {row.stage === 'done' && (
+                            <Link
+                              to={`/candidates/${row.candidateId}/report?job=${jobId}${
+                                row.assessmentId ? `&assessment=${row.assessmentId}` : ''
+                              }`}
+                              className="ttc-text-link"
+                            >
+                              报告
+                              <ArrowRight size={13} />
+                            </Link>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
           )}
+
+          <section className="ttc-card ttc-card-pad">
+            <div className="ttc-card-header">
+              <div>
+                <h2 className="ttc-card-title">岗位候选人</h2>
+                <p className="ttc-card-sub">
+                  GET /api/v1/candidates?job_id=… · 共 {existing.length} 人
+                </p>
+              </div>
+              <button
+                type="button"
+                className="ttc-btn ttc-btn-secondary ttc-btn-sm"
+                onClick={() => void candidatesQuery.refetch()}
+              >
+                <RefreshCw size={14} className={candidatesQuery.isFetching ? 'animate-spin' : ''} />
+                刷新
+              </button>
+            </div>
+
+            {candidatesQuery.isError && (
+              <div className="ttc-inline-error">
+                <AlertCircle size={16} />
+                <span>{getApiErrorMessage(candidatesQuery.error, '读取候选人失败。')}</span>
+              </div>
+            )}
+
+            {existing.length === 0 && !candidatesQuery.isLoading && (
+              <div className="ttc-empty-state ttc-empty-compact">
+                <Users size={22} />
+                <strong>该岗位还没有候选人</strong>
+                <span>上传简历后会自动创建候选人记录。</span>
+              </div>
+            )}
+
+            <div className="ttc-candidate-list">
+              {existing.map((candidate) => {
+                const row = rows[candidate.id]
+                return (
+                  <article className="ttc-candidate-row" key={candidate.id}>
+                    <span className="ttc-avatar">{candidate.display_name.slice(0, 2)}</span>
+                    <div>
+                      <strong>{candidate.display_name}</strong>
+                      <span>
+                        {candidate.source} · 创建于 {formatDateTime(candidate.created_at)}
+                      </span>
+                    </div>
+                    {row?.stage === 'done' && row.score != null && (
+                      <span className="ttc-score-badge">{row.score.toFixed(1)}</span>
+                    )}
+                    <div className="ttc-card-actions">
+                      <Link
+                        to={`/candidates/${candidate.id}?job=${jobId}`}
+                        className="ttc-btn ttc-btn-secondary ttc-btn-sm"
+                      >
+                        详情
+                      </Link>
+                      <button
+                        type="button"
+                        className="ttc-btn ttc-btn-secondary ttc-btn-sm"
+                        onClick={() => void rerunCandidate(candidate)}
+                      >
+                        <Sparkles size={13} />
+                        重新匹配
+                      </button>
+                    </div>
+                  </article>
+                )
+              })}
+            </div>
+          </section>
         </>
       )}
 
-      {!initializing && stage === 'processing' && session && (
-        <ProcessingPanel
-          sessionId={session.sessionId}
-          totalFiles={session.totalFiles}
-          jobRoleTitle={roleTitle}
-          onComplete={handleComplete}
-        />
+      {candidatesQuery.isLoading && jobId && (
+        <div className="ttc-card ttc-card-pad ttc-skeleton-block" />
       )}
 
-      {!initializing && stage === 'results' && session && results && (
-        <CandidateResults
-          sessionId={session.sessionId}
-          results={results}
-          jobRoleTitle={roleTitle}
-          scoringSchema={jobQuery.data?.scoring_schema}
-          onNewBatch={() => void handleNewBatch()}
-        />
+      {rowsList.some((row) => row.stage === 'done') && (
+        <div className="ttc-results-foot">
+          <CheckCircle2 size={15} />
+          已完成 {rowsList.filter((row) => row.stage === 'done').length} 人；
+          <XCircle size={15} />
+          失败 {rowsList.filter((row) => row.stage === 'error').length} 人。
+        </div>
       )}
-
-      {!initializing && stage === 'results' && (!session || !results) && (
-        <section className="ttc-card ttc-card-pad ttc-empty-large">
-          <Users size={30} />
-          <h2>没有可展示的候选人结果</h2>
-          <p>当前会话没有返回结果，请重新开始一轮筛选。</p>
-          <Link to="/candidates" className="ttc-btn ttc-btn-primary">
-            重新选择岗位
-          </Link>
-        </section>
-      )}
-
-      <div className="ttc-notice">
-        <FileText size={15} />
-        <span>
-          当前候选人流程使用真实后端接口 <code>/api/resumes/process</code>、<code>/ws/:session_id</code>、
-          <code>/api/resumes/results</code> 与 <code>/api/resumes/detail</code>；不使用前端模拟进度或伪造评分。
-        </span>
-      </div>
     </div>
   )
 }
