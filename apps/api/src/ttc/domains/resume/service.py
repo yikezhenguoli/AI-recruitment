@@ -167,6 +167,16 @@ def _run_tesseract(path: Path, langs: str) -> str:
     return proc.stdout
 
 
+def _ensure_ocr_text(texts: list[str]) -> None:
+    """只有所有页面都没识别出文字时才判整份失败。"""
+    if not any(text.strip() for text in texts):
+        raise TTCError(
+            "TTC-3003",
+            "扫描件所有页面均未识别出文字；请上传可复制文本的 PDF 或更清晰的图片",
+            422,
+        )
+
+
 def _ocr_pdf(data: bytes) -> tuple[list[str], str, list[str]]:
     warnings: list[str] = []
     use_vlm = _vlm_enabled()
@@ -192,8 +202,15 @@ def _ocr_pdf(data: bytes) -> tuple[list[str], str, list[str]]:
         if not images:
             raise TTCError("TTC-3003", "扫描件没有可识别的页面", 422)
         if not use_vlm:
-            return [_run_tesseract(image, langs) for image in images], \
-                f"tesseract:{langs}", warnings
+            texts = []
+            for page_no, image in enumerate(images, 1):
+                try:
+                    texts.append(_run_tesseract(image, langs))
+                except TTCError as exc:
+                    texts.append("")
+                    warnings.append(f"第 {page_no} 页 OCR 失败，已跳过：{exc.message}")
+            _ensure_ocr_text(texts)
+            return texts, f"tesseract:{langs}", warnings
         texts: list[str] = []
         used: list[str] = []
         for page_no, image in enumerate(images, 1):
@@ -201,10 +218,15 @@ def _ocr_pdf(data: bytes) -> tuple[list[str], str, list[str]]:
                 page_text, model, page_warnings = _vlm_page(image.read_bytes(),
                                                             "image/png")
             except TTCError as exc:
-                raise TTCError("TTC-3003", f"第 {page_no} 页 {exc.message}", 422) from exc
+                # 空白页、分隔页、纯图表页在扫描简历里很常见；单页识别失败
+                # 不应让整份简历失败。保留空占位，避免 claim 页码错位。
+                texts.append("")
+                warnings.append(f"第 {page_no} 页未识别出文字，已跳过：{exc.message}")
+                continue
             texts.append(page_text)
             used.append(model)
             warnings.extend(f"第 {page_no} 页：{item}" for item in page_warnings)
+        _ensure_ocr_text(texts)
         label = "+".join(dict.fromkeys(used))
         return texts, f"vlm:{label}", warnings
 

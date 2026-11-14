@@ -30,6 +30,7 @@ MIMES = {
     ".webp": "image/webp",
 }
 MAX_FILE = 20 * 1024 * 1024
+GENERIC_MIMES = {"application/octet-stream", "binary/octet-stream"}
 
 
 async def require_resume(session: AsyncSession, user: Principal, resume_id: UUID):
@@ -60,7 +61,10 @@ async def upload_resume(candidate_id: UUID = Form(), job_id: UUID | None = Form(
     mime = MIMES.get(Path(name).suffix.lower())
     if not mime:
         raise TTCError("TTC-3001", "仅支持 PDF、DOCX、TXT 与 PNG/JPEG/WebP 图片", 415)
-    if file.content_type != mime:
+    declared = (file.content_type or "").split(";", 1)[0].strip().lower()
+    # 浏览器/脚本常把 PDF、DOCX 标成 octet-stream，不能因此拒收；
+    # 真实格式由 validate_document 的魔数校验兜底。
+    if declared and declared not in GENERIC_MIMES and declared != mime:
         raise TTCError("TTC-3004", "声明的 MIME 与扩展名不一致", 422)
     data = await file.read(MAX_FILE + 1)
     if len(data) > MAX_FILE:
