@@ -2,38 +2,49 @@ import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
-  Bell,
   Briefcase,
+  CalendarClock,
   ChevronRight,
+  FileSignature,
   LayoutDashboard,
   LogOut,
   Menu,
   Mic,
+  Search,
   Settings,
   ShieldCheck,
   Sparkles,
   Users,
   X,
+  type LucideIcon,
 } from 'lucide-react'
 import { getHealth } from '../../api/client'
 import { logout, roleLabel } from '../../api/auth'
 import { useAuthStore } from '../../store/authStore'
 import { CursorTrail } from '../visual/CursorTrail'
+import { NotificationBell } from './NotificationBell'
 import { PageTransition } from './PageTransition'
 
-const NAV_GROUPS = [
+const NAV_GROUPS: {
+  label: string
+  items: { label: string; path: string; icon: LucideIcon; end?: boolean; adminOnly?: boolean }[]
+}[] = [
   {
     label: '工作空间',
     items: [
       { label: '工作台首页', path: '/', icon: LayoutDashboard, end: true },
       { label: '岗位管理', path: '/jobs', icon: Briefcase },
       { label: '候选人', path: '/candidates', icon: Users },
+      { label: 'Offer 管理', path: '/offers', icon: FileSignature },
+      { label: '面试排期', path: '/interviews', icon: CalendarClock },
+      { label: '人才库', path: '/talent', icon: Search },
     ],
   },
   {
     label: '评估与治理',
     items: [
       { label: '语音会话', path: '/sessions', icon: Mic },
+      { label: '团队与权限', path: '/team', icon: ShieldCheck, adminOnly: true },
       { label: '管理后台', path: '/admin', icon: Settings },
     ],
   },
@@ -49,6 +60,10 @@ function resolvePageTitle(pathname: string): string {
   if (/^\/candidates\/[^/]+\/evidence$/.test(pathname)) return '证据中心'
   if (/^\/candidates\/[^/]+\/report$/.test(pathname)) return '评估报告'
   if (/^\/candidates\/[^/]+$/.test(pathname)) return '候选人详情'
+  if (pathname === '/offers') return 'Offer 管理'
+  if (pathname === '/interviews') return '面试排期'
+  if (pathname === '/talent') return '人才库'
+  if (pathname === '/team') return '团队与权限'
   if (pathname === '/sessions') return '语音会话'
   if (/^\/sessions\/[^/]+$/.test(pathname)) return '会话详情'
   if (pathname === '/admin') return '管理后台'
@@ -149,7 +164,9 @@ export function AppLayout() {
             {NAV_GROUPS.map((group) => (
               <section className="ttc-nav-group" key={group.label}>
                 <div className="ttc-nav-group-title">{group.label}</div>
-                {group.items.map((item) => {
+                {group.items
+                  .filter((item) => !item.adminOnly || user?.role === 'admin')
+                  .map((item) => {
                   const Icon = item.icon
                   return (
                     <NavLink
@@ -217,9 +234,7 @@ export function AppLayout() {
                 <i />
                 {healthState.label}
               </span>
-              <button type="button" className="ttc-icon-btn" aria-label="通知">
-                <Bell size={17} />
-              </button>
+              <NotificationBell />
               <div className="ttc-topbar-divider" />
               <span className="ttc-avatar ttc-avatar-sm">{avatarText}</span>
               <div className="ttc-topbar-user">

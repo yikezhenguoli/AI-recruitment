@@ -299,3 +299,184 @@ export interface TaskProgressMessage {
   attempts: number
   message: string | null
 }
+
+// ------------------------------------------------------------ Offer / 排期 / 人才库
+
+export interface ApplicationItem {
+  id: string
+  status: string
+  created_at: string
+  updated_at: string
+  candidate_id: string
+  candidate_name: string
+  source: string
+  job_id: string
+  job_title: string
+  department: string | null
+  match_score: number | null
+  offer_id: string | null
+  offer_status: OfferStatus | null
+}
+
+export type OfferStatus = 'draft' | 'sent' | 'accepted' | 'declined' | 'withdrawn' | 'expired'
+
+export interface OfferSummary {
+  id: string
+  status: OfferStatus
+  position_title: string
+  salary_monthly: string | number | null
+  salary_months: number | null
+  start_date: string | null
+  expires_at: string | null
+  sent_at: string | null
+  decided_at: string | null
+  created_at: string
+  updated_at: string
+  candidate_id: string
+  candidate_name: string
+  job_id: string
+  job_title: string
+  application_id: string
+}
+
+export interface OfferEvent {
+  id: string
+  actor_id: string | null
+  from_status: string | null
+  to_status: string
+  note: string | null
+  created_at: string
+}
+
+export interface OfferDetail extends OfferSummary {
+  events: OfferEvent[]
+}
+
+export type InterviewStatus =
+  | 'scheduled'
+  | 'confirmed'
+  | 'completed'
+  | 'canceled'
+  | 'no_show'
+
+export type InterviewMode = 'onsite' | 'video' | 'phone'
+
+export interface InterviewSlot {
+  id: string
+  status: InterviewStatus
+  scheduled_at: string
+  duration_min: number
+  mode: InterviewMode
+  location: string | null
+  note: string | null
+  candidate_id: string
+  candidate_name: string
+  job_id: string
+  job_title: string
+  interviewer_id: string | null
+  interviewer_name: string | null
+  application_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface AvailabilityResult {
+  interviewer_id: string
+  date: string
+  timezone: string
+  duration_min: number
+  slots: { start: string; end: string }[]
+  note: string
+}
+
+export interface TalentHit {
+  candidate_id: string
+  display_name: string
+  score: number
+  backend: string
+  model: string
+  resume_version_id: string
+  snippets?: string[]
+}
+
+export interface TalentSearchResult {
+  query: string
+  backend: string
+  model: string
+  indexed: number
+  items: TalentHit[]
+  warning?: string | null
+  hint?: string
+}
+
+export interface TalentReindexResult {
+  indexed: number
+  scanned: number
+  skipped: { candidate_id: string; reason: string }[]
+  warnings: string[]
+}
+
+export type MemberRole = 'admin' | 'hr' | 'candidate' | 'guest'
+export type MemberStatus = 'active' | 'disabled' | 'pending'
+
+export interface MemberItem {
+  id: string
+  email: string
+  display_name: string
+  role: MemberRole
+  status: MemberStatus
+  last_login_at: string | null
+  created_at: string
+}
+
+export interface PermissionMatrix {
+  permissions: string[]
+  matrix: Record<string, string[]>
+}
+
+export interface NotificationItem {
+  id: string
+  kind: string
+  title: string
+  body: string | null
+  link: string | null
+  read_at: string | null
+  created_at: string
+}
+
+export interface NotificationList {
+  items: NotificationItem[]
+  unread: number
+}
+
+export interface BackupItem {
+  id: string
+  uri: string
+  table_counts: Record<string, number>
+  checksum: string
+  size_bytes: number
+  created_at: string
+}
+
+export interface BackupList {
+  items: BackupItem[]
+}
+
+export interface BackupCreateResult extends BackupItem {
+  note: string
+}
+
+export interface BackupVerifyResult {
+  tenant_id: string
+  tables: Record<string, { rows: number }>
+  problems: string[]
+  ok: boolean
+  snapshot_id?: string
+  checksum_ok?: boolean
+}
+
+export interface BackupRestoreResult extends BackupVerifyResult {
+  applied: boolean
+  written?: Record<string, number>
+}
+

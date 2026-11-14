@@ -10,10 +10,16 @@ export function getApiErrorMessage(
   fallback = '请求失败，请稍后重试。',
 ): string {
   if (axios.isAxiosError(error)) {
-    const detail = error.response?.data?.detail
+    const data = error.response?.data as { detail?: unknown; message?: unknown } | undefined
+    const detail = data?.detail
 
     if (typeof detail === 'string' && detail.trim()) {
       return detail
+    }
+
+    // 本项目的 TTCError 用 message 字段；兼容另一套 detail 约定。
+    if (typeof data?.message === 'string' && data.message.trim()) {
+      return data.message
     }
 
     if (Array.isArray(detail)) {
