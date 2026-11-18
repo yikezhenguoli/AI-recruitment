@@ -70,3 +70,6 @@ apps/candidate-web/public/ttc-dev-ca.crt
 
 # 本地数据集，不纳入版本控制
 /dataset/
+
+# 本地默认账号密码，严禁提交
+/passwd.md
